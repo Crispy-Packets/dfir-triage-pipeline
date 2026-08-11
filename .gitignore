@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Evidence and derived output never enter git
+collections/
+outputs/
+*.evtx
+*.pf
+*.vhdx
+*.hve
+*.csv
+!tests/fixtures/**/*.csv
+!groundtruth/**/*.csv
