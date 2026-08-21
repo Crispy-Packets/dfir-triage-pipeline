@@ -62,7 +62,7 @@ janed        - standard user, SID <S-1-5-21-...>
                Primary user for all scenarios. Downloads and executes the
                Scenario 1 binary.
 
-local_admin  - local administrator, SID <S-1-5-21-...>
+admin_local  - local administrator, SID <S-1-5-21-...>
                Used for the Scenario 1 Security log clear, which requires
                administrative rights.
 
@@ -212,3 +212,41 @@ Zimmerman tools : via get-zimmermantools.ps1 into C:\kape\Modules\bin\, <date>
 - <Evidence transferred by <route> rather than a verified forensic write-blocker
    path; integrity is established by SHA-256 manifests generated at source
    before transfer and verified after.>
+
+## Deviations from the written procedure
+
+Three deviations occurred during collection. Each was recorded at the time in
+groundtruth/scenario1.md or docs/collection-manifest.md and is reproduced here
+because it affects what the evaluation can claim.
+
+### 1. scenario1 was collected without an intervening snapshot restore
+
+The stated procedure is that every collection begins from a restore of
+BASELINE-CLEAN+TOOLS. scenario1 was instead collected from the live session in
+which the scenario had just been executed, with no restore beforehand.
+
+Consequence: scenario1 and the clean baselines are not strictly comparable at
+the filesystem level. Any artifact present in scenario1 and absent from the
+clean collections may reflect accumulated session state rather than the attack
+chain. Findings are therefore corroborated against the recorded operator log
+in groundtruth/scenario1.md rather than against the clean baselines alone.
+
+### 2. clean_a contains two merged KAPE runs
+
+Two collections were written to the same destination directory:
+2026-08-19T19:27:26 and 2026-08-20T14:31:43. The later run's files overlay the
+earlier run's rather than replacing them.
+
+Consequence: clean_a is not a single point-in-time collection. It is not used
+as the sole training baseline for the Week 4 anomaly layer; clean_b, which is a
+single run, is used instead, and clean_a is retained for comparison only.
+
+### 3. clean_b's collection session ran under admin_local
+
+The procedure specified janed for benign activity. The KAPE session itself was
+run under admin_local.
+
+Consequence: clean_b contains an admin_local logon and session artifacts not
+anticipated in the procedure. This is investigator activity of the same class
+as the youssef sessions documented above and is excluded from ground truth on
+the same basis.
