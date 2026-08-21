@@ -1,0 +1,98 @@
+﻿=== Local accounts ===
+
+Name               Enabled SID                                            LastLogon           
+----               ------- ---                                            ---------           
+Administrator        False S-1-5-21-1654441035-1841856449-2463313859-500                      
+admin_local           True S-1-5-21-1654441035-1841856449-2463313859-1003 8/21/2026 4:36:59 AM
+DefaultAccount       False S-1-5-21-1654441035-1841856449-2463313859-503                      
+Guest                False S-1-5-21-1654441035-1841856449-2463313859-501                      
+janed                 True S-1-5-21-1654441035-1841856449-2463313859-1002 8/21/2026 3:01:05 AM
+WDAGUtilityAccount   False S-1-5-21-1654441035-1841856449-2463313859-504                      
+Youssef               True S-1-5-21-1654441035-1841856449-2463313859-1000 8/21/2026 7:23:37 PM
+
+
+
+=== Administrators group ===
+
+Name                    ObjectClass
+----                    -----------
+WINDOWS10\admin_local   User       
+WINDOWS10\Administrator User       
+WINDOWS10\Youssef       User       
+
+
+
+=== Profile directories ===
+
+Name         CreationTimeUtc     
+----         ---------------     
+admin_local  8/17/2026 4:58:29 PM
+All Users    12/7/2019 9:30:39 AM
+Default      12/7/2019 9:03:44 AM
+Default User 12/7/2019 9:30:39 AM
+janed        8/17/2026 4:43:01 PM
+Public       12/7/2019 9:14:52 AM
+Youssef      6/20/2026 1:44:56 PM
+desktop.ini  12/7/2019 9:14:54 AM
+
+
+
+=== Volumes ===
+
+DriveLetter FileSystemLabel         FileSystem        Size
+----------- ---------------         ----------        ----
+          C                         NTFS       53684989952
+          Z New Volume              NTFS       32211202048
+          D CCCOMA_X64FRE_EN-US_DV9 UDF         6140975104
+          A                                              0
+
+
+
+=== Volume serials (C: and Z:) ===
+ Volume in drive C has no label.
+ Volume Serial Number is A62A-F538
+
+ Volume in drive Z is New Volume
+ Volume Serial Number is 5659-C38D
+
+=== Volume GUID mount points ===
+Creates, deletes, or lists a volume mount point.
+
+MOUNTVOL [drive:]path VolumeName
+MOUNTVOL [drive:]path /D
+MOUNTVOL [drive:]path /L
+MOUNTVOL [drive:]path /P
+MOUNTVOL /R
+MOUNTVOL /N
+MOUNTVOL /E
+
+    path        Specifies the existing NTFS directory where the mount
+                point will reside.
+    VolumeName  Specifies the volume name that is the target of the mount
+                point.
+    /D          Removes the volume mount point from the specified directory.
+    /L          Lists the mounted volume name for the specified directory.
+    /P          Removes the volume mount point from the specified directory,
+                dismounts the volume, and makes the volume not mountable.
+                You can make the volume mountable again by creating a volume
+                mount point.
+    /R          Removes volume mount point directories and registry settings
+                for volumes that are no longer in the system.
+    /N          Disables automatic mounting of new volumes.
+    /E          Re-enables automatic mounting of new volumes.
+
+Possible values for VolumeName along with current mount points are:
+
+    \\?\Volume{b48fbbba-0000-0000-0000-100000000000}\
+        C:\
+
+    \\?\Volume{b48fbbba-0000-0000-0000-f07f0c000000}\
+        Z:\
+
+    \\?\Volume{f1428df0-6d09-11f1-9c93-806e6f6e6963}\
+        A:\
+
+    \\?\Volume{f1428dee-6d09-11f1-9c93-806e6f6e6963}\
+        D:\
+
+

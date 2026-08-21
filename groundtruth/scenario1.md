@@ -1,78 +1,123 @@
-# Scenario 1 ground truth
+# Collection manifest
 
-**Where this file lives:** HOST (this PC). Do not edit it inside the victim VM.
+Three triage collections, each taken from an explicit restore of
+BASELINE-CLEAN+TOOLS. Lab configuration is in docs/lab-setup.md.
 
-**Victim VM accounts**
+## Common parameters
 
-| Account | Role in Scenario 1 |
-|---------|--------------------|
-| `janed` | Login, copy notepad to share, browser download, double-click, HKCU Run `SecurityUpdate` |
-| `admin_local` | `wevtutil cl Security`, Admin PowerShell for KAPE |
-| `youssef` | Do **not** use for Scenario 1 |
+KAPE target set : KapeTriage
+KAPE modules    : <none | list verbatim>
+Output format   : plain directory (not --vhdx)
+Source volume   : C:
+Destination     : Z: (separate volume - see docs/lab-setup.md)
+Collected by    : youssef (investigator account)
 
-**Decoy:** `notepad.exe` renamed `invoice_scan.exe` (not `calc.exe`). Persistence is **HKCU** as `janed`, not HKLM.
+The target set is identical across all three. A different target set between a
+clean collection and a scenario collection would make every downstream
+comparison invalid, and the difference would appear in the evaluation as a
+detection result.
 
-## Log-clear consequence (write this before you act)
+Collections are directories rather than VHDX containers because the pipeline
+walks a directory tree; a VHDX is a single opaque file it cannot enter.
 
-`wevtutil cl Security` wipes the Security log. Process-creation **4688** for `invoice_scan.exe` (and everything else in that log) will **not** be in `Security.evtx` after this. Persistence, Prefetch, USN, and other artifacts remain. Do not treat a missing 4688 as a parser bug.
+## Integrity
 
-## UTC clock (host PowerShell)
+SHA-256 manifests were generated inside the VM, against the collection as
+written by KAPE, before any transfer. After transfer to the analysis host each
+collection was re-hashed and compared row by row against the source manifest.
+Mismatches: 0. Missing files: 0.
 
-```powershell
-(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")
-```
+Transfer route: <USB | virtual-disk mount | file host>. This is not a
+write-blocked forensic acquisition path; integrity is established by the
+hash comparison above rather than by the transfer mechanism.
 
-Or: `scripts\day2-stamp-utc.ps1` on the host. Fill the UTC column **as you perform** each row. Do not reconstruct times later.
+Path convention: manifest paths are collection-relative POSIX strings. Absolute
+paths would be machine-specific and unverifiable on any other machine.
+Encoding: UTF-8 with BOM (Windows PowerShell 5.1). Readers must use utf-8-sig.
 
-## Operator log (UTC)
+## clean_a
 
-| UTC | Machine | Actor | Action | Notes |
-|-----|---------|-------|--------|-------|
-|  | host | operator | Restore `BASELINE-CLEAN+TOOLS` | VM was off |
-|  | victim VM | `janed` | Boot / login | Not `youssef`, not `admin_local` |
-|  | victim VM | `janed` | Copy `C:\Windows\System32\notepad.exe` → `Z:\invoice_scan.exe` | Confirm on host share |
-|  | host | operator | `python -m http.server 8000` from the shared-folder path | Not inside the VM. Not `cd Z:\` unless the host also has Z: |
-|  | victim VM | `janed` | Browser download `http://<HOST-ONLY-IP>:8000/invoice_scan.exe` | Dest: `C:\Users\janed\Downloads\invoice_scan.exe`. Not 127.0.0.1, not 10.0.2.2 |
-|  | victim VM | `janed` | Wait ~2 min | Timeline gap: download vs execute |
-|  | victim VM | `janed` | Double-click Downloads copy in Explorer | Not `Z:\`. Notepad opens; close it |
-|  | victim VM | `janed` | Wait ~1 min | |
-|  | victim VM | `janed` | HKCU Run `SecurityUpdate` → Downloads path | Not HKLM |
-|  | victim VM | `janed` | Wait ~1 min | |
-|  | victim VM | `admin_local` | `wevtutil cl Security` | **Destroys 4688.** Expected remaining: 1102 + later events |
-|  | victim VM | `admin_local` | KAPE start `Z:\collection_s1` | Same dirty session. No restore before this |
-|  | victim VM | `admin_local` | KAPE end | Confirm host `collection_s1` not empty |
-|  | host + VM | operator | Shutdown VM; stop Python | |
+Source snapshot : BASELINE-CLEAN+TOOLS
+Restored at     : <UTC>
+Activity        : none - booted and allowed to settle. See docs/lab-setup.md on
+                  the investigator session present in all collections.
+Collected at    : <UTC>
+Command         : C:\kape\kape.exe --tsource C: --target KapeTriage --tdest Z:\collection_clean_a
+Files           : <from counts.txt>
+Bytes           : <from counts.txt>
+Traversal errors: <from counts.txt>
+Manifest        : groundtruth/clean-a-sha256.csv
 
-## Deviations (tell Person B)
+Purpose: training data for the Week 4 anomaly model. Baseline system state with
+no simulated user activity beyond boot.
 
-- No VirtualBox shared folder; `Z:` is guest-only. Host FYP is not `Z:`.
-- Decoy transferred **USB** (host → USB → VM), not a reliable host-only HTTP download. Python on the host was optional; stopping it does not undo USB/execute/persist/log-clear.
-- Guest sometimes on **NAT** so `http://192.168.50.5:8000/invoice_scan.exe` would open. Host host-only address is **`192.168.50.5`**, not `192.168.56.1`.
-- Clean B KAPE session used **`admin_local`** (lab text said `janed` for benign work).
+## clean_b
 
-## Expected artifacts (for Person B)
+Source snapshot : BASELINE-CLEAN+TOOLS (independent restore, not a reuse of clean_a)
+Restored at     : <UTC>
+Activity        : <web browsing, applications opened, files copied, PowerShell run>
+                  <account each action was performed under - janed or local_admin>
+                  <if a throwaway account was created and deleted, say so -
+                   it produces a real 4720>
+                  <if something was installed registering a service, say so -
+                   it produces a real 7045>
+Collected at    : <UTC>
+Command         : C:\kape\kape.exe --tsource C: --target KapeTriage --tdest Z:\collection_clean_b
+Files           : <n>
+Bytes           : <n>
+Traversal errors: <n>
+Manifest        : groundtruth/clean-b-sha256.csv
 
-| Action | Actor | Path / locator | Expected |
-|--------|-------|----------------|----------|
-| download | `janed` | `C:\Users\janed\Downloads\invoice_scan.exe` | browser history, MFT, Zone.Identifier |
-| execute | `janed` | `C:\Users\janed\Downloads\invoice_scan.exe` | Prefetch `INVOICE_SCAN.EXE-*`, Amcache, 4688 **then destroyed** |
-| persist | `janed` | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SecurityUpdate` | registry Run |
-| logclear | `admin_local` | `Security.evtx` | 1102; destroys prior 4688 |
+Purpose: threshold setting and false-positive measurement. Independent of
+clean_a by construction - a separate restore with a different benign workload.
+If both came from the same run they would not be independent and the Week 4
+evaluation would be invalid.
 
-## Real KAPE path shapes (from host trees 2026-08-21)
+## scenario1
 
-Layout is **flat `C\`**, no hostname/timestamp prefix. `winevt\logs` and `prefetch` are lowercase.
+Source snapshot : BASELINE-CLEAN+TOOLS
+Restored at     : <UTC>
+Scenario        : commodity infection chain - browser download, execution,
+                  autorun persistence, Security log clear
+Run under       : janed (download, execution, persistence)
+                  local_admin (Security log clear)
+Staged binary   : C:\Windows\System32\notepad.exe renamed invoice_scan.exe,
+                  served over the host-only network from the host
+Executed at     : <UTC>
+Collected at    : <UTC>
+Command         : C:\kape\kape.exe --tsource C: --target KapeTriage --tdest Z:\collection_s1
+Files           : <n>
+Bytes           : <n>
+Traversal errors: <n>
+Ground truth    : groundtruth/scenario1.md
+Manifest        : groundtruth/scenario1-sha256.csv
 
-```text
-collection_clean_a\C\Windows\System32\winevt\logs\Security.evtx
-collection_clean_a\C\Windows\System32\winevt\logs\System.evtx
-collection_clean_b\C\Windows\System32\winevt\logs\Security.evtx
-collection_clean_b\C\Windows\System32\winevt\logs\System.evtx
-collection_s1\C\Windows\System32\winevt\logs\Security.evtx
-collection_s1\C\Windows\System32\winevt\logs\System.evtx
-collection_s1\C\Windows\prefetch\INVOICE_SCAN.EXE-A345C2FE.pf
-```
+The staged binary is a genuine, signed, harmless Windows executable. From the
+artifacts' point of view it is an unknown binary downloaded from a remote host
+and executed out of Downloads\, which is the evidence pattern the project
+targets. The claim in the report is narrow: it reproduces the download,
+execution and persistence metadata. It is not claimed equivalent to real
+malware.
 
-Also in `collection_s1` Prefetch (baseline / extra, not the decoy): `NOTEPAD.EXE-EB1B961A.pf`, `NOTEPAD++.EXE-A5D7A5DB.pf`.
+notepad.exe rather than calc.exe: on Windows 10 and 11 the System32 calc.exe is
+a stub that hands off to the Store Calculator app, so its execution artifacts
+are unpredictable.
 
-Sizes: Clean A/B `Security.evtx` ~14–15 MB; Scenario 1 `Security.evtx` **69632 bytes** (log clear). Prefetch `INVOICE_SCAN.EXE-A345C2FE.pf` **9909 bytes**.
+## Note on Security.evtx in scenario1
+
+The scenario ends with `wevtutil cl Security`, which generates EID 1102 and
+destroys the 4688 for the execution. Scenario 1's Security.evtx is therefore
+nearly empty compared with clean_a and clean_b. This is intentional and is the
+reason cross-artifact correlation matters: Prefetch and Amcache still prove
+execution after the log is gone.
+
+The missing 4688 is not a parser fault and must not be read as one.
+
+Validate 4624 and 4688 against clean_a or clean_b; validate 1102 against
+scenario1.
+
+## Evidence handling
+
+Collections are not committed to git. .gitignore blocks collections/, *.evtx,
+*.pf and *.hve. Reproducibility is provided by the SHA-256 manifests above,
+which are committed, together with the procedure documented here.

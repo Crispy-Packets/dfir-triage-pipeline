@@ -1,0 +1,107 @@
+﻿Captured (UTC): 2026-08-21T17:22:37Z
+Logged on as  : Youssef
+
+=== auditpol Process Creation ===
+System audit policy
+
+Category/Subcategory                      Setting
+Detailed Tracking
+  Process Creation                        Success
+
+
+=== Security log config ===
+name: Security
+enabled: true
+type: Admin
+owningPublisher: 
+isolation: Custom
+channelAccess: O:BAG:SYD:(A;;0xf0005;;;SY)(A;;0x5;;;BA)(A;;0x1;;;S-1-5-32-573)
+logging:
+  logFileName: %SystemRoot%\System32\Winevt\Logs\Security.evtx
+  retention: false
+  autoBackup: false
+  maxSize: 67108864
+publishing:
+  fileMax: 1
+
+=== System log config ===
+name: System
+enabled: true
+type: Admin
+owningPublisher: 
+isolation: System
+channelAccess: O:BAG:SYD:(A;;0xf0007;;;SY)(A;;0x7;;;BA)(A;;0x3;;;BO)(A;;0x5;;;SO)(A;;0x1;;;IU)(A;;0x3;;;SU)(A;;0x1;;;S-1-5-3)(A;;0x2;;;S-1-5-33)(A;;0x1;;;S-1-5-32-573)
+logging:
+  logFileName: %SystemRoot%\System32\Winevt\Logs\System.evtx
+  retention: false
+  autoBackup: false
+  maxSize: 67108864
+publishing:
+  fileMax: 1
+
+=== ProcessCreationIncludeCmdLine_Enabled ===
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit
+    ProcessCreationIncludeCmdLine_Enabled    REG_DWORD    0x1
+
+
+=== ScriptBlockLogging ===
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging
+    EnableScriptBlockLogging    REG_DWORD    0x1
+
+
+=== OS version ===
+
+Major  Minor  Build  Revision
+-----  -----  -----  --------
+10     0      19045  0       
+
+
+
+
+
+Caption        : Microsoft Windows 10 Home
+Version        : 10.0.19045
+BuildNumber    : 19045
+OSArchitecture : 64-bit
+InstallDate    : 6/20/2026 4:44:53 PM
+
+
+
+
+=== SysMain (Prefetch) ===
+
+
+Name      : SysMain
+Status    : Running
+StartType : Automatic
+
+
+
+
+=== Prefetch registry ===
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters
+    EnablePrefetcher    REG_DWORD    0x3
+
+
+=== Defender ===
+
+
+AMServiceEnabled              : True
+RealTimeProtectionEnabled     : True
+AntivirusSignatureLastUpdated : 8/20/2026 9:34:53 PM
+
+
+
+
+=== KAPE version ===
+=== Network adapters ===
+
+Name     Status LinkSpeed
+----     ------ ---------
+Ethernet Up     1 Gbps   
+
+
+
