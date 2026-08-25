@@ -231,22 +231,78 @@ clean collections may reflect accumulated session state rather than the attack
 chain. Findings are therefore corroborated against the recorded operator log
 in groundtruth/scenario1.md rather than against the clean baselines alone.
 
-### 2. clean_a contains two merged KAPE runs
+### 2. clean_a was recollected
 
-Two collections were written to the same destination directory:
-2026-08-19T19:27:26 and 2026-08-20T14:31:43. The later run's files overlay the
-earlier run's rather than replacing them.
+The original clean_a contained two KAPE runs written to the same destination
+directory (2026-08-19T19:27:26 and 2026-08-20T14:31:43), so it was not a single
+point-in-time collection. Investigation of the merge established that it was
+less damaging than it appeared: the two CopyLogs recorded 768 and 767 files with
+766 in common, of which 713 were byte-identical. The 53 differences were
+confined to system service prefetch entries (svchost, RuntimeBroker, dllhost)
+and telemetry event channels; NTUSER.DAT, SOFTWARE and all user-relevant
+artifacts were identical across both runs.
 
-Consequence: clean_a is not a single point-in-time collection. It is not used
-as the sole training baseline for the Week 4 anomaly layer; clean_b, which is a
-single run, is used instead, and clean_a is retained for comparison only.
+The merge was therefore not the reason for recollection. Direct filesystem
+inspection established a more serious fault: of 101 .evtx files collected,
+Application.evtx was present but **Security.evtx and System.evtx were absent
+from both runs**. Those two channels are the sole source for all six EventIDs
+declared in CD-007, so the collection would have produced zero events from the
+EVTX parser — and the failure would have presented in Week 1 as a parser fault
+rather than a collection fault.
 
-### 3. clean_b's collection session ran under admin_local
+The KAPE EventLogs target was inspected and found intact
+(`Path: C:\Windows\System32\winevt\logs\`, `FileMask: '*.evtx'`), and a
+verification collection using that target on the same machine collected both
+files successfully. The root cause of the original omission was therefore not
+the target definition and has not been determined.
 
-The procedure specified janed for benign activity. The KAPE session itself was
-run under admin_local.
+clean_a was recollected on 2026-08-24 from a fresh restore of
+BASELINE-CLEAN+TOOLS:
 
-Consequence: clean_b contains an admin_local logon and session artifacts not
-anticipated in the procedure. This is investigator activity of the same class
-as the youssef sessions documented above and is excluded from ground truth on
-the same basis.
+| | |
+|---|---|
+| Command | `--tsource C: --target KapeTriage --tdest Z:\collection_clean_a` |
+| Session account | `admin_local`, elevated |
+| Files found / copied | 1,017 / 889 (128 deduplicated) |
+| Duration | 325.77 seconds |
+| Files on disk | 876 |
+| Total size | 950,656,516 bytes |
+| Recorded at | 2026-08-24T17:44:56.723622Z |
+| `Security.evtx` | 15,798,272 bytes |
+| `System.evtx` | 1,118,208 bytes |
+| Zero-byte files | 0 |
+| Console log | 72,294 bytes, readable |
+
+Single run, single destination, both event logs present. The merge and the
+missing-log fault are both resolved; this entry is retained because the
+detection method — hash-comparing the collection tool's own CopyLogs — is part
+of the methodology.
+
+### 3. clean_b was recollected
+
+clean_b was recollected on 2026-08-24 from an independent restore of
+BASELINE-CLEAN+TOOLS — a separate boot from clean_a's, not a reuse of the same
+session, so that the two baselines remain independent samples.
+
+| | |
+|---|---|
+| Command | `--tsource C: --target KapeTriage --tdest Z:\collection_clean_b` |
+| Session account | `admin_local`, elevated |
+| Files found / copied | 1,052 / 913 (139 deduplicated) |
+| Duration | 365.30 seconds |
+| Files on disk | 900 |
+| Recorded at | 2026-08-24T18:58:05.095260Z |
+| Zero-byte files | 0 |
+| CopyLog | `2026-08-24T18_56_49_883*_CopyLog.csv` |
+
+Post-collection verification confirmed the expected artifact families are
+present, including the Windows event logs and browser history for `janed`.
+
+clean_b contains 900 files against clean_a's 876. The 24-file difference is
+consistent with the benign user activity that distinguishes the two baselines:
+clean_a is boot-and-settle with no user interaction, clean_b adds browsing,
+application launches and file operations.
+
+**clean_b is the Week 4 anomaly-model baseline.** clean_a supplies the minimal
+reference state; clean_b supplies threshold-setting and false-positive
+measurement against realistic user activity.
