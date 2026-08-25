@@ -161,6 +161,29 @@ the project's declared scope. USB-based initial access is out of scope
 The recollection delivers the binary over HTTP through Edge. `Zone.Identifier`
 was verified as `ZoneId=3` before the scenario continued.
 
+## Manifest completeness
+
+The scenario1 collection-time manifest (`clean-s1-v2-sha256.csv`) covers 793 of
+the 817 files present in the collection. The 24 uncovered files are registry
+hives (`NTUSER.DAT`, `UsrClass.dat`), their transaction logs, DPAPI `Protect`
+blobs and `desktop.ini` entries — files carrying hidden or system attributes on
+the collecting host, which the hashing command did not enumerate. The `clean_a`
+and `clean_b` manifests are complete: 892 and 916 rows against 892 and 916
+files.
+
+The omission was found on 2026-08-25, after the lab VM had been decommissioned,
+so collection-time hashes for these files cannot be produced.
+`groundtruth/clean-s1-v2-sha256-supplement.csv` was generated from the host copy
+on that date and establishes integrity from receipt onward rather than from
+collection. No file named in the collection-time manifest is missing from disk.
+
+Files covered by the collection-time manifest are unaffected: five randomly
+sampled hashes per collection verified on receipt.
+
+`janed`'s `NTUSER.DAT` — the hive holding the Run-key persistence artifact — is
+among the 24. It is present and readable; only its collection-time hash is
+unavailable.
+
 ---
 
 ## What enters git
