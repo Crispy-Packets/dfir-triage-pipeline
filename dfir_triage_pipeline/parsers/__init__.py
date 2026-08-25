@@ -27,3 +27,4 @@ __all__ = ["ArtifactParser", "register", "registered_parsers", "find_parser"]
 # Parser modules are imported at the bottom so their @register decorators run
 # without a circular import. Day 4 adds:
 # from . import prefetch  # noqa: E402,F401
+from . import evtx_windows  # noqa: E402,F401
