@@ -2,7 +2,9 @@
 name = "dfir-triage-pipeline"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "evtx==0.12.1"
+]
 
 [project.optional-dependencies]
 dev = ["pytest==8.3.3", "ruff==0.6.9"]
