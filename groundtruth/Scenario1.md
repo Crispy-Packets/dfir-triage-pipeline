@@ -89,12 +89,48 @@ Timestamps captured on the **host** with:
 
 | # | UTC | Machine | Actor | Action |
 |---|-----|---------|-------|--------|
-| 1 | `2026-08-23T22:45:32.274977Z` | victim VM | `janed` | **Download** `http://192.168.50.2:8000/invoice_scan.exe` in Edge → `C:\Users\janed\Downloads\invoice_scan.exe` |
+| 1 | `2026-08-23T22:45:32.274977Z` — **SUPERSEDED, see note below** | victim VM | `janed` | **Download** `http://192.168.50.2:8000/invoice_scan.exe` in Edge → `C:\Users\janed\Downloads\invoice_scan.exe` |
+| 1c | `2026-08-23T22:20:06.710763Z` — **corrected 2026-08-26** | victim VM | `janed` | Same action. Time taken from the guest's own Edge `History`, `downloads` row id 13, `start_time` |
 | 2 | `2026-08-23T22:57:22.536771Z` | victim VM | `janed` | **Execute** by double-clicking in Explorer |
 | 3 | `2026-08-23T22:59:54.543367Z` | victim VM | `janed` | **Persist** — `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SecurityUpdate` |
 | 4 | `2026-08-23T23:05:12.794670Z` | victim VM | `admin_local` | **Log clear** — `wevtutil cl security` |
 
-**Intervals:** download → execute 11m 50s · execute → persist 2m 32s · persist → log clear 5m 18s. Total span 19m 40s.
+**Note on row 1, added 2026-08-26.** The original operator-log entry is retained
+above and is not deleted. It is superseded by evidence from the guest, and the
+correction is recorded rather than applied silently, because the audit trail of
+a ground-truth correction is itself part of the methodology.
+
+The guest's Edge `History` database, read directly from `collection_s1_v2`,
+contains exactly one download on 2026-08-23: `downloads` row id 13,
+`target_path` `C:\Users\janed\Downloads\invoice_scan.exe`, `tab_url`
+`http://192.168.50.2:8000/invoice_scan.exe`, `total_bytes` 4,608, `state` 1,
+`start_time` `2026-08-23T22:20:06.710763Z`, `end_time` `2026-08-23T22:20:07.324360Z`.
+The operator log's entry is late by 25m 25.6s.
+
+That this is a transcription error on one entry, and not a clock problem, is
+shown by the two other entries that can be checked independently:
+
+| Operator-log entry | Operator log (host) | Independent evidence (guest) | Late by |
+|---|---|---|---|
+| 1 · download | 22:45:32.274977Z | 22:20:06.710763Z — Edge `downloads` id 13 | **1,525.56 s** |
+| 2 · execute | 22:57:22.536771Z | 22:57:15.832787Z — Prefetch `INVOICE_SCAN.EXE-A345C2FE.pf` slot 0 | 6.70 s |
+| 4 · log clear | 23:05:12.794670Z | 23:05:06.682356Z — EID 1102, EventRecordID 28,201 | 6.11 s |
+
+Two entries agree with guest evidence to within 6.1–6.7 s, the uncalibrated
+host-to-guest offset that the ±60 s tolerance in
+`groundtruth/verification-method.md` exists to absorb. Entry 1 is out by a
+factor of roughly 250. The most economical explanation is that the download time
+was written down after the fact rather than at the moment; no other entry
+behaves that way.
+
+**Intervals, corrected:** download → execute **37m 09.1s** · execute → persist
+2m 32s · persist → log clear 5m 18s. **Total span 44m 59.97s**, measured from
+the Edge download `start_time` to the EID 1102.
+
+**Intervals as originally recorded, retained:** download → execute 11m 50s ·
+execute → persist 2m 32s · persist → log clear 5m 18s. Total span 19m 40s. The
+last two are unchanged, because both endpoints of each are operator-log entries
+carrying the same offset.
 
 The gaps are deliberate. Every step falling within the same second would leave the timeline unable to demonstrate ordering, and ordering is what the sequence rules detect.
 
@@ -136,10 +172,24 @@ this recollection was kept. The stream itself is not present in
 
 `HostUrl` additionally records the source URL, which independently corroborates the delivery method.
 
-The operator log records the download at 2026-08-23T22:45:32.274977Z, while
-PowerShell 4104 EventRecordID 1597 and 1602 show the Zone.Identifier of the
-downloaded file being read at 22:38:27Z and 22:38:44Z, seven minutes earlier.
-The discrepancy is unresolved. See docs/open-questions.md, OQ-003.
+**Resolved 2026-08-26 — OQ-003 is closed.** The apparent contradiction was that
+PowerShell 4104 EventRecordID 1597 and 1602 show the `Zone.Identifier` of the
+downloaded file being read at 22:38:27Z and 22:38:44Z, seven minutes *before*
+the operator log's download time of 22:45:32Z, and an alternate data stream
+cannot be read from a file that has not been downloaded.
+
+The contradiction was in the operator log, not in the evidence. The download
+completed at 22:20:07.324360Z. The `Zone.Identifier` reads therefore fall
+eighteen minutes *after* it, which is the expected order:
+
+    22:20:06.710763Z  download starts                (Edge downloads id 13)
+    22:20:07.324360Z  download completes, 4,608 bytes
+    22:38:27.274684Z  Zone.Identifier read, typo     (4104 EventRecordID 1597)
+    22:38:44.710217Z  Zone.Identifier read, retry    (4104 EventRecordID 1602)
+    22:57:15.832787Z  execution, run count 1         (Prefetch)
+    23:05:06.682356Z  Security log cleared           (EID 1102, EventRecordID 28,201)
+
+See row 1 above and docs/open-questions.md, OQ-003.
 
 The download was performed in **Edge**, not via PowerShell. `WebClient.DownloadFile` and `Invoke-WebRequest` are .NET calls that leave no browser history and no UserAssist entry.
 
