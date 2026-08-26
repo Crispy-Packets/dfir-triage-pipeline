@@ -834,11 +834,37 @@ Zimmerman tools : installed via get-zimmermantools.ps1. Install location and
 7. Host free disk space at collection time was not recorded and cannot now be
    established.
 
-8. Entity resolution is solved for Prefetch and open for EVTX. Prefetch device
-   paths embed the volume serial and resolve to C: and Z: outright, measured
-   2026-08-26. EVTX 4688 uses `\Device\HarddiskVolumeN`, of which only
-   `HarddiskVolume2` = Z: is established; no device path for C: has been
-   observed in the surviving EVTX evidence. See OQ-006.
+8. Entity resolution is solved for Prefetch, and smaller than feared for EVTX.
+   Prefetch device paths embed the volume serial and resolve to C: and Z:
+   outright. Measured across the produced timelines on 2026-08-26, only **10 of
+   9,801 `process_exec` rows** carry an NT device path - 0.10 per cent - and all
+   ten are `kape.exe` or `gkape.exe` on `\Device\HarddiskVolume2`, which is Z:.
+   No user-space `process_exec` row uses a device path. The Week 3
+   download-to-execution join is therefore not at risk from this. See OQ-006.
+
+10. **`Event.path` does not hold a path for `service_install`.** Of 39
+    `service_install` rows across `collection_s1_v2` and `collection_clean_b`,
+    **34 carry a value that is not a plain absolute filesystem path**: quoted
+    paths, paths with service arguments appended, relative paths with no root
+    (`system32\DRIVERS\RsFx0800.sys`), NT `\SystemRoot\` paths, and
+    unexpanded environment variables (`%SystemRoot%\system32\svchost.exe -k
+    print`). The field is holding a service `ImagePath`, which is a command
+    line. A join on `path` equality between `process_exec` and
+    `service_install` cannot match. This is a contract question for the model
+    owner, not a parser defect.
+
+11. **`user` carries at least two spellings of "absent" and four of "system".**
+    `clean_b` yields fourteen distinct values, including both the empty string
+    and `-` for no principal, and `SYSTEM`, `LocalSystem`, `LOCAL SERVICE` and
+    `NT AUTHORITY\LOCALSERVICE` for system contexts. Any Week 4 grouping by
+    `user` treats these as distinct principals until a normalisation rule
+    exists. None does.
+
+12. **997 timeline rows cannot participate in a path join at all.** `path` is
+    empty on every `logon`, `logon_failed`, `account_created` and `log_cleared`
+    row - 997 of 10,837 across the two collections measured. This is
+    semantically correct and is recorded so that a future rule reporting "no
+    correlation" on those event types is read as by-design.
 
 9. The clean baselines are not end-user baselines. Both contain execution
    artefacts for Visual Studio, SQL Server, SSMS, VS Code, Cursor, Notepad++,
