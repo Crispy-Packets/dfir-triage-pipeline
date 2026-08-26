@@ -10,7 +10,7 @@ Day 2 metadata only. **No evtx/pf attachments.** Evidence trees stay off git unt
 
 **Sanity passed:** both evtx in all three; s1 Security ~69 KB; Prefetch `collection_s1\C\Windows\prefetch\INVOICE_SCAN.EXE-A345C2FE.pf`.
 
-**Path shape:** `collection_*\C\Windows\...` (no hostname folder). Full packet: `groundtruth/person-b-day2-metadata.md`. UTC log: `groundtruth/scenario1.md`.
+**Path shape:** `collection_*\C\Windows\...` (no hostname folder). Full packet: `groundtruth/person-b-day2-metadata.md`. UTC log: `groundtruth/Scenario1.md`.
 
 **Caveat:** `collection_clean_a` has two KAPE log timestamps (19 Aug and 20 Aug) in one dest.
 

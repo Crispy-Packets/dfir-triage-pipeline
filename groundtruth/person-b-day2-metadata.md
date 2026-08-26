@@ -43,7 +43,7 @@ VM: VirtualBox `windows10`. Snapshot: `BASELINE-CLEAN+TOOLS`.
 
 ## Scenario 1 story
 
-Notepad renamed `invoice_scan.exe`, **USB** into the guest, executed as `janed`, HKCU Run **`SecurityUpdate`**, `wevtutil cl Security` as `admin_local` (**destroys 4688**). Ground truth: `groundtruth/scenario1.md`.
+Notepad renamed `invoice_scan.exe`, **USB** into the guest, executed as `janed`, HKCU Run **`SecurityUpdate`**, `wevtutil cl Security` as `admin_local` (**destroys 4688**). Ground truth: `groundtruth/Scenario1.md`.
 
 ## Sanity
 
