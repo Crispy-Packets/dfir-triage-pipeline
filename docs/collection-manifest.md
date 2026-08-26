@@ -4,6 +4,16 @@
 `BASELINE-CLEAN+TOOLS`. `collection_s1_v2` was taken from the live session in
 which Scenario 1 had just been executed, with no restore beforehand.
 
+Path convention. This manifest quotes filesystem paths from two
+different machines. Paths beginning `C:\Users\janed\`, `Z:\`,
+`\Device\HarddiskVolume`, `C:\kape\` and `C:\Windows\` refer to the
+lab guest, which was decommissioned on 2026-08-25 and on which no
+path can now be tested. Every absolute filesystem path in this manifest
+refers to the guest; the manifest records no host paths. An automated
+existence check run against the analysis host will therefore report every
+path in this manifest as absent. That is the expected result and is not a
+defect in this manifest.
+
 Common parameters across all three:
 
 | | |
@@ -167,7 +177,7 @@ This is EventRecordID 28,777 and 28,784. EventRecordID 28,674 used `--tsource Z:
 
 Commodity infection chain: browser download over HTTP, execution, autorun
 persistence, Security log clear. Full operator log with UTC timestamps and the
-`Zone.Identifier` verification is in `groundtruth/scenario1.md`.
+`Zone.Identifier` verification is in `groundtruth/Scenario1.md`.
 
 Prefetch decoy: `INVOICE_SCAN.EXE-A345C2FE.pf`.
 
@@ -277,7 +287,7 @@ it, which does not attest to file state at acquisition.
 ## What enters git
 
 **Tracked:**
-- `groundtruth/scenario1.md`
+- `groundtruth/Scenario1.md`
 - `groundtruth/clean-a-sha256.csv`
 - `groundtruth/clean-b-sha256.csv`
 - `groundtruth/clean-s1-v2-sha256.csv`
