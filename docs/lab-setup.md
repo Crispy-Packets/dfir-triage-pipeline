@@ -1,10 +1,12 @@
 Lab setup
 Environment in which all Week 1 evidence was collected. Every configuration change below was verified by execution; the verification output is recorded rather than asserted. Raw captures: docs/evidence/lab-verification.txt and docs/evidence/accounts-and-volumes.txt, both taken on the live guest before decommissioning. Open questions remaining after Week 1 are recorded in docs/open-questions.md.
 
-Four fields in this document remain unfilled. Each is marked TO FILL with the command or the single sentence that closes it. Every other field is either a recorded value with its source, or an explicit statement that the value was never captured.
+One field in this document remains unfilled: the route by which collections were transferred from the guest to the host. It is marked TO FILL in two places, both referring to the same single sentence, and only Person A can write it. Every other field is either a recorded value with its source, or an explicit statement that the value was never captured and why it cannot now be recovered.
+
+Path convention. This document quotes filesystem paths from two different machines. Paths beginning C:\Users\janed\, Z:\, \Device\HarddiskVolume, C:\kape\ and C:\Windows\ refer to the lab guest, which was decommissioned on 2026-08-25 and on which no path can now be tested. The only host paths in this document are the analysis path in the Host block below and the host-side candidate binary recorded under "Identity of the Scenario 1 binary (OQ-001)". An automated existence check run against the analysis host will report every guest path as absent; that is the expected result and is not a defect in this document.
 
 Host
-Hypervisor : Oracle VirtualBox. TO FILL - exact version. Host command: & "$env:ProgramFiles\Oracle\VirtualBox\VBoxManage.exe" --version Product confirmed from the host filesystem: %USERPROFILE%.VirtualBox and %USERPROFILE%\VirtualBox VMs are both present. Host OS : Windows, x64. TO FILL - edition and build. Host command: Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, OSArchitecture Free disk : not recorded at collection time. This is a retrospective quantity; a present-day figure would be a different measurement and is not substituted for it. Analysis path : C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline
+Hypervisor : Oracle VirtualBox 7.2.2r170484 Measured 2026-08-26 by VBoxManage.exe --version on the host. Host OS : Microsoft Windows 11 Home, 10.0.26200, build 26200, 64-bit Measured 2026-08-26 by Get-CimInstance Win32_OperatingSystem. Note the host and guest are different Windows generations: the host is Windows 11 build 26200, the guest is Windows 10 build 19045. This matters for OQ-001, where a file's version resource distinguishes a host-sourced binary from a guest-sourced one. Free disk : not recorded at collection time. This is a retrospective quantity; a present-day figure would be a different measurement and is not substituted for it. Analysis path : C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline
 
 Virtual machine
 Guest OS : Microsoft Windows 10 Home Version string : 10.0.19045 Build : 19045 Architecture : 64-bit Install date : 2026-06-20 16:44:53, as printed by Get-CimInstance. Guest local time, not normalised to UTC; see docs/timezone-assumptions.md RAM : 4 GB vCPU : 2 System disk : C: - 53,684,989,952 bytes (50.0 GB), NTFS, no volume label Collection disk : Z: - 32,211,202,048 bytes (30.0 GB), NTFS, label "New Volume", added for KAPE output Optical : D: - UDF, label CCCOMA_X64FRE_EN-US_DV9, the Windows installation media, still attached at verification capture Network : Host-only
@@ -12,6 +14,8 @@ Guest OS : Microsoft Windows 10 Home Version string : 10.0.19045 Build : 19045 A
 Source for the operating system fields: docs/evidence/lab-verification.txt, section "=== OS version ===". Source for the volume fields: docs/evidence/accounts-and-volumes.txt, section "=== Volumes ===".
 
 Host-only rather than NAT or bridged for two reasons: the VM holds attack-simulation artifacts and must not reach the internet, and the Scenario 1 binary is served from a web server on the host, which host-only reaches directly.
+
+Independent corroboration of the host-only configuration, 2026-08-26: the host's PowerShell console history records the download being fetched from http://192.168.56.1:8000/invoice_scan.exe. 192.168.56.1 is the default host address of the VirtualBox host-only adapter. The host-only claim is therefore evidenced by the address actually used, not only by the configuration intent. Note for anyone searching browser history: the subnet is 192.168.56, not 192.168.50.
 
 Adapter changes: no change of adapter mode is recorded in the operator log, in docs/evidence/, or in this document. The verification capture at 2026-08-21T17:22:37Z reports a single adapter, "Ethernet", status Up, 1 Gbps. That output does not distinguish host-only from NAT or bridged, so it corroborates neither, and no claim is made beyond the absence of a record.
 
@@ -34,14 +38,42 @@ Execution artefacts do not name volumes by drive letter. Resolving them to C:\ d
 Form	Instance in this lab	Mapping to C:
 Volume serial number	A62A-F538	held - table above
 Volume GUID	{b48fbbba-0000-0000-0000-100000000000}	held - table above
-NT device path	\Device\HarddiskVolume2	not held - inferred only, OQ-006
-The first two were captured live and are on record here. The third is the form that appears in this project's actual evidence: EID 4688 records the KAPE binary as \Device\HarddiskVolume2\kape\KAPE\kape.exe in clean_a and clean_b, while this document records the KAPE installation path in the guest as C:\kape\. Those two facts together imply that \Device\HarddiskVolume2 is C:, but that is an inference from two records and not a measurement, and Week 3's correctness depends on it. It is recorded as OQ-006 in docs/open-questions.md.
+NT device path	\Device\HarddiskVolume2	not C:. Evidence below identifies it as Z:. C: has no known device path - OQ-006
+The first two were captured live and are on record here. The third is the form that appears in this project's actual evidence, and it has now been measured rather than inferred.
 
-The same field carries both spellings across the collection set: the collection_s1_v2 acquisition records NewProcessName as Z:\kape\KAPE\kape.exe in drive-letter form (EID 4688, EventRecordID 28777 and 28784), while the clean_a and clean_b acquisitions record the device-path form. Path shape is therefore not constant within a single artefact family, and any Week 3 join that assumes it is will fail silently.
+Correction, 2026-08-26. \Device\HarddiskVolume2 is Z:, not C:. An earlier revision of this section reasoned that because EID 4688 records the KAPE binary as \Device\HarddiskVolume2\kape\KAPE\kape.exe in clean_a and clean_b, and because this document recorded KAPE as installed at C:\kape\, the device path must denote C:. That inference is contradicted by KAPE's own ConsoleLog, which each collection carries at its root and which records where the running binary was loaded from:
+
+Collection	ConsoleLog first line	4688 NewProcessName	Separation
+clean_a	KAPE directory: Z:\kape\KAPE at 2026-08-24 20:21:03 guest local	\Device\HarddiskVolume2\kape\KAPE\kape.exe at 2026-08-24T17:21:00.773737Z	2.6 s
+clean_b	KAPE directory: Z:\kape\KAPE at 2026-08-24 21:56:52 guest local	\Device\HarddiskVolume2\kape\KAPE\kape.exe at 2026-08-24T18:56	under 1 min
+collection_s1_v2	KAPE directory: Z:\kape\KAPE at 2026-08-24 02:31:49 guest local	Z:\kape\KAPE\kape.exe at 2026-08-23T23:31	under 1 min
+The process recorded by the kernel as \Device\HarddiskVolume2\kape\KAPE\kape.exe reported, 2.6 seconds later and from inside itself, that its own directory was Z:\kape\KAPE. \Device\HarddiskVolume2 therefore denotes Z:.
+
+Two consequences, and the second is the one that matters:
+
+All three collections were taken with the same binary at the same location on Z:. collection_s1_v2 records it in drive-letter form and the other two in device-path form. The same executable at the same path is written two different ways by the same event ID across one collection set. That is a measured instance of the exact hazard the Week 3 join faces, on this project's own evidence, and it is not a parser defect: the parser passes through what the record says.
+C: still has no known device path. The mapping Week 3 actually needs - resolving a device path to C:\Users\janed\Downloads\invoice_scan.exe - is not supplied by this finding. OQ-006 remains open, narrowed to C:, and is now the more valuable question rather than the less: an entity-resolution step built on the discarded inference would have resolved every C: artefact onto the collection volume.
+This is recorded rather than silently corrected because the discarded inference had already been written into this document as a basis for Week 3, and a reader of the methodology should be able to see that it was tested and failed.
 
 An earlier revision of this section stated that this mapping "cannot be recovered once the VM is discarded". That was wrong when it was written: the capture above already existed in this repository. The claim is corrected here rather than deleted, because the Week 3 design depends on which of the two is true, and a reader of the methodology should be able to see that the question was asked and answered rather than assumed.
 
-The form in which Prefetch itself records volume identity - device path, volume serial, or both - is not asserted here. No Prefetch parser has yet run against these collections, so no .pf volume information block in this evidence has been read. Confirming that form is the first step of OQ-006 and is a matter of inspection, not of recovery.
+Prefetch volume identity - measured 2026-08-26
+The volume information block of INVOICE_SCAN.EXE-A345C2FE.pf and NOTEPAD.EXE-EB1B961A.pf, both from collection_s1_v2, was read directly with libscca. Prefetch does not use the NT device-path form and does not use the mount-point GUID form. It uses a third form which embeds the volume serial number:
+
+Prefetch device path	Serial field	Volume created	Resolves to
+\VOLUME{01dd01162add2da6-a62af538}	0xA62AF538 = A62A-F538	2026-06-21T00:37:41.102941Z	C:
+\VOLUME{01dd300c59a66956-5659c38d}	0x5659C38D = 5659-C38D	2026-08-19T18:55:49.280187Z	Z:
+The trailing hexadecimal field of the \VOLUME{...} string is the volume serial number, and both serials are already on record in docs/evidence/accounts-and-volumes.txt. The Prefetch half of the entity resolution problem is therefore solved outright, for both volumes, from evidence already collected and a mapping already captured. No further acquisition is required and no inference is involved.
+
+This also confirms a claim made in an earlier revision of this document and then marked unverified - that Prefetch stores paths "of the form \VOLUME{...}". It does. What that earlier revision did not record is that the string carries the serial, which is what makes it resolvable.
+
+Week 3 therefore needs two normalisation rules, not one, because the two artefact families use different device-path forms for the same volume:
+
+Family	Form observed in this evidence	Resolution
+Prefetch	\VOLUME{<filetime>-<serial>}	solved - serial to letter, both volumes
+EVTX 4688	\Device\HarddiskVolumeN	HarddiskVolume2 = Z:. C: unmapped. See OQ-006
+Ground truth	C:\Users\janed\Downloads\invoice_scan.exe	target form
+A parser or rule that assumes one device-path convention across both families is wrong on this evidence.
 
 Accounts
 Three lab-created local user accounts (Youssef, janed, admin_local), plus one staged test account (testuser, created and deleted on 2026-08-24). The guest additionally carries the four Windows built-in accounts - Administrator, Guest, DefaultAccount and WDAGUtilityAccount - all four disabled at verification capture. Only WDAGUtilityAccount appears in the EID 4720 record set; the other three carry no 4720 record in clean_b. No Microsoft accounts. A Microsoft account changes the profile path shape and introduces cloud-sync artifacts that would contaminate the baseline.
@@ -110,6 +142,14 @@ clean_b Security contains 25 records of EID 4616 (the system time was changed). 
 Record order is not chronological order. The timeline is therefore sorted by timestamp and never by EventRecordID.
 
 No system-time change occurs within the incident window. There is no evidence of anti-forensic time manipulation by the actor. This is a documented negative result, not an absence of investigation.
+
+Guest clock offset: UTC+3, measured. Each KAPE ConsoleLog is written in guest local time and each collection's launch is also recorded as an EID 4688 in UTC, giving three independent pairings:
+
+Collection	ConsoleLog, guest local	EID 4688, UTC	Offset
+clean_a	2026-08-24 20:21:03	2026-08-24T17:21:00.77Z	+3h
+clean_b	2026-08-24 21:56:52	2026-08-24T18:56	+3h
+collection_s1_v2	2026-08-24 02:31:49	2026-08-23T23:31	+3h
+This resolves the local-time values elsewhere in this document that were recorded "as printed, not normalised": the guest install date of 2026-06-20 16:44:53 local is 13:44:53Z, and the account last-logon values in the SID table are three hours ahead of UTC. It does not change any timeline value, because every EVTX timestamp is already UTC per the Microsoft event schema (docs/timezone-assumptions.md); it only makes the human-readable captures comparable with the evidence.
 
 Collection span and power-off gap: clean_b Security first record is EventRecordID 1, 2026-06-20T23:41:30.958795Z; last record is EventRecordID 15897, 2026-08-24T18:57:42.628249Z. The largest gap between consecutive records is EventRecordID 1088 (2026-06-20T16:45:11Z) to 1089 (2026-08-12T11:26:32Z), 52 days 18 hours. The machine was built in June and left powered off until August. Records 1 to 1088 are the operating system installing itself. Records 1089 to 15897, being 14809 records or 93.2 per cent of the log, are the August lab construction period.
 
@@ -235,17 +275,27 @@ a two-byte header inspection at 00:28:18
 Test-Path "$env:LOCALAPPDATA\invoice_scan_marker.txt" at 00:29:00
 The 2026-08-21 artefacts are consistent with the purpose-built binary described in groundtruth/Scenario1.md. Which binary was present for the 2026-08-23 run is not established.
 
-Host-side candidate, recorded 2026-08-26. A file named invoice_scan.exe is present on the analysis host at the root of C:\Joseph (university)\Usal Uni\3rd summer\FYP:
+Host-side candidates, recorded 2026-08-26. A search of the analysis host for invoice_scan* returned two distinct executables and one source file. They are different binaries, they have different sizes, and the $MFT size for the collected path discriminates between them.
 
-Size             : 360,448 bytes
-SHA-256          : 3f543719a819a9769d8f138a02544f93af8b53ef1779a96bc2403715d9a55380
-LastWriteTime    : 2026-07-29T21:58:57Z
-Version resource : CompanyName "Microsoft Corporation",
-                   OriginalFilename "NOTEPAD.EXE",
-                   FileDescription "Notepad"
-This is a renamed copy of the Windows Notepad binary. It is corroborating evidence and not a closure: nothing establishes that this host-side copy is the file that was served to the guest on 2026-08-23, and the 2026-08-21 artefacts above describe a binary with marker-file behaviour that Notepad does not have.
+Host path	Size	SHA-256	What it is
+FYP\invoice_scan.exe	360,448	3f543719...a55380	Renamed Windows 11 Notepad. OriginalFilename NOTEPAD.EXE, FileVersion 10.0.26100.8972
+C:\Users\Josep\invoice_scan.exe	4,608	01c426d6...f436a0	Purpose-built .NET stub. InternalName invoice_scan, managed assembly, MSIL
+C:\invoice_scan.cs	648	d429e2f5...2353fc	C# source of the stub
+No two share a hash. The Notepad copy reports FileVersion 10.0.26100.8972, a Windows 11 build; the guest is Windows 10 19045. It cannot be the artefact produced by the guest-side Copy-Item C:\Windows\System32\notepad.exe commands in the 4104 record, and is a separate host-side experiment.
 
-What it does is make the Week 2 MFT check decisive rather than lonely. The MFT records a file size for C:\Users\janed\Downloads\invoice_scan.exe. If that size is 360,448 bytes the collected file is a renamed Notepad; if it is any other size it is not, and the purpose-built binary of 2026-08-21 becomes the candidate. Either way the answer is a comparison against a number now on record rather than an inference from copy commands alone.
+The stub's source, reproduced because it names the behaviour the ground truth depends on:
+
+File.AppendAllText(marker,
+    "TRIAGEFORGE-STANDIN run=" + DateTime.UtcNow.ToString("o") + Environment.NewLine);
+Console.WriteLine("Invoice scan utility - benign lab stand-in");
+Thread.Sleep(20000);
+The marker path is %LOCALAPPDATA%\invoice_scan_marker.txt, which is the file groundtruth/Scenario1.md expects the execution step to create. The 20-second sleep is deliberate, so the process is observable while running.
+
+Which binary was served is not yet established, but the evidence points one way and the prediction is recorded here before the check that tests it. The host's PowerShell console history (ConsoleHost_history.txt, 96,442 bytes, no per-line timestamps) records the build sequence in order: Copy-Item notepad.exe .\invoice_scan.exe in the FYP folder followed by python -m http.server 8000 there; then the C# source written, compiled with csc.exe, and every subsequent python -m http.server 8000 issued from a working directory of C:\Users\Josep\ - the directory holding the 4,608-byte stub. The last http.server invocations in the file are from that directory.
+
+Prediction, recorded 2026-08-26, before the Week 2 MFT parser runs: the $MFT size for C:\Users\janed\Downloads\invoice_scan.exe will be 4,608 bytes. If it is 360,448 the reading of the console history above is wrong and the Notepad copy was served. If it is neither, a third binary was involved and none of the host-side candidates is it.
+
+This is corroborating evidence and not a closure. The console history carries no timestamps, so the ordering of its lines establishes sequence but not date, and nothing here proves which file sat in the served directory on 2026-08-23.
 
 Resolution path: $MFT is present in the collection and records the file size for C:\Users\janed\Downloads\invoice_scan.exe. The Week 2 MFT parser settles it.
 
@@ -281,10 +331,33 @@ This is the clean image used for false-positive measurement.
 The benign activity is deliberate, not incidental: the Week 4 anomaly model
 learns "normal" from this material. A sterile installation would produce a
 model in which ordinary user behaviour appears anomalous.
+
+**Measured correction, 2026-08-26.** The description above understates the
+snapshot's software content by a wide margin. The Prefetch directories of
+both clean collections were listed directly. Both contain execution
+artefacts for, among others: Visual Studio (`DEVENV.EXE`,
+`VS_COMMUNITY__647585806`, `VS_SETUP_BOOTSTRAPPER.EXE`,
+`VSTA_SETUP_2019.EXE`), SQL Server (`SQLSERVR.EXE`, `SQLCEIP.EXE`), SQL
+Server Management Studio (`SSMS-SETUP-ENU.EXE`), VS Code (`CODE.EXE`,
+three `VSCODEUSERSETUP` entries), Cursor (six `CURSOR.EXE` entries plus its
+installer), Notepad++ (three installer versions), Skype, OneDrive (three
+`ONEDRIVE.EXE` and four `ONEDRIVESETUP.EXE` entries), M365 Copilot and four
+Visual C++ redistributables.
+
+This is not "one small application install". Because the same set appears in
+**both** clean_a and clean_b, it predates both and is a property of the
+BASELINE-CLEAN snapshot itself, not of anything done after the revert.
+
+Consequence, stated rather than resolved: the Week 4 anomaly model will
+learn a developer workstation as "normal". That is a defensible baseline for
+a developer endpoint and an indefensible one for the "simulated victim"
+end-user profile `janed` is described as. Which of the two the evaluation
+claims must be decided before the Week 4 false-positive rate is reported,
+and it is recorded in Known limitations below.
 BASELINE-CLEAN+TOOLS BASELINE-CLEAN plus KAPE and the Eric Zimmerman tool set, installed under youssef, plus the Z: collection volume attached. Every collection this week begins with a restore of this snapshot.
 
 Tooling
-KAPE : version not recorded. The verification capture (docs/evidence/lab-verification.txt) contains a "=== KAPE version ===" section header with no output beneath it, so the command produced nothing. TO FILL - each collection's ConsoleLog carries the KAPE version banner in its opening lines: Get-ChildItem collections**ConsoleLog*.txt | ForEach-Object { $.FullName; Get-Content $ -First 5 } KAPE location : C:\kape\ in the guest. collection_s1_v2 was collected with Z:\kape\KAPE\kape.exe (EID 4688, EventRecordID 28777 and 28784), so a second copy existed on Z: at that time. Zimmerman tools : installed via get-zimmermantools.ps1 into C:\kape\Modules\bin. Install date not recorded and not recoverable: C:\kape falls outside the KapeTriage collection scope and the guest was decommissioned on 2026-08-25.
+KAPE : version not established, and now believed unrecoverable. Two sources were checked on 2026-08-26. The verification capture (docs/evidence/lab-verification.txt) contains a "=== KAPE version ===" section header with no output beneath it. The ConsoleLog of each of the three collections was then read in full; none carries a version field, and a search for "version" across all three returned no match. KAPE does not write its version to the ConsoleLog. The binary itself was on the guest and is gone. KAPE target set : KapeTriage, expanding to 14 targets. Recorded identically in all three ConsoleLogs ("Found 14 targets"). KAPE location : Z:\kape\KAPE in the guest, for all three collections. Source: "KAPE directory: Z:\kape\KAPE" in each ConsoleLog. An earlier revision of this block recorded C:\kape\ and described the Z: path as "a second copy". No evidence supports a copy on C: for these three runs. Note that the clean_b Prefetch directory holds two distinct KAPE.EXE entries (KAPE.EXE-16F16FF6.pf and KAPE.EXE-7E7B58D0.pf), and a Prefetch hash is derived from the full executable path, so KAPE did run from two different paths at some point in the lab's history - consistent with the earlier Youssef runs of 12 to 19 August. Which path is not established. Zimmerman tools : installed via get-zimmermantools.ps1. Install location and date not recorded and not recoverable: the guest was decommissioned on 2026-08-25 and the KAPE tree is outside the KapeTriage collection scope.
 
 Known limitations
 All three collections come from a single virtual machine. There is no cross-host validation, and every figure the evaluation reports is a figure for one Windows 10 Home 19045 guest.
@@ -294,7 +367,8 @@ Evidence was transferred from the guest to the host by <TO FILL - route, item 4 
 The lab virtual machine was decommissioned on 2026-08-25. No further acquisition is possible; every remaining question resolves from held evidence or stays open permanently. See docs/open-questions.md.
 Guest Additions are not installed, so the guest lacks hypervisor-integration artefacts that a typical virtualised endpoint would carry. Recorded as a deliberate difference from a typical VM rather than as a defect.
 Host free disk space at collection time was not recorded and cannot now be established.
-Entity resolution across artefact families is not yet possible for NT device paths. Volume serial and volume GUID mappings for C: and Z: are held, but \Device\HarddiskVolumeN to drive letter is inferred rather than measured. See OQ-006.
+Entity resolution is solved for Prefetch and open for EVTX. Prefetch device paths embed the volume serial and resolve to C: and Z: outright, measured 2026-08-26. EVTX 4688 uses \Device\HarddiskVolumeN, of which only HarddiskVolume2 = Z: is established; no device path for C: has been observed in the surviving EVTX evidence. See OQ-006.
+The clean baselines are not end-user baselines. Both contain execution artefacts for Visual Studio, SQL Server, SSMS, VS Code, Cursor, Notepad++, Skype and OneDrive, in the Prefetch of both collections and therefore in the BASELINE-CLEAN snapshot itself. Any Week 4 false-positive rate measured against them is a rate against a developer workstation, not against the simulated end user the scenario describes.
 Deviations from the written procedure
 Three deviations occurred during collection. Each was recorded at the time in groundtruth/Scenario1.md or docs/collection-manifest.md and is reproduced here because it affects what the evaluation can claim.
 
@@ -368,6 +442,3 @@ $LogFile ModifiedOnUtc reads 1601-01-01, a null FILETIME. NTFS metadata files do
 
 Unresolved mismatch
 janed's WebCacheV01.dat in clean_a. Equal size, differing SHA-1. Unlike the NTFS files it was not deferred, has no ConsoleLog entry, and its mtime predates the copy by seven days. The deferred-copy explanation does not account for it. WebCacheV01.dat is a memory-mapped ESE database, and lazy page flushing without an mtime update is a plausible mechanism, but the evidence does not establish it. Recorded as unresolved. The equivalent files for admin_local and Youssef were deferred and verified correctly. clean_a is not the primary evidence collection.
-
-
-
