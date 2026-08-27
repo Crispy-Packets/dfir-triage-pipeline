@@ -329,11 +329,25 @@ plus `admin_local` twice. janed appears in neither.
 
 ### Why this matters
 
-[PERSON A WRITES THIS: one or two sentences. The anti-forensic log clear
-destroyed the entire EVTX record of initial access, execution and
-persistence. Those actions survive only in Prefetch, browser history and
-registry. This is the motivating case for multi-artefact triage,
-demonstrated on collected evidence rather than asserted.]
+A single `wevtutil cl Security` at 2026-08-23T23:05:12.794670Z destroyed the
+entire Security-log record of initial access, execution and persistence: the
+4688 for `invoice_scan.exe` is gone, and the 359 records that survive are the
+post-clear collection window, in which `janed` does not appear at all. Every one
+of those actions nonetheless remains recoverable from other artefact families --
+arrival from Edge `History` at 22:20:06.710763Z, identity and size from the
+`downloads` record, execution from Prefetch at 22:57:15.832787Z with a run count
+of 1, and effect from the Prefetch referenced-file list naming
+`INVOICE_SCAN_MARKER.TXT` -- which is the case for multi-artefact triage made on
+collected evidence rather than asserted: an adversary who clears one log has
+cleared one log, not the record.
+
+Two honest qualifications. The clear was Security-only, not a destruction of the
+EVTX record as such; 106 of the 118 collected channels retain pre-clear entries,
+and `Microsoft-Windows-PowerShell/Operational` alone holds 1,470 of them. And
+Week 1 parses none of the families that carried the reconstruction, so those
+ground-truth rows are marked `NOT-PARSED` and the chain above was rebuilt by
+hand on 2026-08-26. The pipeline does not yet demonstrate this; the evidence
+does, and Week 2 adds the parsers that would let the pipeline show it.
 
 ---
 
