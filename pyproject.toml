@@ -1,9 +1,10 @@
 [project]
 name = "dfir-triage-pipeline"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
-    "evtx==0.12.1"
+    "evtx==0.12.1",
+    "windowsprefetch==4.0.3",
 ]
 
 [project.optional-dependencies]

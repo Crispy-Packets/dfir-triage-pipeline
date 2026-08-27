@@ -8,6 +8,7 @@ from .model import Event
 
 COLUMNS = (
     "timestamp_utc",
+    "timestamp_type",
     "source_artifact",
     "event_type",
     "user",
@@ -37,6 +38,7 @@ def sort_events(events: Iterable[Event]) -> list[Event]:
 def to_row(event: Event) -> dict[str, str]:
     return {
         "timestamp_utc": event.timestamp_iso.replace("+00:00", "Z"),
+        "timestamp_type": event.timestamp_type,
         "source_artifact": event.source_artifact,
         "event_type": event.event_type,
         "user": event.user or "",

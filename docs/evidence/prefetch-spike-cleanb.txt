@@ -1,0 +1,69 @@
+======================================================================
+P1  LIBRARY
+    pin string:  windowsprefetch==4.0.3
+    interpreter: 3.11.9
+    file:        <EVIDENCE_ROOT>/collection_clean_b/C/Windows/prefetch/7Z2602-X64.EXE-DF28ABE0.pf
+======================================================================
+P2  HEADER
+    first 4 bytes: b'MAM\x04'
+======================================================================
+P3  ATTRIBUTES ON THE RECORD OBJECT
+    dirStringsCount: int = 10
+    dirStringsOffset: int = 592
+    directoryStringsArray: list = [['\\VOLUME{01dd01162add2da6-a62af538}\\USERS\x00', '\\VOLUME{01dd01162add2da6-a62af538}\\USERS\\ADMIN_LOCAL\x00', '\\VO
+    executableName: str = '7Z2602-X64.EXE'
+    fileRefCount: int = 424
+    fileRefOffset: int = 168
+    fileSize: int = 26840
+    filenameLength: int = 61
+    filenameOffset: int = 0
+    filenameStringsOffset: int = 19304
+    filenameStringsSize: int = 5536
+    filenames: bytes = b'\\\x00V\x00O\x00L\x00U\x00M\x00E\x00{\x000\x001\x00d\x00d\x000\x001\x001\x006\x002\x00a\x00d\x00d\x002\x00d\x00a\x006\
+    hash: str = 'df28abe0'
+    lastRunTime: bytes = b'\x1fwh!\xf93\xdd\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x
+    metricsCount: int = 41
+    metricsOffset: int = 296
+    mftEntryNumber: int = 0
+    mftSeqNumber: int = 0
+    pFileName: str = '<EVIDENCE_ROOT>/collection_clean_b/C/Windows/prefetch/7Z2602-X64.EXE-DF28ABE0.pf'
+    resources: list = ['\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\NTDLL.DLL', '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYS
+    runCount: int = 3
+    signature: int = 1094927187
+    timestamps: list = ['2026-08-24 18:48:19.135056']
+    traceChainsCount: int = 2212
+    traceChainsOffset: int = 1608
+    version: int = 30
+    volCreationTime: int = 134264758611029414
+    volPathLength: int = 34
+    volPathOffset: int = 96
+    volSerialNumber: str = 'a62af538'
+    volumesCount: int = 1
+    volumesInformationArray: list = [{'Volume Name': b'\\\x00V\x00O\x00L\x00U\x00M\x00E\x00{\x000\x001\x00d\x00d\x000\x001\x001\x006\x002\x00a\x00d\x00d\x00
+    volumesInformationOffset: int = 24976
+    volumesInformationSize: int = 1864
+======================================================================
+P4  EXECUTABLE NAME AND RUN COUNT
+    executableName: '7Z2602-X64.EXE'
+    runCount:       3
+======================================================================
+P5  RUN TIMESTAMPS  <-- decides the parser
+    container type: list
+    count:          1
+      slot 0: str  '2026-08-24 18:48:19.135056'
+    VERDICT NAIVE -> parser must ATTACH UTC, never astimezone()
+    VERDICT AWARE -> parser must CONVERT with astimezone(UTC)
+======================================================================
+P6  VOLUME INFORMATION
+    volumesInformationArray: [{'Volume Name': b'\\\x00V\x00O\x00L\x00U\x00M\x00E\x00{\x000\x001\x00d\x00d\x000\x001\x001\x006\x002\x00a\x00d\x00d\x002\x00d\x00a\x006\x00-\x00a\x006\x002\x00a\x00f\x005
+    volumeSerialNumber: None
+    volumesCount: 1
+======================================================================
+P7  REFERENCED PATH SHAPE  (CD-010 join key)
+    '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\NTDLL.DLL'
+    '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\KERNEL32.DLL'
+    '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\KERNELBASE.DLL'
+    '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\LOCALE.NLS'
+    '\\VOLUME{01dd01162add2da6-a62af538}\\WINDOWS\\SYSTEM32\\APPHELP.DLL'
+    total referenced entries: 41
+======================================================================
