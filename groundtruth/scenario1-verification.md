@@ -301,7 +301,7 @@ on the strength of the 4688 install chain; it is now disproved outright by the
 
 ## 5. Provenance sample — action 96
 
-**Rows drawn 2026-08-26. Resolution by Person A pending.**
+**Rows drawn 2026-08-26. Resolved 2026-08-28. All three resolve as documented.**
 
 Three rows were drawn at random from `outputs/s1_v2/timeline.csv` (382 rows) by
 uniform sample of the row index, not by selection. They are named here before
@@ -309,9 +309,9 @@ resolution so that the sample cannot be quietly changed if one proves awkward.
 
 | Drawn index | `timestamp_utc` | `event_type` | `user` | `path` | `source_file` | `source_locator` | Resolved by hand? |
 |---|---|---|---|---|---|---|---|
-| 131 | 2026-08-23T23:15:31.058684Z | `process_exec` | `WINDOWS10$` | `C:\Windows\System32\svchost.exe` | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28364` | **pending** |
-| 303 | 2026-08-23T23:17:45.468579Z | `logon` | `SYSTEM` | *(empty)* | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28640` | **pending** |
-| 330 | 2026-08-23T23:19:36.095131Z | `process_exec` | `admin_local` | `Z:\kape\KAPE\kape.exe` | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28674` | **pending** |
+| 131 | 2026-08-23T23:15:31.058684Z | `process_exec` | `WINDOWS10$` | `C:\Windows\System32\svchost.exe` | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28364` | **yes — 4/4 fields** |
+| 303 | 2026-08-23T23:17:45.468579Z | `logon` | `SYSTEM` | *(empty)* | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28640` | **yes — 4/4 fields** |
+| 330 | 2026-08-23T23:19:36.095131Z | `process_exec` | `admin_local` | `Z:\kape\KAPE\kape.exe` | `C/Windows/System32/winevt/logs/Security.evtx` | `EventRecordID=28674` | **yes — 4/4 fields** |
 
 Row 330 is worth resolving first: `docs/lab-setup.md` records EventRecordID
 28674 independently, as the 2026-08-23T23:19 KAPE run that used `--tsource Z:`
@@ -325,6 +325,53 @@ the named `source_file` inside `collections/collection_s1_v2/`, locate
 row above. Record the outcome here. If any row cannot be resolved by hand, that
 is a finding and is recorded as one rather than resolved by drawing a different
 row.
+
+### Outcome, 2026-08-28
+
+All three records were located in
+`collection_s1_v2\C\Windows\System32\winevt\logs\Security.evtx` and every
+field matched: 12 of 12 across timestamp, event type, user and path. No row
+failed to resolve and no row was redrawn.
+
+| Index | EventRecordID | EID | Timestamp | Event type | User | Path |
+|---|---|---|---|---|---|---|
+| 330 | 28674 | 4688 | match | match | match | match |
+| 131 | 28364 | 4688 | match | match | match | match |
+| 303 | 28640 | 4624 | match | match | match | match |
+
+Row 330 carries the strong form of the claim. `docs/lab-setup.md:316` records
+EventRecordID 28674 as the 2026-08-23T23:19 KAPE run that used `--tsource Z:`
+and is *not* the C: collection. That identification was written before the
+timeline existed. The record resolves to exactly that: EID 4688 at
+23:19:36.095131Z, `SubjectUserName` `admin_local`, `NewProcessName`
+`Z:\kape\KAPE\kape.exe`. The timeline row is therefore traceable to a record
+whose identity was documented independently of it.
+
+Row 303 confirms the empty-path convention is deliberate rather than a dropped
+field. EID 4624 carries no process image, so `path` is empty and `user` is read
+from `TargetUserName`, not `SubjectUserName` — the parser's own field selection
+for logon events, exercised here against a real record.
+
+**Method, and how it differs from the procedure above.** The three records were
+read programmatically from the `.evtx` with `PyEvtxParser` and the raw event XML
+parsed directly, rather than opened in Event Viewer. Field selection replicates
+the parser's rules independently rather than importing them. The reading does
+**not** go through `outputs/s1_v2/timeline.csv`: the purpose of the check is to
+confirm the timeline against its source, so reading the timeline would make the
+check circular.
+
+This is a weaker demonstration than an Event Viewer resolution in one specific
+respect, and the difference is recorded rather than glossed. Both this reading
+and the pipeline use the same `evtx==0.12.1` library to decode the binary
+format, so a defect inside that library's record decoding would be invisible to
+both. What the check does establish independently is everything above the
+decoder: record location by EventRecordID, XML field selection, timestamp
+normalisation, event-type mapping, and the timeline's row content. A subsequent
+Event Viewer spot-check of row 330 would close the remaining gap; it is not
+required for the provenance claim, which concerns the pipeline's handling of the
+record rather than the correctness of the EVTX binary parser.
+
+Script: `tools/resolve_provenance.py`.
 
 Two hand resolutions have already been performed, against artefact families
 other than EVTX, and are recorded as method evidence rather than as the sample:
