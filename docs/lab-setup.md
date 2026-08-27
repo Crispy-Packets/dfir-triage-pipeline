@@ -778,14 +778,40 @@ The `Z:` serial is why CD-010 treats `5659-C38D` as the collector volume and
 and the distinction is per-record rather than a noise classifier: `KAPE.EXE`
 executions appear under both serials.
 
-A separate removable device is present in the artefact set and is **not** the
-transfer route. The `collection_s1_v2` SYSTEM hive enumerates a Kingston
-DataTraveler 3.0 (`USB\VID_0951&PID_1666`, device serial
-`E0D55E6CBD23E6A1F83A003B`) under `USBSTOR`. That is the inbound path by which
-the decoy binary reached the guest in the superseded Week 1 USB scenario, which
-CD-013 places out of scope; it carried no collection outbound. The other USB
+### A residual USB device trace, and why it is not part of this scenario
+
+The `collection_s1_v2` SYSTEM hive enumerates a Kingston DataTraveler 3.0
+(`USB\VID_0951&PID_1666`, device serial `E0D55E6CBD23E6A1F83A003B`) under
+`USBSTOR`. **No USB device was used in the re-collected scenario**, for delivery
+or for transfer, and the enumeration is a residual registry trace of the
+superseded first attempt that CD-013 places out of scope.
+
+It is recorded here rather than left for a reader to discover, because a USBSTOR
+entry in an evidence hive is exactly the kind of artefact that invites a wrong
+inference. Three measurements establish that it played no part:
+
+1. **It is absent from both baselines.** The Kingston serial appears in the
+   `collection_s1_v2` SYSTEM hive and in neither `clean_a` nor `clean_b`, which
+   enumerate no `USBSTOR\Disk&Ven_*` device at all. A device active during the
+   collection round would not be confined to one collection.
+2. **The binary's every recorded path is `C:`.** Across the scenario
+   collection -- `NTUSER.DAT`, Edge `History`, `ActivitiesCache.db`, Defender
+   `MPLog`, and the recycle-bin `$I` records -- the delivered file is
+   `C:\Users\janed\Downloads\invoice_scan.exe`. No `E:\` or other removable
+   path appears anywhere in the artefact set.
+3. **Delivery is independently evidenced as HTTP.** The Edge `downloads` record
+   and `Zone.Identifier` `ZoneId=3` establish browser download as the delivery
+   method (CD-013), which is what the ground truth records.
+
+The registry retains device enumerations across the events that created them,
+so the entry's presence is expected and is not a contradiction. The other USB
 identifier in the hive, `VID_80EE&PID_0021`, is the VirtualBox emulated USB
-device and is not mass storage.
+controller and is not mass storage.
+
+The `Z:\invoice_scan.exe` strings in `ConsoleHost_history.txt` and `NTUSER.DAT`
+are likewise not a delivery path: they are the operator staging the decoy on the
+tooling volume before the run, on the same `Z:` disk that later carried the
+collections out.
 
 ## Snapshots
 
