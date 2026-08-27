@@ -170,3 +170,32 @@ Two parser registration imports written as separate lines with only
 line rather than switching to the parenthesised form, which would turn every
 future parser registration into a multi-line merge conflict. Recorded in
 `docs/contract-decisions.md` under toolchain rules.
+
+
+## D-026  NAT asymmetry limitation stated a service-noise direction that the evidence reverses
+
+**Status:** corrected 2026-08-28.
+
+`docs/limitations-week1.md` recorded that the clean collections, collected with
+NAT enabled, would carry Windows Update EID 7045 service installations that the
+host-only scenario could not. CD-014 carried the same premise.
+
+Measured across all three collections after the EVTX merge: `clean_a` 16,
+`clean_b` 16, `collection_s1_v2` 23. The clean collections carry **fewer**, not
+more, and their 16 are identical service-for-service. The seven additional
+records in the scenario are VirtualBox Guest Additions (`VBoxGuest.sys`,
+`VBoxWddm.sys`, `VBoxMouse.sys`, `VBoxSF.sys`, `VBoxService.exe`, `WUDFRd.sys`
+and a bare `svchost.exe`). No 7045 in any collection is attributable to Windows
+Update.
+
+**Why it mattered.** The limitation as written would have led Week 4 to discount
+7045 findings in the baselines as NAT noise, and to treat a scenario-only 7045 as
+signal. The real confounder is the opposite and larger: the scenario guest
+differs from both baselines by an entire Guest Additions install.
+
+**Fix.** Both the limitation and CD-014 now state the measured direction. The
+attack installed no service -- persistence was HKCU Run -- so no 7045 in the
+scenario corresponds to `invoice_scan.exe`.
+
+**Found by:** filling the `[PENDING EVTX]` markers with real counts rather than
+carrying the predicted ones forward.

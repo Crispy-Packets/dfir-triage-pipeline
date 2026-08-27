@@ -4,8 +4,9 @@ Every limitation here is a constraint on what the Week 4 evaluation may claim.
 A limitation recorded with its measurement is a stronger position than one
 discovered by a reader.
 
-Lines marked **[PENDING EVTX]** are blocked on the EVTX parser merge and are
-completed at steps 190-192 on Day 5.
+All measurements below are complete. The EVTX-dependent figures were filled
+on 2026-08-28 from a full pipeline run over all three collections after the
+week1/evidence-evtx merge: 892 / 916 / 817 files seen, 0 failed.
 
 ---
 
@@ -22,10 +23,23 @@ system noise by definition, and its false-positive count is a floor, not a rate
 (CD-014).
 
 **NAT asymmetry.** Both clean collections were collected with NAT enabled; the
-scenario was collected host-only. The clean collections therefore contain
-Windows Update and telemetry activity, including EID 7045 service installations,
-that the scenario cannot contain. **[PENDING EVTX]** actual 7045 counts and
-service names from step 191, to be written into CD-014.
+scenario was collected host-only. The expectation was that the clean collections
+would therefore carry extra EID 7045 service installations from Windows Update
+that the scenario cannot contain.
+
+Measured 2026-08-28, the asymmetry runs the other way. `clean_a` and `clean_b`
+carry 16 x 7045 each, identical service-for-service; `collection_s1_v2` carries
+23. The seven additional records in the scenario are VirtualBox Guest Additions
+-- `VBoxGuest.sys`, `VBoxWddm.sys`, `VBoxMouse.sys`, `VBoxSF.sys`, `VBoxSF.sys`,
+`VBoxService.exe`, `WUDFRd.sys` and a bare `svchost.exe` -- installed in the
+scenario guest and absent from both baselines. No 7045 in any collection is
+attributable to Windows Update.
+
+The limitation therefore is not NAT-driven service noise. It is that the
+scenario guest differs from the baselines by an entire Guest Additions install,
+so a 7045 present only in the scenario is not by itself evidence of the attack.
+The attack's own persistence was HKCU Run, not a service, and no 7045 in the
+scenario corresponds to `invoice_scan.exe`.
 
 **One realistic clean collection.** False-positive measurement and anomaly-model
 training draw on the same data. A third clean collection with a differing benign
@@ -111,18 +125,55 @@ parser fault (CD-020, D-024).
 
 ## EVTX
 
-**[PENDING EVTX]** Which of the six declared EIDs have real evidence coverage and
-which are unit-test-only, from Person A's spike Q7.
+**EID coverage.** All six declared EIDs carry real evidence; none is
+unit-test-only. Counts by event_type across the three collections
+(`clean_a` / `clean_b` / `s1_v2`):
 
-**[PENDING EVTX]** `evtx.security` row counts per collection (step 190).
-Expected substantial in both clean collections and near-zero in
-`collection_s1_v2`, because `wevtutil cl security` was run at
+| EID | event_type | clean_a | clean_b | s1_v2 |
+|---|---|---|---|---|
+| 4688 | `process_exec` | 9219 | 9502 | 299 |
+| 4624 | `logon` | 906 | 919 | 58 |
+| 4625 | `logon_failed` | 13 | 13 | 1 |
+| 7045 | `service_install` | 16 | 16 | 23 |
+| 4720 | `account_created` | 4 | 5 | 0 |
+| 1102 | `log_cleared` | 0 | 0 | 1 |
+
+Two rows are worth reading carefully. `account_created` is 0 in the scenario, so
+the 4720 path is exercised only by the clean collections. `log_cleared` is 1 in
+the scenario and 0 elsewhere, so the 1102 path is exercised by exactly one
+record in the whole corpus -- the anti-forensic action itself.
+
+**`evtx.security` row counts.** Measured 2026-08-28: `clean_a` 10,142,
+`clean_b` 10,439, `collection_s1_v2` 359. The scenario carries 3.4% of the
+clean-collection volume because `wevtutil cl security` was run at
 `2026-08-23T23:05:12.794670Z`. That is the expected signature of the scenario,
 **not** a parser failure -- the 4688 for `invoice_scan.exe` is destroyed by
 design and the ground truth says so.
 
-**[PENDING EVTX]** Which accounts dominate the EVTX rows per collection
-(step 192).
+The scenario's 359 reconciles exactly against EID counts established
+independently before the run: 4688(299) + 4624(58) + 1102(1) + 4625(1) = 359.
+
+The consequence for Week 4 is that no detection rate may be computed by
+comparing raw row counts between the scenario and a baseline. The scenario is
+missing evidence by design, and a rule that fires less often there is not
+thereby less sensitive.
+
+**Account distribution.** The machine account dominates every collection:
+`WINDOWS10$` holds 7,746 of 10,158 EVTX rows in `clean_a` (76%), 7,881 of 10,455
+in `clean_b` (75%), and 247 of 382 in `s1_v2` (65%). `SYSTEM` is next in all
+three.
+
+The human accounts are a small minority -- `Youssef` 1,203 and 1,212 in the two
+baselines, `janed` 105 in each, `admin_local` 57 and 194. In the scenario the
+order inverts: `admin_local` holds 42 rows against `janed`'s absence from the
+top six, because the surviving post-clear window is the collection activity, not
+the attack.
+
+Two consequences. Any per-user baseline is really a machine-account baseline
+unless machine accounts are excluded first. And `clean_b` carries 24 distinct
+user spellings, two of which mean absent and four of which denote system
+contexts, with the same identity appearing under more than one spelling
+(CD-022) -- so a count of distinct users is a count of recorded spellings.
 
 **`xml.etree.ElementTree` scope.** Used on evidence-derived XML generated by the
 evtx library from binary structures, not on attacker-supplied documents. The

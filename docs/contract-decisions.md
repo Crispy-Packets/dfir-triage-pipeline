@@ -44,8 +44,10 @@ CD-004  source_locator: MUST be unique within a source_file.
 
         Day 3 confirmation against real evidence: no duplicate .pf basenames exist in
         the scenario1 collection, so source_file plus source_locator is jointly unique
-        for Prefetch. EventRecordID uniqueness within each .evtx remains to be
-        confirmed by Person A.
+        for Prefetch. Day 5 confirmation for EVTX: EventRecordID is unique within each
+        .evtx across all three collections, with no gaps, established by Person A in
+        groundtruth/scenario1-verification.md. The clause is confirmed for both
+        parsers.
 
 CD-005  Event is frozen (immutable after construction). details is compare=False,
         which keeps Event hashable despite holding a dict. Week 3 annotations attach
@@ -221,6 +223,19 @@ CD-014  Clean collection roles.
 
         7045 counts are recorded at step 191 once the EVTX parser is merged.
 
+        Day 5 measurement, 2026-08-28. The NAT asymmetry recorded when this clause
+        was written predicted extra EID 7045 service installations in the clean
+        collections. The measurement is the reverse: clean_a and clean_b carry 16
+        each, identical service-for-service, and collection_s1_v2 carries 23. The
+        seven extra are VirtualBox Guest Additions, present in the scenario guest
+        and absent from both baselines. No 7045 in any collection is attributable
+        to Windows Update.
+
+        This does not weaken clean_b as the reference baseline, but it changes what
+        a 7045 finding means: a service present only in the scenario is explained by
+        the Guest Additions difference before it is explained by the attack. The
+        attack persisted via HKCU Run and installed no service.
+
 CD-015  SHA-256 manifests are read with encoding="utf-8-sig". Verified BOM-free
         on 2026-08-25 (first bytes 22 52 65). utf-8-sig reads both forms, so the
         setting is safe regardless of how a future manifest is written.
@@ -339,3 +354,38 @@ than evidence from the target machine - worth one line in the evaluation write-u
     only `# noqa: E402,F401`. Add `,I001` to the first, or use the parenthesised
     form. This surfaces at Day 5 integration, when the merge conflict is resolved by
     keeping both lines.
+
+
+CD-021  Event.path for service_install carries the service ImagePath exactly as the
+        7045 record writes it, which is a command line and not a path. Measured
+        across all three collections on 2026-08-28: 54 of 55 service_install rows are
+        not a bare filesystem path. Five forms occur -- quoted executable followed by
+        arguments (27), an unquoted drive path with arguments (6), a \SystemRoot or
+        UNC device path (7), an environment-variable form such as %SystemRoot% (14),
+        and a bare drive path (1).
+
+        No normalisation is applied in Week 1. CD-010 already forbids a parser from
+        rewriting what the artifact recorded, and inventing a path here would fabricate
+        one for 54 of 55 rows. The consequence is that path is not a join key for
+        service_install and must not be string-matched against Prefetch or 4688 paths.
+        Week 3's core/entity.py owns extraction of the executable from the command
+        line; until then the field is source text, not an identifier.
+
+CD-022  Event.user carries the account exactly as the artifact recorded it. No case
+        folding, no domain stripping, no mapping of well-known SIDs to a canonical
+        name. Measured on clean_b, 2026-08-28: 24 distinct values across 10,455 EVTX
+        rows.
+
+        Two of those values mean absent -- the empty string (6 rows) and the literal
+        "-" (134 rows) -- and they are not interchangeable: "-" is a value the log
+        wrote, whereas empty is a field the parser found missing. Four denote system
+        contexts (SYSTEM, LOCAL SERVICE, NETWORK SERVICE, LocalSystem), and the same
+        identity appears under more than one spelling, LOCAL SERVICE alongside
+        NT AUTHORITY\LOCALSERVICE.
+
+        Normalising these is a Week 3 decision, not a Week 1 one, because the mapping
+        is a forensic claim about identity and belongs with the entity resolver that
+        also owns volume-serial to drive-letter mapping. Recording it here fixes the
+        Week 1 behaviour as deliberate rather than accidental: a rule reading user
+        must match the recorded forms, and a count of distinct users is a count of
+        recorded spellings, not of accounts.
