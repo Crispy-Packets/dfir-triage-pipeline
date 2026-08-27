@@ -389,3 +389,14 @@ CD-022  Event.user carries the account exactly as the artifact recorded it. No c
         Week 1 behaviour as deliberate rather than accidental: a rule reading user
         must match the recorded forms, and a count of distinct users is a count of
         recorded spellings, not of accounts.
+
+
+CD-013 addendum, 2026-08-28. The re-collected scenario used no USB device at any
+point. A residual USBSTOR enumeration for a Kingston DataTraveler 3.0 survives in
+the collection_s1_v2 SYSTEM hive from the superseded first attempt; it is absent
+from both baselines, and every recorded path for the delivered binary across
+NTUSER.DAT, Edge History, ActivitiesCache.db, Defender MPLog and the recycle-bin
+$I records is C:\Users\janed\Downloads\invoice_scan.exe. Removable-media
+access stays out of scope, and no Week 1 result rests on the device. Recorded
+because a USBSTOR key in an evidence hive otherwise invites the inference that
+delivery was by USB. See docs/lab-setup.md.
