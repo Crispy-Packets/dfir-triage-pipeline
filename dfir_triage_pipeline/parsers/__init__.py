@@ -25,5 +25,8 @@ def find_parser(relative_path: str) -> ArtifactParser | None:
 __all__ = ["ArtifactParser", "register", "registered_parsers", "find_parser"]
 
 # Parser modules are imported at the bottom so their @register decorators run
-# without a circular import.
+# without a circular import. Both parsers register here; ruff's I001 sees two
+# consecutive bottom-of-file imports as an unsorted block, so the first carries
+# ,I001 in addition to E402/F401 (D-014).
+from . import evtx_windows  # noqa: E402,F401,I001
 from . import prefetch  # noqa: E402,F401
