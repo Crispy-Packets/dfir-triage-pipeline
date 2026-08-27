@@ -1,0 +1,24 @@
+# Line endings are normalised to LF in the repository and checked out native.
+# Two collaborators work on Windows and markdown has twice been flattened in
+# transit; declaring the text types here stops a CRLF round-trip from showing as
+# a whole-file diff and hiding the real change.
+* text=auto eol=lf
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.toml text eol=lf
+*.csv  text eol=lf
+
+# Evidence and derived artifacts are byte-exact. A CSV whose SHA-256 is recorded
+# in a manifest must never be rewritten by a line-ending filter: that changes the
+# hash and breaks the integrity check the manifest exists to support.
+groundtruth/*-sha256.csv            -text
+groundtruth/*-sha256-supplement.csv -text
+docs/evidence/**                    -text
+
+# Binary evidence, should any ever be committed deliberately.
+*.pf    binary
+*.evtx  binary
+*.hve   binary
+*.vhdx  binary
