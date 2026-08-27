@@ -90,7 +90,8 @@ corroborates neither, and no claim is made beyond the absence of a record.
 
 ## Collection volume
 
-KAPE output was written to Z:, a separate virtual disk, not to C:.
+KAPE output was written to Z:, a separate virtual disk from the C: system
+volume, not to C:. Both are virtual disks; only Z: left the guest.
 
 A collector writing to the volume it is collecting creates files on that volume
 during collection - new MFT entries, updated directory timestamps, possible
@@ -749,12 +750,28 @@ endpoint than it would otherwise be. Shared folders were therefore unavailable
 and were not used for evidence transfer.
 
 Collections were moved off the guest by **virtual-disk detach and host mount**.
-KAPE wrote each collection to `Z:`, a 32 GB NTFS virtual disk attached to the VM
-(volume serial `5659-C38D`, recorded live in
-`docs/evidence/accounts-and-volumes.txt`). The disk was detached from the
-powered-down guest and mounted on the host; no file copy crossed a running
-guest-to-host boundary. This is the same route referenced in "Known
-limitations" item 4.
+
+Both guest volumes are virtual disks. `C:` (53.7 GB, serial `A62A-F538`) holds
+the system and is the evidence source; `Z:` (32 GB NTFS, serial `5659-C38D`)
+is a second, separate virtual disk carrying the tooling. Every KAPE ConsoleLog
+records `KAPE directory: Z:\kape\KAPE` and
+`--tsource C: --target KapeTriage --tdest Z:\collection_*`, so the tool ran from
+`Z:`, read `C:`, and wrote back to `Z:`. All collection activity was confined to
+`Z:` by design: nothing was installed on, or written to, the system volume being
+collected.
+
+After collection the guest was powered down and the `Z:` disk detached and
+mounted on the host. No file copy crossed a running guest-to-host boundary, and
+because `C:` and `Z:` are distinct virtual disks, the evidence volume was never
+mounted read-write on the host at all. This is the same route referenced in
+"Known limitations" item 4.
+
+This separation is what makes the two volume serials interpretable. `A62A-F538`
+is the target volume and `5659-C38D` the collector volume (CD-010), and both
+appear in Prefetch volume information because binaries executed from each --
+`KAPE.EXE` records executions under both serials. The serial is therefore a
+per-record statement of which volume a binary ran from, not a classifier for
+tool noise.
 
 The `Z:` serial is why CD-010 treats `5659-C38D` as the collector volume and
 `A62A-F538` as the target volume. Both appear in Prefetch volume information,
@@ -857,7 +874,8 @@ Zimmerman tools : installed via get-zimmermantools.ps1. Install location and
    See "Investigator activity in the evidence" above.
 
 4. Evidence was transferred from the guest to the host by detaching the `Z:`
-   virtual disk from the powered-down guest and mounting it on the host, rather
+   virtual disk -- a separate virtual disk from the `C:` system volume that was
+   collected -- from the powered-down guest and mounting it on the host, rather
    than through a verified forensic write-blocker path. Integrity is established
    instead by SHA-256 manifests generated at source before transfer and
    verified after: collection_s1_v2 matches 793 of 793 manifest rows with zero
