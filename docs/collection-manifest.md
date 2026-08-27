@@ -1,7 +1,18 @@
 # Collection manifest
 
-Three triage collections, each taken from an independent restore of
-`BASELINE-CLEAN+TOOLS`.
+`clean_a` and `clean_b` were each taken from an independent restore of
+`BASELINE-CLEAN+TOOLS`. `collection_s1_v2` was taken from the live session in
+which Scenario 1 had just been executed, with no restore beforehand.
+
+Path convention. This manifest quotes filesystem paths from two
+different machines. Paths beginning `C:\Users\janed\`, `Z:\`,
+`\Device\HarddiskVolume`, `C:\kape\` and `C:\Windows\` refer to the
+lab guest, which was decommissioned on 2026-08-25 and on which no
+path can now be tested. Every absolute filesystem path in this manifest
+refers to the guest; the manifest records no host paths. An automated
+existence check run against the analysis host will therefore report every
+path in this manifest as absent. That is the expected result and is not a
+defect in this manifest.
 
 Common parameters across all three:
 
@@ -22,15 +33,87 @@ result.
 Collections are directories rather than VHDX containers because the pipeline
 walks a directory tree; a VHDX is a single opaque file it cannot enter.
 
+## Collection accounts and transfer
+
+KAPE session account for every Week 1 collection is `admin_local`, established
+from EID 4688 in each Security log (see docs/lab-setup.md, Investigator
+activity). clean_b additionally retains earlier KAPE 4688 records under
+`Youssef` (12 to 19 August) that predate the snapshot.
+
+Collections were transferred from the guest to the host using removable media.
+This is a chain-of-custody note rather than an evidence defect, since each
+collection is a set of files accompanied by a manifest of SHA-256 hashes, and
+the transport medium does not alter their content.
+
+## Collection provenance
+
+1. The machine ran from installation on 2026-06-20 through the lab build
+   period, the Security log reaching approximately EventRecordID 28,200 by
+   23 August.
+2. On 2026-08-23 Scenario 1 ran from 22:45:32Z (download, per the operator
+   log) to 23:05:12Z (log clear). The Security log clear is EID 1102,
+   EventRecordID 28,201, 2026-08-23T23:05:06.682356Z. 23:05 to 23:31 is the
+   post-clear window, during which 583 further records accrued and KAPE ran.
+   EventRecordID 28,674 used `--tsource Z:`; the C: collection runs are
+   EventRecordID 28,777 and 28,784. The scenario1 collection was
+   acquired.
+3. On 2026-08-24 the virtual machine was reverted to the clean snapshot. The
+   Security log returned to its snapshot state near EventRecordID 15,600.
+4. On 2026-08-24, up to 18:57, post-revert activity was performed, including
+   the staged testuser create and delete at 18:44 and 18:45. The clean_b
+   collection was acquired. clean_a was acquired from the same reverted
+   snapshot state.
+
+clean_a and clean_b are not pre-incident captures of the scenario1 machine.
+They are the machine restored to its pre-attack snapshot after the incident,
+run briefly, and then acquired.
+
+The collections sit on divergent branches of one host's history. They share an
+ancestor, not a timeline.
+
+They are therefore never merged into a common timeline. Each collection is
+processed independently.
+
+EventRecordID 28,201 in scenario1 carries an earlier timestamp than
+EventRecordID 15,707 in clean_b, which is impossible on a single unbroken
+record sequence. This is what establishes the two collections as divergent
+rather than sequential.
+
+Because the VM was decommissioned on 2026-08-25, any future re-collection
+requires rebuilding the environment from scratch. A rebuilt host would carry
+different account SIDs, a different hostname history and a different
+baseline, and would therefore not be directly comparable with these three
+collections. Re-collection is consequently a rebuild, not a repeat.
+
 ---
 
 ## The three collections
 
-| ID | Guest folder | Session | Collected (UTC) | Files | Notes |
-|----|--------------|---------|-----------------|-------|-------|
-| `clean_a` | `collection_clean_a` | `admin_local`, elevated | 2026-08-24T17:44:56Z | 892 | Boot and settle. No user activity |
-| `clean_b` | `collection_clean_b` | `admin_local`, elevated | 2026-08-24T18:58:05Z | 916 | Benign user workload |
-| `scenario1` | `collection_s1_v2` | `janed`, then `admin_local` | 2026-08-23T23:31:48Z | 817 | HTTP delivery, execute, persist, log clear |
+| Collection | Guest folder | Scenario actor | KAPE session account | Collected (UTC) | Files (recorded at collection) | Notes |
+|----|--------------|----------------|----------------------|-----------------|--------------------------------|-------|
+| `clean_a` | `collection_clean_a` | (none) | `admin_local`, elevated | 2026-08-24T17:44:56Z | 876 | Boot and settle. No user activity |
+| `clean_b` | `collection_clean_b` | (none) | `admin_local`, elevated | 2026-08-24T18:58:05Z | 900 | Benign user workload |
+| `scenario1` | `collection_s1_v2` | `janed` (download, execute, persist); then `admin_local` (log clear) | `admin_local`, elevated | 2026-08-23T23:31:48Z | 793 | HTTP delivery, execute, persist, log clear |
+
+What each file-count figure measures. No number below was changed; each is labelled.
+
+| Collection | Recorded at collection ("Files on disk") | Full tree (host) | C\ evidence subtree (= CopyLog rows) | SHA-256 collection-time manifest rows |
+|---|---|---|---|---|
+| `clean_a` | 876 | 892 | 889 | 892 |
+| `clean_b` | 900 | 916 | 913 | 916 |
+| `scenario1` | 793 | 817 | 814 | 793 |
+
+Full-tree counts are CopyLog rows plus three KAPE log files at the collection root, and match a recursive host listing with hidden/system files included (`docs/integrity-verification-day4.txt`).
+
+On the host copy, Hidden and System attributes were preserved for
+`collection_s1_v2` but not for `clean_a` or `clean_b`, where `Get-ChildItem`
+returns the same count with and without `-Force`. This is a transfer artefact
+of the host copy and does not affect file content, which verifies against
+collection-time hashes.
+
+876 and 900 were recorded at collection time. On the current host copy they do not equal the full tree, the C\ subtree, or the SHA-256 manifest row counts, because those two collections no longer carry Hidden or System attributes after transfer. They are retained as recorded, not recomputed. The 24-file difference between them (900 minus 876) equals the full-tree difference (916 minus 892).
+
+793 equals both the SHA-256 collection-time manifest row count and the number of files visible on the current host without enumerating hidden/system attributes (`Get-ChildItem` without `-Force`: 817 minus 24). The full tree is 817.
 
 ### clean_a
 
@@ -40,9 +123,9 @@ walks a directory tree; a VHDX is a single opaque file it cannot enter.
 
 | | |
 |---|---|
-| Files found / copied | 1,017 / 889 (128 deduplicated) |
+| Files found / copied (KAPE; copied = CopyLog rows = C\ subtree) | 1,017 / 889 (128 deduplicated) |
 | Duration | 325.77 seconds |
-| Files on disk | 892 |
+| Files on disk (recorded at collection; not the full tree) | 876 |
 | Total size | 950,656,516 bytes |
 | Zero-byte files | 0 |
 | Console log | 72,294 bytes, readable |
@@ -59,9 +142,9 @@ settle with no user interaction.
 
 | | |
 |---|---|
-| Files found / copied | 1,052 / 913 (139 deduplicated) |
+| Files found / copied (KAPE; copied = CopyLog rows = C\ subtree) | 1,052 / 913 (139 deduplicated) |
 | Duration | 365.30 seconds |
-| Files on disk | 916 |
+| Files on disk (recorded at collection; not the full tree) | 900 |
 | Zero-byte files | 0 |
 | CopyLog | `2026-08-24T18_56_49_883*_CopyLog.csv` |
 
@@ -70,7 +153,8 @@ activity. Taken from an **independent restore**, a separate boot from clean_a's
 — not a reuse of the same session. Two collections from one boot would not be
 independent samples, and the Week 4 evaluation depends on their independence.
 
-The 24-file difference against clean_a is consistent with the benign workload
+The 24-file difference against clean_a (900 minus 876 recorded at collection;
+916 minus 892 in the full tree) is consistent with the benign workload
 that distinguishes the two baselines: browsing, application launches and file
 operations.
 
@@ -83,11 +167,13 @@ anomaly-model training; clean_a is an ambient-noise control. CD-014.
 --tsource C: --target KapeTriage --tdest Z:\collection_s1_v2
 ```
 
+This is EventRecordID 28,777 and 28,784. EventRecordID 28,674 used `--tsource Z:`.
+
 | | |
 |---|---|
-| Files found / copied | 1,127 / 814 (313 deduplicated) |
+| Files found / copied (KAPE; copied = CopyLog rows = C\ subtree) | 1,127 / 814 (313 deduplicated) |
 | Duration | 293.68 seconds |
-| Files on disk | 817 |
+| Files on disk (recorded at collection; equals SHA-256 manifest rows) | 793 |
 | CopyLog | `2026-08-23T23_31_48_7980143_CopyLog.csv` |
 
 Commodity infection chain: browser download over HTTP, execution, autorun
@@ -176,26 +262,38 @@ was verified as `ZoneId=3` before the scenario continued.
 
 ## Manifest completeness
 
-The scenario1 collection-time manifest (`clean-s1-v2-sha256.csv`) covers 793 of
-the 817 files present in the collection. The 24 uncovered files are registry
-hives (`NTUSER.DAT`, `UsrClass.dat`), their transaction logs, DPAPI `Protect`
-blobs and `desktop.ini` entries — files carrying hidden or system attributes on
-the collecting host, which the hashing command did not enumerate. The `clean_a`
-and `clean_b` manifests are complete: 892 and 916 rows against 892 and 916
-files.
+The scenario1 collection-time SHA-256 manifest (`clean-s1-v2-sha256.csv`)
+covers 793 of the 817 files in the tree. Arithmetic: 817 minus 793 is 24
+missing. All 24 carry the Hidden or System attribute (`NTUSER.DAT`,
+`UsrClass.dat`, their transaction logs, DPAPI master keys, `desktop.ini`).
+`Get-ChildItem` without `-Force` does not enumerate Hidden or System files.
+The SHA-256 pass therefore never saw them.
+
+This is a methodology note: a file enumeration without `-Force` silently
+omits hidden and system files, which on a Windows triage collection means
+omitting the registry hives. All 24 nonetheless carry collection-time SHA-1
+in KAPE's CopyLog, which uses its own enumeration. The omission is not a
+file lock, an in-use file, or an access error.
+
+The `clean_a` and `clean_b` manifests are complete: 892 and 916 rows against
+892 and 916 files.
 
 The omission was found on 2026-08-25, after the lab VM had been decommissioned,
-so collection-time hashes for these files cannot be produced.
-`groundtruth/clean-s1-v2-sha256-supplement.csv` was generated from the host copy
-on that date and establishes integrity from receipt onward rather than from
-collection. No file named in the collection-time manifest is missing from disk.
+so a collection-time SHA-256 for these 24 files cannot be produced. No file
+named in the collection-time SHA-256 manifest is missing from disk.
 
-Files covered by the collection-time manifest are unaffected: five randomly
-sampled hashes per collection verified on receipt.
+`groundtruth/clean-s1-v2-sha256-supplement.csv` now exists and covers those 24
+paths. Its SHA-256 values were computed on 2026-08-25 from the host copy of the
+collection. They are post-collection hashes, not collection-time hashes: they
+establish integrity from the date of computation forward and cannot attest to
+file state at acquisition. Files covered by the collection-time manifest are
+unaffected: five randomly sampled hashes per collection verified on receipt.
 
-`janed`'s `NTUSER.DAT` — the hive holding the Run-key persistence artifact — is
-among the 24. It is present and readable; only its collection-time hash is
-unavailable.
+`janed`'s `NTUSER.DAT` - the hive holding the Run-key persistence artefact - is
+among the 24. It is present and readable. It has a collection-time SHA-1 in
+KAPE's CopyLog; what is missing is a collection-time SHA-256 in
+`clean-s1-v2-sha256.csv`. The supplement records a post-collection SHA-256 for
+it, which does not attest to file state at acquisition.
 
 ---
 
@@ -206,6 +304,7 @@ unavailable.
 - `groundtruth/clean-a-sha256.csv`
 - `groundtruth/clean-b-sha256.csv`
 - `groundtruth/clean-s1-v2-sha256.csv`
+- `groundtruth/clean-s1-v2-sha256-supplement.csv`
 - `docs/lab-setup.md`, `docs/collection-manifest.md`
 - `docs/evidence/*.txt`
 

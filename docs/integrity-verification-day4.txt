@@ -1,0 +1,168 @@
+==============================================================================
+INTEGRITY VERIFICATION REPORT
+Verification date (UTC): 2026-08-25T16:30:26Z
+Repository: dfir-triage-pipeline
+
+Method - CopyLog SHA-1 pass:
+  For each CopyLog row, open the file at DestinationFile remapped under
+  collections/<id>/, compute SHA-1 (hashlib.sha1), compare to SourceFileSha1
+  case-insensitively after normalising both to uppercase hex.
+
+Method - groundtruth SHA-256 pass (collection_s1_v2 only):
+  For each RelativePath in groundtruth/clean-s1-v2-sha256.csv, open
+  collections/collection_s1_v2/<RelativePath>, compute SHA-256
+  (hashlib.sha256), compare to Hash column (uppercase hex).
+
+Method - arithmetic reconciliation:
+  Compare (CopyLog data rows) + (KAPE log files at collection root) to
+  recursive file count under the collection tree.
+==============================================================================
+
+==============================================================================
+COLLECTION: collection_clean_a
+Root: C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a
+CopyLog: 2026-08-24T17_21_01_6584538_CopyLog.csv
+==============================================================================
+
+CopyLog SHA-1 verification
+  total rows:            889
+  files verified match:  885
+  files MISMATCHED:      4
+  files MISSING on disk: 0
+  mapping errors:        0
+
+*** MISMATCHES (CopyLog SHA-1) ***
+  row=715
+    SourceFile=C:\Users\janed\AppData\Local\Microsoft\Windows\WebCache\WebCacheV01.dat
+    DestinationFile=Z:\collection_clean_a\C\Users\janed\AppData\Local\Microsoft\Windows\WebCache\WebCacheV01.dat
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a\C\Users\janed\AppData\Local\Microsoft\Windows\WebCache\WebCacheV01.dat
+    FileSize=26738688
+    SourceFileSha1 (CopyLog)=1E67D6F793644FD03D4A5C3EE5DB2DE05638D238
+    SHA-1 recomputed=D65B403C7A22BADAF0A9E7D62E46AD70F2B85959
+  row=829
+    SourceFile=C:\$MFT
+    DestinationFile=Z:\collection_clean_a\C\$MFT
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a\C\$MFT
+    FileSize=433848320
+    SourceFileSha1 (CopyLog)=D6743DE325A4FCB7508ECB0909D849EE84709C60
+    SHA-1 recomputed=8E9DF6B152AF54C8D2A7F57F56A55F8912CAF49B
+  row=830
+    SourceFile=C:\$LogFile
+    DestinationFile=Z:\collection_clean_a\C\$LogFile
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a\C\$LogFile
+    FileSize=67108864
+    SourceFileSha1 (CopyLog)=A692DB73F8A0D36DFAB90E357EBD85F760640865
+    SHA-1 recomputed=9CDDB5F9CE251A3762DAD3279230C3D3DDC3B24C
+  row=831
+    SourceFile=C:\$Extend\$UsnJrnl:$J
+    DestinationFile=Z:\collection_clean_a\C\$Extend\$J
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_a\C\$Extend\$J
+    FileSize=1577224264
+    SourceFileSha1 (CopyLog)=BDEBF73A96305ABAC386A14695BBF329A4FD6191
+    SHA-1 recomputed=7394FB47782D3601E63E2BC5892826853C7C7996
+  No missing DestinationFile targets.
+
+Arithmetic reconciliation
+  CopyLog rows:              889
+  KAPE log files at root:    3
+    - 2026-08-24T17_21_01_6584538_ConsoleLog.txt (72294 bytes)
+    - 2026-08-24T17_21_01_6584538_CopyLog.csv (299868 bytes)
+    - 2026-08-24T17_21_01_6584538_SkipLog.csv.csv (17950 bytes)
+  CopyLog + KAPE logs:       892
+  Total files in tree:       892
+  RECONCILES: yes
+
+==============================================================================
+COLLECTION: collection_clean_b
+Root: C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_b
+CopyLog: 2026-08-24T18_56_49_8830990_CopyLog.csv
+==============================================================================
+
+CopyLog SHA-1 verification
+  total rows:            913
+  files verified match:  911
+  files MISMATCHED:      2
+  files MISSING on disk: 0
+  mapping errors:        0
+
+*** MISMATCHES (CopyLog SHA-1) ***
+  row=844
+    SourceFile=C:\$MFT
+    DestinationFile=Z:\collection_clean_b\C\$MFT
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_b\C\$MFT
+    FileSize=433848320
+    SourceFileSha1 (CopyLog)=DAF786437EA89C511D4F260E4FFDC0F596507AE8
+    SHA-1 recomputed=005B2A07AD8A5B35477DF4CED17999F7EB80A615
+  row=845
+    SourceFile=C:\$LogFile
+    DestinationFile=Z:\collection_clean_b\C\$LogFile
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_clean_b\C\$LogFile
+    FileSize=67108864
+    SourceFileSha1 (CopyLog)=431446D1033A0DBEC50B28202FCA00C2C23DD2C1
+    SHA-1 recomputed=8A89FCDD64C8D6B7D76A3A3763D1A913ED2A31F7
+  No missing DestinationFile targets.
+
+Arithmetic reconciliation
+  CopyLog rows:              913
+  KAPE log files at root:    3
+    - 2026-08-24T18_56_49_8830990_ConsoleLog.txt (77462 bytes)
+    - 2026-08-24T18_56_49_8830990_CopyLog.csv (308317 bytes)
+    - 2026-08-24T18_56_49_8830990_SkipLog.csv.csv (19422 bytes)
+  CopyLog + KAPE logs:       916
+  Total files in tree:       916
+  RECONCILES: yes
+
+==============================================================================
+COLLECTION: collection_s1_v2
+Root: C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2
+CopyLog: 2026-08-23T23_31_48_7980143_CopyLog.csv
+==============================================================================
+
+CopyLog SHA-1 verification
+  total rows:            814
+  files verified match:  812
+  files MISMATCHED:      2
+  files MISSING on disk: 0
+  mapping errors:        0
+
+*** MISMATCHES (CopyLog SHA-1) ***
+  row=773
+    SourceFile=C:\$MFT
+    DestinationFile=Z:\collection_s1_v2\C\$MFT
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2\C\$MFT
+    FileSize=472907776
+    SourceFileSha1 (CopyLog)=B0E56705FC4A2DA502D20FC4184B96DB9EF9C669
+    SHA-1 recomputed=67A13E38753BAA18E22A8839D7629244AB05CD7B
+  row=774
+    SourceFile=C:\$LogFile
+    DestinationFile=Z:\collection_s1_v2\C\$LogFile
+    LocalPath=C:\Joseph (university)\Usal Uni\3rd summer\FYP\dfir-triage-pipeline\collections\collection_s1_v2\C\$LogFile
+    FileSize=67108864
+    SourceFileSha1 (CopyLog)=4123F8520267A04493B959487D04EBCF9CC44028
+    SHA-1 recomputed=7ACE269560AC4A8C2A9478A818F2A0BEA6078446
+  No missing DestinationFile targets.
+
+Arithmetic reconciliation
+  CopyLog rows:              814
+  KAPE log files at root:    3
+    - 2026-08-23T23_31_48_7980143_ConsoleLog.txt (53502 bytes)
+    - 2026-08-23T23_31_48_7980143_CopyLog.csv (279969 bytes)
+    - 2026-08-23T23_31_48_7980143_SkipLog.csv.csv (43281 bytes)
+  CopyLog + KAPE logs:       817
+  Total files in tree:       817
+  RECONCILES: yes
+
+==============================================================================
+COLLECTION_S1_V2 groundtruth SHA-256 pass
+Manifest: groundtruth/clean-s1-v2-sha256.csv
+==============================================================================
+  total rows:            793
+  files verified match:  793
+  files MISMATCHED:      0
+  files MISSING on disk: 0
+  No SHA-256 mismatches.
+  No missing RelativePath targets.
+
+==============================================================================
+END OF REPORT
+==============================================================================
