@@ -41,6 +41,27 @@ so a 7045 present only in the scenario is not by itself evidence of the attack.
 The attack's own persistence was HKCU Run, not a service, and no 7045 in the
 scenario corresponds to `invoice_scan.exe`.
 
+**Locked files were deferred, not lost.** Each KAPE ConsoleLog reports files
+skipped on the first pass with `Deferring ... due to IOException` -- 153 in
+`collection_s1_v2`, 200 in `clean_a`, 215 in `clean_b`. These are open handles,
+chiefly EVTX and Defender logs. KAPE then reports `Deferred file count: N.
+Copying locked files...` and copies each by raw handle, hashing the source. No
+collection reports a hard error: excluding the benign `Target ApplicationEvents
+... already processed` duplicate-target message, the error count is 0 in all
+three logs. Spot-checked files present on disk at expected size, and the
+`collection_s1_v2` manifest reconciles 793 of 793.
+
+Recorded because a reader meeting 153 deferral lines in a ConsoleLog could
+reasonably read them as collection failures. They are the tool's normal
+fallback for locked files, and the evidence is complete.
+
+**ConsoleLog timestamps are host-local, not UTC.** The KAPE ConsoleLogs are the
+one place in the evidence set where a naive local timestamp sits beside UTC
+values elsewhere: the `collection_s1_v2` log header reads
+`2026-08-24 02:31:49` for a collection recorded as `2026-08-23T23:31:48Z`, a
+UTC+3 offset consistent with the measured guest clock. Any figure quoted from a
+ConsoleLog must be converted before it is compared with a timeline row.
+
 **One realistic clean collection.** False-positive measurement and anomaly-model
 training draw on the same data. A third clean collection with a differing benign
 workload is a Week 2 candidate. Until it exists, a false-positive rate measured

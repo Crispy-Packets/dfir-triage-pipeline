@@ -7,11 +7,10 @@ docs/evidence/accounts-and-volumes.txt, both taken on the live guest before
 decommissioning.
 Open questions remaining after Week 1 are recorded in docs/open-questions.md.
 
-One field in this document remains unfilled: the route by which collections
-were transferred from the guest to the host. It is marked `TO FILL` in two
-places, both referring to the same single sentence, and only Person A can write
-it. Every other field is either a recorded value with its source, or an explicit
-statement that the value was never captured and why it cannot now be recovered.
+Every field in this document is either a recorded value with its source, or an
+explicit statement that the value was never captured and why it cannot now be
+recovered. The transfer route, unfilled through Day 5, is recorded in the
+Guest Additions section and in "Known limitations" item 4.
 
 Path convention. This document quotes filesystem paths from two different
 machines. Paths beginning `C:\Users\janed\`, `Z:\`, `\Device\HarddiskVolume`,
@@ -475,16 +474,39 @@ containing the incident is wrong; the incident survives in Prefetch, Edge
 
 ## Limitations of the clean_b collection
 
-[PERSON A WRITES THIS: the clean_b limitation. Must cover - (1) what
-clean_b is not: not a model of normal end-user behaviour, 93.2 per cent
-of the log is lab construction, janed has one interactive logon and 103
-of 9502 process-creation events; (2) what it is: a no-attack control
-demonstrating the pipeline surfaces no attack-attributable indicators on
-a host where the scenario did not run; (3) the argument: clean_b contains
-five 4720 records and 4720 is a declared indicator, so the control set is
-not free of indicator hits - this demonstrates that 4720 in isolation is
-a high-false-positive indicator requiring contextualisation. Rest point
-(3) on the FOUR genuine records, not the staged fifth.]
+`clean_b` is not a model of normal end-user behaviour, and no result may
+present it as one. The overwhelming majority of its Security log is lab
+construction rather than use: of 9,502 EID 4688 records, 7,881 belong to the
+machine account and 1,176 to the investigator account `Youssef`, while `janed`
+-- the nominal end user the collection is meant to represent -- contributes 103,
+slightly under one per cent, from a single interactive logon. A baseline of
+"normal activity" built from this collection is in practice a baseline of an
+idle Windows installation being administered.
+
+What it is instead is a no-attack control, and for that purpose it is sound. The
+scenario did not run on this host, and the pipeline surfaces no
+attack-attributable indicator in it: no `INVOICE_SCAN.EXE` Prefetch record
+exists, and a search of the timeline returns zero `invoice` rows (action 99).
+The value of the collection is that this absence is demonstrated rather than
+assumed.
+
+The control set is nonetheless not free of indicator hits, and this is the more
+useful finding. `clean_b` contains five EID 4720 account-creation records, and
+4720 is a declared indicator in the Week 1 vocabulary. Four of the five are
+genuine lab-construction artefacts with no relationship to any scenario:
+`Youssef` at 2026-06-20T13:43:25Z and `WDAGUtilityAccount` at 2026-06-20T23:41:33Z
+from Windows installation, then `janed` and `admin_local` on 2026-08-12 when the
+lab accounts were created. (The fifth, `testuser` at 2026-08-24T18:44:37Z, was
+created deliberately twelve minutes before collection and is excluded from this
+argument precisely because it was staged.)
+
+Four genuine hits in a collection containing no attack is the point: EID 4720 in
+isolation is a high-false-positive indicator. Account creation is ordinary on a
+machine being built or administered, and a rule that fires on it without
+contextualisation -- by account type, by timing relative to other activity, by
+the session that created it -- will fire on every honest system-build event. Any
+Week 4 false-positive figure that counts these four as detections is measuring
+the indicator's base rate, not the pipeline's precision.
 
 | EID 4688 SubjectUserName | Count | of 9,502 |
 |---|---|---|
@@ -726,9 +748,27 @@ provider - so the collected artefact set is marginally closer to a physical
 endpoint than it would otherwise be. Shared folders were therefore unavailable
 and were not used for evidence transfer.
 
-TO FILL - one sentence, Person A only: the route actually used to move
-collections off the guest (virtual-disk detach and mount, USB, or otherwise).
-This is the same route referenced in "Known limitations" item 4.
+Collections were moved off the guest by **virtual-disk detach and host mount**.
+KAPE wrote each collection to `Z:`, a 32 GB NTFS virtual disk attached to the VM
+(volume serial `5659-C38D`, recorded live in
+`docs/evidence/accounts-and-volumes.txt`). The disk was detached from the
+powered-down guest and mounted on the host; no file copy crossed a running
+guest-to-host boundary. This is the same route referenced in "Known
+limitations" item 4.
+
+The `Z:` serial is why CD-010 treats `5659-C38D` as the collector volume and
+`A62A-F538` as the target volume. Both appear in Prefetch volume information,
+and the distinction is per-record rather than a noise classifier: `KAPE.EXE`
+executions appear under both serials.
+
+A separate removable device is present in the artefact set and is **not** the
+transfer route. The `collection_s1_v2` SYSTEM hive enumerates a Kingston
+DataTraveler 3.0 (`USB\VID_0951&PID_1666`, device serial
+`E0D55E6CBD23E6A1F83A003B`) under `USBSTOR`. That is the inbound path by which
+the decoy binary reached the guest in the superseded Week 1 USB scenario, which
+CD-013 places out of scope; it carried no collection outbound. The other USB
+identifier in the hive, `VID_80EE&PID_0021`, is the VirtualBox emulated USB
+device and is not mass storage.
 
 ## Snapshots
 
@@ -816,9 +856,9 @@ Zimmerman tools : installed via get-zimmermantools.ps1. Install location and
    and 179 to `admin_local`; `janed`, the nominal end user, contributes 103.
    See "Investigator activity in the evidence" above.
 
-4. Evidence was transferred from the guest to the host by <TO FILL - route,
-   item 4 and the Guest Additions section share this one sentence> rather than
-   through a verified forensic write-blocker path. Integrity is established
+4. Evidence was transferred from the guest to the host by detaching the `Z:`
+   virtual disk from the powered-down guest and mounting it on the host, rather
+   than through a verified forensic write-blocker path. Integrity is established
    instead by SHA-256 manifests generated at source before transfer and
    verified after: collection_s1_v2 matches 793 of 793 manifest rows with zero
    mismatches.
