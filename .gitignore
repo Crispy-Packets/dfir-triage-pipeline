@@ -17,4 +17,10 @@ outputs/
 !groundtruth/*.csv
 
 tools/
-repomix-output.xml
+
+# Analysis-tool output: regenerable, machine-written, not part of the deliverable
+graphify-out/
+.graphify_python
+repomix-output.*
+repomix.config.json
+.repomixignore
