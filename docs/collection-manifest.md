@@ -12,7 +12,7 @@ Common parameters across all three:
 | Source | `C:` |
 | Output format | plain directory, no `--vhdx` |
 | Destination on guest | `Z:\collection_*` |
-| Transfer to host | USB, into the repository at `collections/` |
+| Transfer to host | USB, to `C:\Users\SK_FA\dfir-evidence` -- OUTSIDE the repository (CD-016) |
 
 The target set is identical across all three. A different target set between a
 clean collection and the scenario would make every downstream comparison
@@ -28,9 +28,9 @@ walks a directory tree; a VHDX is a single opaque file it cannot enter.
 
 | ID | Guest folder | Session | Collected (UTC) | Files | Notes |
 |----|--------------|---------|-----------------|-------|-------|
-| `clean_a` | `collection_clean_a` | `admin_local`, elevated | 2026-08-24T17:44:56Z | 876 | Boot and settle. No user activity |
-| `clean_b` | `collection_clean_b` | `admin_local`, elevated | 2026-08-24T18:58:05Z | 900 | Benign user workload |
-| `scenario1` | `collection_s1_v2` | `janed`, then `admin_local` | 2026-08-23T23:31:48Z | 793 | HTTP delivery, execute, persist, log clear |
+| `clean_a` | `collection_clean_a` | `admin_local`, elevated | 2026-08-24T17:44:56Z | 892 | Boot and settle. No user activity |
+| `clean_b` | `collection_clean_b` | `admin_local`, elevated | 2026-08-24T18:58:05Z | 916 | Benign user workload |
+| `scenario1` | `collection_s1_v2` | `janed`, then `admin_local` | 2026-08-23T23:31:48Z | 817 | HTTP delivery, execute, persist, log clear |
 
 ### clean_a
 
@@ -42,7 +42,7 @@ walks a directory tree; a VHDX is a single opaque file it cannot enter.
 |---|---|
 | Files found / copied | 1,017 / 889 (128 deduplicated) |
 | Duration | 325.77 seconds |
-| Files on disk | 876 |
+| Files on disk | 892 |
 | Total size | 950,656,516 bytes |
 | Zero-byte files | 0 |
 | Console log | 72,294 bytes, readable |
@@ -61,7 +61,7 @@ settle with no user interaction.
 |---|---|
 | Files found / copied | 1,052 / 913 (139 deduplicated) |
 | Duration | 365.30 seconds |
-| Files on disk | 900 |
+| Files on disk | 916 |
 | Zero-byte files | 0 |
 | CopyLog | `2026-08-24T18_56_49_883*_CopyLog.csv` |
 
@@ -74,7 +74,8 @@ The 24-file difference against clean_a is consistent with the benign workload
 that distinguishes the two baselines: browsing, application launches and file
 operations.
 
-**clean_b is the Week 4 anomaly-model baseline.**
+**clean_b is the reference baseline** for false-positive measurement and
+anomaly-model training; clean_a is an ambient-noise control. CD-014.
 
 ### scenario1
 
@@ -86,12 +87,12 @@ operations.
 |---|---|
 | Files found / copied | 1,127 / 814 (313 deduplicated) |
 | Duration | 293.68 seconds |
-| Files on disk | 793 |
+| Files on disk | 817 |
 | CopyLog | `2026-08-23T23_31_48_7980143_CopyLog.csv` |
 
 Commodity infection chain: browser download over HTTP, execution, autorun
 persistence, Security log clear. Full operator log with UTC timestamps and the
-`Zone.Identifier` verification is in `groundtruth/scenario1.md`.
+`Zone.Identifier` verification is in `groundtruth/Scenario1.md`.
 
 Prefetch decoy: `INVOICE_SCAN.EXE-A345C2FE.pf`.
 
@@ -103,7 +104,13 @@ All three collections were retaken on 23–24 August. The originals are supersed
 and are not retained. The reasons are recorded here because the detection method
 forms part of the methodology.
 
-### clean_a — merged runs, then a more serious fault
+### clean_a - merged runs, then a more serious fault (SUPERSEDED COLLECTION)
+
+**This section documents the ORIGINAL clean_a, which was discarded.** The
+collection in use at `collection_clean_a` (892 files) is the recollection. The
+history below is retained as methodology -- it records how the fault was found --
+and is not a description of the evidence now in use. See CD-014 for the role
+clean_a actually plays.
 
 The original clean_a contained two KAPE runs written to the same destination
 directory (2026-08-19T19:27:26 and 2026-08-20T14:31:43), so it was not a single
@@ -133,6 +140,12 @@ non-zero data, indicating file size was allocated in the filesystem metadata but
 contents were never flushed to disk. Whether this is related to the missing
 event logs is not established. The recollection's console log is readable and
 the condition did not recur.
+
+The same allocated-but-never-flushed condition appears in the collected Prefetch
+files: five `.pf` files across the three collections are runs of zero bytes
+(`DEFRAG.EXE-738093E8`, `SVCHOST.EXE-CE29B0F4`). They are present in their
+SHA-256 manifests, so they were collected and transferred intact. The Prefetch
+parser yields no records for them rather than raising. See CD-020 and D-024.
 
 **Detection method: hash comparison of the collection tool's own CopyLog
 output.** No error was raised by KAPE, no SkipLog entry was written, and the run
@@ -189,10 +202,10 @@ unavailable.
 ## What enters git
 
 **Tracked:**
-- `groundtruth/scenario1.md`
+- `groundtruth/Scenario1.md`
 - `groundtruth/clean-a-sha256.csv`
 - `groundtruth/clean-b-sha256.csv`
-- `groundtruth/scenario1-sha256.csv`
+- `groundtruth/clean-s1-v2-sha256.csv`
 - `docs/lab-setup.md`, `docs/collection-manifest.md`
 - `docs/evidence/*.txt`
 

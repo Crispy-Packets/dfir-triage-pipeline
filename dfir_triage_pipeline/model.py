@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 CONFIDENCE = ("high", "medium", "low")  # CD-001
+TIMESTAMP_TYPES = frozenset({"recorded", "last_run", "presence"})  # CD-019
 _TS = "microseconds"                    # CD-006
 _SEP = b"\x1f"
 
@@ -23,6 +24,7 @@ class Event:
     action: str                  # short human-readable verb phrase
     source_file: str             # collection-relative POSIX path (CD-003)
     source_locator: str          # unique within source_file (CD-004)
+    timestamp_type: str          # "recorded" | "last_run" | "presence" (CD-019)
     host: str | None = None
     user: str | None = None
     path: str | None = None      # full path as recorded; never a basename
@@ -36,6 +38,10 @@ class Event:
             raise ValueError("timestamp must be UTC (zero offset), not a local offset")
         if self.confidence not in CONFIDENCE:
             raise ValueError(f"confidence must be one of {CONFIDENCE}")
+        if self.timestamp_type not in TIMESTAMP_TYPES:
+            raise ValueError(
+                f"timestamp_type must be one of {sorted(TIMESTAMP_TYPES)}"
+            )
         if not self.source_file or not self.source_locator:
             raise ValueError("source_file and source_locator are required (provenance)")
 
@@ -54,6 +60,7 @@ class Event:
             self.action,
             self.source_file,
             self.source_locator,
+            self.timestamp_type,
             self.path or "",
         ):
             h.update(part.encode("utf-8"))

@@ -13,6 +13,7 @@ def make(**overrides) -> Event:
         "action": "executed",
         "source_file": "Windows/Prefetch/NOTEPAD.EXE-A1B2C3D4.pf",
         "source_locator": "run_0",
+        "timestamp_type": "last_run",
         "path": r"C:\Windows\System32\notepad.exe",
     }
     defaults.update(overrides)
@@ -38,6 +39,19 @@ def test_invalid_confidence_rejected():
 def test_empty_source_locator_rejected():
     with pytest.raises(ValueError, match="provenance"):
         make(source_locator="")
+
+
+def test_invalid_timestamp_type_rejected():
+    with pytest.raises(ValueError, match="timestamp_type"):
+        make(timestamp_type="observed")
+
+
+def test_event_id_differs_when_timestamp_type_differs():
+    """timestamp_type participates in the content hash: the same observation
+    claimed as 'recorded' and as 'last_run' is not the same event."""
+    assert make(timestamp_type="recorded").event_id != make(
+        timestamp_type="last_run"
+    ).event_id
 
 
 def test_event_id_identical_for_identical_inputs():

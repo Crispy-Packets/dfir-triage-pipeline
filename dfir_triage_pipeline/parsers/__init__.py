@@ -25,5 +25,5 @@ def find_parser(relative_path: str) -> ArtifactParser | None:
 __all__ = ["ArtifactParser", "register", "registered_parsers", "find_parser"]
 
 # Parser modules are imported at the bottom so their @register decorators run
-# without a circular import. Day 4 adds:
-# from . import prefetch  # noqa: E402,F401
+# without a circular import.
+from . import prefetch  # noqa: E402,F401

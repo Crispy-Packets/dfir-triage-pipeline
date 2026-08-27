@@ -85,7 +85,7 @@ kape.exe and its child processes, and console history. This is unavoidable in a
 live triage collection and is not concealed.
 
 Consequence for analysis: `youssef` is excluded from the ground truth in
-groundtruth/scenario1.md and is expected to appear in output as a benign
+groundtruth/Scenario1.md and is expected to appear in output as a benign
 high-activity entity. If a detection rule ever fires on `youssef` or on
 kape.exe, that is a false positive caused by the collection method, and it is
 reported as such rather than filtered away.
@@ -216,7 +216,7 @@ Zimmerman tools : via get-zimmermantools.ps1 into C:\kape\Modules\bin\, <date>
 ## Deviations from the written procedure
 
 Three deviations occurred during collection. Each was recorded at the time in
-groundtruth/scenario1.md or docs/collection-manifest.md and is reproduced here
+groundtruth/Scenario1.md or docs/collection-manifest.md and is reproduced here
 because it affects what the evaluation can claim.
 
 ### 1. scenario1 was collected without an intervening snapshot restore
@@ -229,7 +229,7 @@ Consequence: scenario1 and the clean baselines are not strictly comparable at
 the filesystem level. Any artifact present in scenario1 and absent from the
 clean collections may reflect accumulated session state rather than the attack
 chain. Findings are therefore corroborated against the recorded operator log
-in groundtruth/scenario1.md rather than against the clean baselines alone.
+in groundtruth/Scenario1.md rather than against the clean baselines alone.
 
 ### 2. clean_a was recollected
 
@@ -265,7 +265,7 @@ BASELINE-CLEAN+TOOLS:
 | Session account | `admin_local`, elevated |
 | Files found / copied | 1,017 / 889 (128 deduplicated) |
 | Duration | 325.77 seconds |
-| Files on disk | 876 |
+| Files on disk | 892 |
 | Total size | 950,656,516 bytes |
 | Recorded at | 2026-08-24T17:44:56.723622Z |
 | `Security.evtx` | 15,798,272 bytes |
@@ -290,7 +290,7 @@ session, so that the two baselines remain independent samples.
 | Session account | `admin_local`, elevated |
 | Files found / copied | 1,052 / 913 (139 deduplicated) |
 | Duration | 365.30 seconds |
-| Files on disk | 900 |
+| Files on disk | 916 |
 | Recorded at | 2026-08-24T18:58:05.095260Z |
 | Zero-byte files | 0 |
 | CopyLog | `2026-08-24T18_56_49_883*_CopyLog.csv` |
@@ -298,7 +298,7 @@ session, so that the two baselines remain independent samples.
 Post-collection verification confirmed the expected artifact families are
 present, including the Windows event logs and browser history for `janed`.
 
-clean_b contains 900 files against clean_a's 876. The 24-file difference is
+clean_b contains 916 files against clean_a's 892. The 24-file difference is
 consistent with the benign user activity that distinguishes the two baselines:
 clean_a is boot-and-settle with no user interaction, clean_b adds browsing,
 application launches and file operations.
