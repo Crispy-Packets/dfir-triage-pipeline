@@ -16,7 +16,11 @@ outputs/
 !tests/fixtures/**/*.csv
 !groundtruth/*.csv
 
-tools/
+# tools/ holds collection binaries (KAPE) which never enter git, but the
+# analysis scripts cited by docs/ and groundtruth/ must be tracked: their
+# outputs are on the record, so the instrument that produced them has to be too.
+tools/*
+!tools/*.py
 
 # Analysis-tool output: regenerable, machine-written, not part of the deliverable
 graphify-out/
