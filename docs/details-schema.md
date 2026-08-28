@@ -86,3 +86,20 @@ arrives as N records carrying the same `ScriptBlockId`.
 | `MessageNumber` | str(int) | `evtx.powershell` | 1-based index of this fragment. |
 | `MessageTotal` | str(int) | `evtx.powershell` | Total fragments for this script block. A consumer seeing `MessageTotal > 1` must not treat one fragment as a whole script. |
 | `Path` | str | `evtx.powershell` | Script path where the block came from a file; omitted for interactive or in-memory blocks, which is itself meaningful. |
+
+## Amcache
+
+Emitted by `amcache`. Amcache is written by a scheduled maintenance task, not at
+execution time, so an entry proves the binary was **present and inventoried**,
+not that it ran at the recorded moment.
+
+| key | type | emitted by | meaning |
+|---|---|---|---|
+| `amcache_key` | str | `amcache` | Subkey name, of the form `<name>|<hash>`. Duplicated into `source_locator`. |
+| `name` | str | `amcache` | File name as inventoried. |
+| `sha1` | str | `amcache` | SHA-1 of the file, from `FileId` with its four-character field prefix stripped. Omitted when the value is not 4+40 hex characters -- a reformatted identifier is not a hash, and emitting it as one would licence a false match. |
+| `size` | str(int) | `amcache` | File size in bytes as inventoried. |
+| `publisher` | str | `amcache` | Publisher string from the binary's version resource, lowercased by the artifact. |
+| `version` | str | `amcache` | File version as inventoried. |
+| `binary_type` | str | `amcache` | e.g. `pe64_amd64`. Distinguishes architecture without reading the file. |
+| `program_id` | str | `amcache` | Links the file to its `InventoryApplication` parent entry. |

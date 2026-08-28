@@ -81,6 +81,7 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Registry hives  Run/RunOnce  ->  registry  persistence_autorun
         Edge History    downloads    ->  browser   file_download
         PowerShell/Operational 4104  ->  evtx.powershell  script_block
+        Amcache.hve InventoryApplicationFile -> amcache  program_inventoried
 
         Prefetch also emits process_exec. This sharing is deliberate: Week 3's
         correlation rules join on event_type plus entity, so a second spelling

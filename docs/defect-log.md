@@ -260,3 +260,38 @@ from the timestamps alone.
 after the log clear at 23:05:06 and before collection at 23:31:48. That is the
 Guest Additions install landing inside the collection window, and it is the same
 build difference recorded as D-026.
+
+
+## D-028  Amcache does not corroborate the scenario execution
+
+**Status:** recorded 2026-08-29. Not a parser fault and not fixable.
+
+`invoice_scan.exe` executed at 2026-08-23T22:57:15.832788Z and is recorded in
+Prefetch. It has **no Amcache entry**, in `InventoryApplicationFile` or in any
+other subkey of `collection_s1_v2`'s `Amcache.hve`. Searched exhaustively by
+key name and by every value, not only by path.
+
+The hive is not stale. Its newest `InventoryApplicationFile` entries are the
+VirtualBox Guest Additions binaries at 2026-08-23T23:15:02.514594Z -- eighteen
+minutes *after* the execution and sixteen minutes before collection. The hive
+was being written during the collection window; it simply never recorded this
+binary.
+
+**Why.** Amcache is populated by the Microsoft Compatibility Appraiser scheduled
+task, not at process start. A binary that runs once and is collected 34 minutes
+later can miss the inventory pass entirely. This is normal Amcache behaviour and
+is the reason Amcache is evidence of *presence and inventory*, never of
+execution timing -- which is why the parser emits `timestamp_type="presence"`.
+
+**Consequences.**
+
+1. A correlation rule requiring Prefetch and Amcache to agree before raising a
+   finding would miss the only real detection in the corpus.
+2. Amcache's value here is the 878 inventoried binaries in each collection as
+   baseline material, plus SHA-1 for entries that do have one -- not as a second
+   witness to the scenario.
+3. The Week 4 evaluation must not report Amcache as a contributing artifact for
+   Scenario 1's execution. It contributes to the baselines only.
+
+Pinned by `tests/test_amcache.py::test_scenario_binary_is_absent_from_amcache`
+so the absence is not later mistaken for a parser regression.
