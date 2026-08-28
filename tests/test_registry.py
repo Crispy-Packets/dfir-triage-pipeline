@@ -119,20 +119,18 @@ def test_can_handle(path, expected):
     assert RegistryParser().can_handle(path) is expected
 
 
-def test_hive_without_autorun_keys_yields_nothing_and_does_not_raise(tmp_path):
-    """Default's NTUSER.DAT has no Run key. A profile that never registered an
-    autorun is an absence of evidence, not a parser fault -- raising would count
-    it as a failure and misreport the run."""
+def test_hive_whose_run_key_is_empty_yields_nothing_and_does_not_raise():
+    """A profile that never registered an autorun is an absence of evidence, not
+    a parser fault -- raising would count it as a failure and misreport the run.
+
+    Exercised against SYSTEM, which can_handle rejects: _records returns early
+    for a file that is not one of the two autorun-bearing hive families, so no
+    hive is opened and nothing is yielded. Note that the Default profile does
+    carry a Run key (OneDriveSetup) in all three collections, so it is not the
+    empty case it looks like."""
     from dfir_triage_pipeline.parsers.registry import _records
 
-    collection = os.environ.get("DFIR_TEST_COLLECTION")
-    if not collection:
-        pytest.skip("DFIR_TEST_COLLECTION not set")
-    rel = "C/Users/Default/NTUSER.DAT"
-    abs_path = Path(collection) / rel
-    if not abs_path.exists():
-        pytest.skip("Default profile hive not in this collection")
-    assert list(_records(abs_path, rel)) == []
+    assert list(_records(Path("nonexistent"), "C/Windows/System32/config/SYSTEM")) == []
 
 
 def test_unreadable_hive_raises_and_is_counted(tmp_path):

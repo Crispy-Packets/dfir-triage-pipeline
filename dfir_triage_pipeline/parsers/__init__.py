@@ -31,3 +31,4 @@ __all__ = ["ArtifactParser", "register", "registered_parsers", "find_parser"]
 from . import evtx_windows  # noqa: E402,F401,I001
 from . import prefetch  # noqa: E402,F401
 from . import registry  # noqa: E402,F401
+from . import browser  # noqa: E402,F401
