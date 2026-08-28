@@ -23,6 +23,12 @@ SECURITY_EIDS: dict[int, tuple[str, str]] = {
 SYSTEM_EIDS: dict[int, tuple[str, str]] = {
     7045: ("service_install", "service installed"),
 }
+# Script-block logging. 4104 is the only EID taken from this channel: 4103 is
+# pipeline execution detail and 40961/40962/53504 are engine lifecycle, none of
+# which carry the script text a rule needs.
+POWERSHELL_EIDS: dict[int, tuple[str, str]] = {
+    4104: ("script_block", "powershell script block logged"),
+}
 
 
 def _records(abs_path: Path) -> Iterator[str]:
@@ -102,9 +108,39 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
         keep = ("SubjectUserName", "SubjectDomainName", "SubjectLogonId")
     elif eid == 7045:
         keep = ("ServiceName", "ImagePath", "ServiceType", "StartType", "AccountName")
+    elif eid == 4104:
+        # ScriptBlockText is deliberately NOT kept: a single block can run to
+        # tens of kilobytes, details is carried in every timeline row, and the
+        # text is recoverable from the source record via source_locator. The
+        # fragment identifiers are kept because without them a consumer cannot
+        # tell a whole script from one third of one.
+        keep = ("ScriptBlockId", "MessageNumber", "MessageTotal", "Path")
     else:
         keep = ()
     return {k: data[k] for k in keep if k in data and data[k] != ""}
+
+
+# Channel filename -> source_artifact. The PowerShell operational channel is
+# written by the OS as "Microsoft-Windows-PowerShell%4Operational.evtx": %4 is
+# an escaped forward slash from the channel name "Microsoft-Windows-PowerShell/
+# Operational". Matching on the escaped literal is what the collected filename
+# actually is.
+#
+# The other two PowerShell logs are excluded deliberately. "Windows
+# PowerShell.evtx" is the legacy classic log and carries no script blocks, and
+# the Admin channel carries only engine errors.
+_CHANNELS: tuple[tuple[str, str], ...] = (
+    ("/security.evtx", "evtx.security"),
+    ("/system.evtx", "evtx.system"),
+    ("/microsoft-windows-powershell%4operational.evtx", "evtx.powershell"),
+)
+
+
+def _artifact_for(lowered_path: str) -> str | None:
+    for suffix, artifact in _CHANNELS:
+        if lowered_path.endswith(suffix):
+            return artifact
+    return None
 
 
 def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event | None:
@@ -118,7 +154,11 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         return None
     eid = int(eid_text)
 
-    table = SECURITY_EIDS if artifact == "evtx.security" else SYSTEM_EIDS
+    table = {
+        "evtx.security": SECURITY_EIDS,
+        "evtx.system": SYSTEM_EIDS,
+        "evtx.powershell": POWERSHELL_EIDS,
+    }[artifact]
     if eid not in table:
         return None
 
@@ -164,14 +204,12 @@ class EvtxWindowsParser:
         lowered = relative_path.lower()
         if "/winevt/logs/" not in f"/{lowered}":
             return False
-        return lowered.endswith("/security.evtx") or lowered.endswith("/system.evtx")
+        return _artifact_for(lowered) is not None
 
     def parse(self, abs_path: Path, relative_path: str) -> Iterator[Event]:
-        artifact = (
-            "evtx.security"
-            if relative_path.lower().endswith("security.evtx")
-            else "evtx.system"
-        )
+        artifact = _artifact_for(relative_path.lower())
+        if artifact is None:
+            return
         for xml_text in _records(abs_path):
             try:
                 event = record_to_event(xml_text, artifact, relative_path)
