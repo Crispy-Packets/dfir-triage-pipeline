@@ -78,6 +78,10 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Security.evtx  1102  ->  evtx.security  log_cleared
         System.evtx    7045  ->  evtx.system    service_install
 
+        Registry hives  Run/RunOnce  ->  registry  persistence_autorun
+        Edge History    downloads    ->  browser   file_download
+        PowerShell/Operational 4104  ->  evtx.powershell  script_block
+
         Prefetch also emits process_exec. This sharing is deliberate: Week 3's
         correlation rules join on event_type plus entity, so a second spelling
         for the same concept would silently break the download-to-execution

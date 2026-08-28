@@ -44,3 +44,45 @@ here before emission, same rule.
 | `ServiceType` | str | `evtx.system` | Service type from 7045, e.g. `user mode service`. |
 | `StartType` | str | `evtx.system` | Start type from 7045, e.g. `auto start`, `demand start`. |
 | `AccountName` | str | `evtx.system` | Account the service runs as, from 7045. |
+
+## Registry
+
+Emitted by `registry`. The autorun value is the payload; the key's last-write
+time is the only time the artifact offers, and it belongs to the **key**, not to
+any single value under it.
+
+| key | type | emitted by | meaning |
+|---|---|---|---|
+| `hive` | str | `registry` | Hive file the value was read from, as a collection-relative POSIX path. Distinguishes a machine-wide `SOFTWARE` entry from a per-user `NTUSER.DAT` one. |
+| `hive_type` | str | `registry` | `software` or `ntuser`. The scope of the autorun: `software` runs for every user, `ntuser` for the profile owner only. |
+| `key_path` | str | `registry` | Registry key path within the hive, e.g. `\Microsoft\Windows\CurrentVersion\Run`. Recorded so a finding can name the exact key without re-reading the hive. |
+| `value_name` | str | `registry` | Name of the autorun value, e.g. `SecurityUpdate`. This is the attacker-chosen label and is frequently the most recognisable part of the artifact. |
+| `value_data` | str | `registry` | Value data exactly as stored, including any `%APPDATA%` or quoting. CD-010: never expanded. Duplicated into `Event.path`. |
+| `key_last_write` | str | `registry` | ISO-8601 UTC last-write time of the containing **key**. Emitted explicitly because `Event.timestamp` carries it while `timestamp_type` is `presence`: several values under one key share this time, and it is not the moment this value was written. |
+| `value_count_in_key` | str(int) | `registry` | Number of values under the same key at collection time. A reader comparing two events with an identical timestamp needs this to understand why they match. |
+
+## Browser
+
+Emitted by `browser`. Edge History is SQLite; the `downloads` table records one
+row per download with its own start time.
+
+| key | type | emitted by | meaning |
+|---|---|---|---|
+| `url` | str | `browser` | Source URL of the download, as recorded. |
+| `target_path` | str | `browser` | Filesystem path the browser wrote to, as recorded. Duplicated into `Event.path`. |
+| `bytes` | str(int) | `browser` | `total_bytes` from the downloads row. Omitted when zero or absent, which the artifact uses for an incomplete download rather than for a zero-length file. |
+| `mime_type` | str | `browser` | MIME type as recorded by the browser, not sniffed from content. |
+| `referrer` | str | `browser` | Referring URL where recorded; omitted when empty. |
+| `db_sha256` | str | `browser` | SHA-256 of the copy of the History database that was read. The file is copied out before opening (see the parser docstring); recording the hash makes the reading auditable. |
+
+## PowerShell
+
+Emitted by `evtx.powershell`. Script-block records are chunked: one script
+arrives as N records carrying the same `ScriptBlockId`.
+
+| key | type | emitted by | meaning |
+|---|---|---|---|
+| `ScriptBlockId` | str | `evtx.powershell` | GUID shared by every fragment of one script block. The join key for reassembly, which the parser does **not** perform. |
+| `MessageNumber` | str(int) | `evtx.powershell` | 1-based index of this fragment. |
+| `MessageTotal` | str(int) | `evtx.powershell` | Total fragments for this script block. A consumer seeing `MessageTotal > 1` must not treat one fragment as a whole script. |
+| `Path` | str | `evtx.powershell` | Script path where the block came from a file; omitted for interactive or in-memory blocks, which is itself meaningful. |

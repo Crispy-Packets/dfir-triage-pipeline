@@ -30,3 +30,4 @@ __all__ = ["ArtifactParser", "register", "registered_parsers", "find_parser"]
 # ,I001 in addition to E402/F401 (D-014).
 from . import evtx_windows  # noqa: E402,F401,I001
 from . import prefetch  # noqa: E402,F401
+from . import registry  # noqa: E402,F401
