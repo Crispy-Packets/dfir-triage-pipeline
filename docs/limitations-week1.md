@@ -62,6 +62,20 @@ values elsewhere: the `collection_s1_v2` log header reads
 UTC+3 offset consistent with the measured guest clock. Any figure quoted from a
 ConsoleLog must be converted before it is compared with a timeline row.
 
+**Scenario 1 was attempted three times; artifacts from the earlier attempts
+survive in the collection.** Only the third attempt (download 2026-08-23
+22:20:06.710763Z, 4,608 bytes from `192.168.50.2:8000`) is the run under test.
+Nine earlier `invoice_scan.exe` downloads from 20 and 21 August, at 201,216 and
+360,448 bytes from `192.168.50.5:8000`, are troubleshooting of transfer faults
+and are present in the Edge history. The HKCU Run persistence carries a
+timestamp from the second attempt because restoring the baseline did not clear
+the key and every attempt used the same payload path.
+
+The consequence for evaluation is that `collection_s1_v2` is not a single-run
+collection: it holds one executed scenario and the download residue of two
+abandoned ones. Detection rules must discriminate on size and source host, not
+on filename. Recorded in full as D-027.
+
 **One realistic clean collection.** False-positive measurement and anomaly-model
 training draw on the same data. A third clean collection with a differing benign
 workload is a Week 2 candidate. Until it exists, a false-positive rate measured

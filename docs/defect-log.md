@@ -199,3 +199,64 @@ scenario corresponds to `invoice_scan.exe`.
 
 **Found by:** filling the `[PENDING EVTX]` markers with real counts rather than
 carrying the predicted ones forward.
+
+
+## D-027  Scenario persistence predates the scenario download by two days
+
+**Status:** recorded 2026-08-29, not a defect in the pipeline. It is a property
+of the evidence that any correlation rule must account for.
+
+The `SecurityUpdate` autorun in `collection_s1_v2` carries a key last-write time
+of **2026-08-21T01:34:07.976260Z**. The scenario download it points at is
+**2026-08-23T22:20:06.710763Z**. The persistence therefore appears, on
+timestamps alone, to have been established two days before the file it launches
+was delivered.
+
+### What actually happened
+
+Scenario 1 was attempted three times. Only the third is the run under test.
+
+| Attempt | Downloads | Host | Size | Outcome |
+|---|---|---|---|---|
+| 1 | ids 4,5,7,8,9 -- 2026-08-20 15:36 to 18:41 | `192.168.50.5:8000` | 201,216 B | transfer faults |
+| 2 | ids 10,11,12 -- 2026-08-21 00:04 to 00:52 | `192.168.50.5:8000` | 360,448 B | transfer faults |
+| **3** | **id 13 -- 2026-08-23 22:20:06** | **`192.168.50.2:8000`** | **4,608 B** | **the recorded scenario** |
+
+The operator changed the serving host and rebuilt the stand-in binary between
+attempts; the three byte counts are three distinct binaries, not one file
+re-fetched. The HKCU Run value was written during attempt 2 at 01:34 on 21
+August, roughly forty minutes after that attempt's last download.
+
+Restoring the baseline snapshot before attempt 3 did not clear the value: the
+`Run` key persisted, and because every attempt wrote the payload to the same
+path -- `C:\Users\janed\Downloads\invoice_scan.exe` -- the stale value remained
+valid for the new binary and was never rewritten. The artifact is genuine
+persistence pointing at the genuine payload; only its timestamp belongs to an
+earlier attempt.
+
+### Why this is recorded rather than corrected
+
+The evidence is not edited (see the Week 1 decision on evidence integrity). A
+reader meeting a persistence event two days before its download would otherwise
+conclude the timeline is wrong, and the correct explanation is not recoverable
+from the timestamps alone.
+
+### Consequences
+
+1. **A `presence` event must not be ordered against `recorded` events.** This is
+   the concrete case CD-019's third timestamp type exists for. A
+   download-to-persistence rule that joins on a time window will either miss
+   this chain or, worse, invert it.
+2. **Filename is not sufficient as a join key.** Nine earlier `invoice_scan.exe`
+   downloads precede the real one. Size and source host separate them: 4,608
+   bytes from `192.168.50.2` is the scenario; 201,216 and 360,448 bytes from
+   `192.168.50.5` are not.
+3. **The clean baselines are unaffected.** Neither `clean_a` nor `clean_b`
+   contains any `invoice_scan` artifact, in any family (action 99).
+
+### Also visible in the same window
+
+`VBoxTray` and `SecurityHealth` autoruns carry 2026-08-23T23:13:49.701914Z --
+after the log clear at 23:05:06 and before collection at 23:31:48. That is the
+Guest Additions install landing inside the collection window, and it is the same
+build difference recorded as D-026.
