@@ -1,0 +1,94 @@
+# Atomic rule 6 of 6. Compressed week, Day 2 (A-3).
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0006
+type: atomic
+title: Autorun value pointing at a user-writable path or an interpreter
+enabled: true
+
+description: >
+  Fires on a Run or RunOnce value whose data points into a user-writable
+  location, carries an unexpanded user environment variable, or invokes an
+  interpreter. Claims that the value exists in the collected hive with that
+  data, and names the hive, key and value. Claims nothing about when it was
+  written - see notes.
+
+severity: high
+weight: 60
+
+attack:
+  technique: T1547.001
+  name: Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+
+select:
+  event_type: [persistence_autorun]
+  source_artifact: [registry]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: persistence_autorun
+    - field: path
+      op: present
+  any:
+    - field: path
+      op: matches
+      value: '(?i)\\users\\'
+    - field: path
+      op: matches
+      value: '(?i)%appdata%|%localappdata%|%temp%|%userprofile%'
+    - field: path
+      op: matches
+      value: '(?i)\\appdata\\'
+    - field: path
+      op: matches
+      value: '(?i)\\downloads\\'
+    - field: path
+      op: matches
+      value: '(?i)(^|[\\ "])(powershell|cmd|wscript|cscript|mshta|rundll32|regsvr32)(\.exe)?([ "]|$)'
+    - field: path
+      op: matches
+      value: '(?i)\s-(enc|encodedcommand|w\s+hidden|windowstyle\s+hidden)'
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  note: >
+    Not yet measured. Known to be present in s1_v2: the SecurityUpdate value
+    pointing at C:\Users\janed\Downloads\invoice_scan.exe, which the first
+    pattern matches. Also present are VBoxTray and SecurityHealth, both
+    carrying 2026-08-23T23:13:49.701914Z; both point into Program Files or
+    System32 and should NOT match. Confirm both halves of that when the counts
+    are taken - a rule that also fires on the Guest Additions autoruns is
+    measuring the build difference (D-026), not the attack.
+
+notes: >
+  This rule makes no time claim, which is the whole reason it is safe to write
+  today. Its events carry timestamp_type=presence: Event.timestamp holds the
+  containing KEY's last-write time, shared by every sibling value under that
+  key, and details.value_count_in_key says how many siblings there are.
+
+  D-027 is the measured proof that this matters. The SecurityUpdate value's key
+  last-write is 2026-08-21T01:34:07.976260Z while the download it points at is
+  2026-08-23T22:20:06.710763Z - the persistence appears two days older than the
+  file it launches, because the value was written during an earlier attempt at
+  the scenario and the baseline restore before the recorded run did not clear
+  it. The artifact is genuine persistence pointing at the genuine payload; only
+  the timestamp belongs to an earlier attempt.
+
+  An atomic rule is unaffected by that, because it asserts existence and
+  nothing more. The correlation form of this indicator, R-CORR-0003, must join
+  on entity only and report no interval - schema sections 5.2 and 5.4.
+
+false_positive_notes: >
+  Legitimate software does register autoruns under AppData - updaters
+  especially - so the base rate on both baselines is what decides this rule's
+  weight. The interpreter and hidden-window patterns are the discriminating
+  ones; the path patterns alone are closer to an inventory than to a detection.
+
+references:
+  - "docs/contract-decisions.md CD-007, CD-010, CD-019"
+  - "docs/defect-log.md D-027"
+  - "docs/details-schema.md, Registry section"

@@ -1,0 +1,97 @@
+# Atomic rule 4 of 6. Compressed week, Day 2 (A-3).
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0004
+type: atomic
+title: Service installed with an interpreter or user-writable image
+enabled: true
+
+description: >
+  Fires on an EID 7045 service installation whose ImagePath invokes a command
+  interpreter, carries an encoded command, or points into a user-writable
+  directory. Claims that a service was installed with that command line and
+  names the record. Claims nothing about whether the service ever started.
+
+severity: high
+weight: 55
+
+attack:
+  technique: T1543.003
+  name: Create or Modify System Process - Windows Service
+
+select:
+  event_type: [service_install]
+  source_artifact: [evtx.system]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: service_install
+    - field: path
+      op: present
+  any:
+    - field: path
+      op: matches
+      value: '(?i)(^|[\\ "])powershell(\.exe)?([ "]|$)'
+    - field: path
+      op: matches
+      value: '(?i)(^|[\\ "])cmd\.exe([ "]|$)'
+    - field: path
+      op: matches
+      value: '(?i)(^|[\\ "])(wscript|cscript|mshta|rundll32|regsvr32)\.exe([ "]|$)'
+    - field: path
+      op: matches
+      value: '(?i)\s-(enc|encodedcommand|e)\s'
+    - field: path
+      op: matches
+      value: '(?i)\\users\\'
+    - field: path
+      op: matches
+      value: '(?i)\\appdata\\'
+    - field: path
+      op: matches
+      value: '(?i)\\temp\\'
+    - field: path
+      op: matches
+      value: '(?i)\.ps1([ "]|$)'
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  note: >
+    Not yet measured. What is measured: 55 service_install rows exist across
+    the three collections, and s1_v2 carries 23 EID 7045 records against 16 in
+    each baseline. The seven extra are VirtualBox Guest Additions, installed at
+    23:13 on 2026-08-23 after the log clear and before acquisition (D-026).
+    A rule that fires on those is measuring the build difference between the
+    scenario image and the baselines, not the attack, and none of the patterns
+    above should match a VBox service image. Confirm that when the counts are
+    taken.
+
+notes: >
+  Every pattern matches against a COMMAND LINE, not a filesystem path. CD-021,
+  measured across all three collections: 54 of 55 service_install rows carry
+  something other than a bare path, in five forms - quoted executable with
+  arguments (27), unquoted drive path with arguments (6), \SystemRoot or UNC
+  device path (7), environment-variable form such as %SystemRoot% (14), and
+  bare drive path (1). A rule written as though path were a filesystem path
+  fires on almost nothing and reports it as "no detection", which is why the
+  patterns are anchored on token boundaries rather than on path structure.
+
+  details.ImagePath carries the same string and details.ServiceName carries the
+  name; both are declared. path is used here so the rule reads the same field
+  the entity resolver will later extract the executable from.
+
+false_positive_notes: >
+  %SystemRoot%\system32\svchost.exe -k <group> is the normal shape of a large
+  fraction of Windows services and is deliberately not matched: svchost is not
+  in the interpreter list. Legitimate installers do sometimes register services
+  from under \Users or \AppData, so this rule is an indicator, not a verdict,
+  and its base rate on the two developer-workstation baselines is the number
+  that decides how much weight it deserves.
+
+references:
+  - "docs/contract-decisions.md CD-021, CD-007"
+  - "docs/defect-log.md D-026"

@@ -1,0 +1,82 @@
+# Atomic rule 5 of 6. Compressed week, Day 2 (A-3).
+# This rule is expected to fire zero times on this corpus. That is a negative
+# test, not a failure - see expected.note.
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0005
+type: atomic
+title: Remote interactive logon from a network address
+enabled: true
+
+description: >
+  Fires on an EID 4624 logon of type 10 (RemoteInteractive, the RDP type) whose
+  source address is a real network address rather than loopback or the log's
+  own "not recorded" marker. Claims that a remote interactive session was
+  established from that address and names the record. Claims nothing about who
+  was at the other end.
+
+severity: high
+weight: 50
+
+attack:
+  technique: T1021.001
+  name: Remote Services - Remote Desktop Protocol
+
+select:
+  event_type: [logon]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: logon
+    - field: details.LogonType
+      op: equals
+      value: "10"
+    - field: details.IpAddress
+      op: present
+  none:
+    - field: details.IpAddress
+      op: in
+      value: ["-", "::1", "127.0.0.1", "0.0.0.0"]
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: 0
+  note: >
+    Zero on s1_v2, and that is measured rather than assumed: the whole
+    post-clear Security log holds 58 logon rows, entirely SYSTEM and service
+    accounts plus admin_local twice. There is no RDP anywhere in the scenario.
+    The rule is written because the plan requires the indicator to exist and
+    because a rule that never fires still has to be shown to be capable of
+    firing - which is what its positive unit test is for. Its zero on s1_v2 is
+    a negative test result, not a miss.
+
+notes: >
+  RFC1918 addresses are deliberately NOT excluded. The lab's attacker host sits
+  on 192.168.50.x, so a rule that discarded private ranges as "internal" could
+  not fire on this corpus under any circumstances, and its zero would then be
+  an artefact of the rule rather than a statement about the evidence. Only
+  loopback and the log's own absent-markers are excluded.
+
+  Logon type 7 (unlock of an existing session) can also indicate RDP activity
+  and is intentionally out of scope here: it is a reconnection to a session
+  established earlier, so on its own it does not evidence a new remote logon.
+  If it is added later it belongs in its own rule with its own weight.
+
+  details.IpAddress may be the literal "-" as recorded (CD-022 makes the point
+  that "-" is a value the log wrote, not an absent field), which is why it is
+  excluded explicitly by value rather than left to op: absent.
+
+false_positive_notes: >
+  Legitimate remote administration produces an identical record. On an estate
+  where RDP is a normal management path this rule would be pure noise and
+  should be scoped by source address or by account. On this corpus it has no
+  base rate at all, which is what makes it worth its weight here and nowhere
+  else.
+
+references:
+  - "docs/contract-decisions.md CD-007, CD-022"
+  - "docs/details-schema.md, EVTX section, LogonType and IpAddress"

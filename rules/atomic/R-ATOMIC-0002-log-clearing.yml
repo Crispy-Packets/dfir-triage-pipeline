@@ -1,0 +1,70 @@
+# Worked example for rules/schema.md, and atomic rule 2 of 6.
+# This is a real rule, not a placeholder: it is the second of the six atomic
+# rules the plan requires, and it is the one that can be written completely
+# today because EID 1102 is already in the fixed vocabulary (CD-007) and the
+# EVTX parser already emits it.
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0002
+type: atomic
+title: Windows event log cleared
+enabled: true
+
+description: >
+  Fires on a Security log clearing record (EID 1102). Claims that the audit log
+  was cleared and names the record that says so. Does not claim who cleared it
+  beyond the account the record itself carries, and does not claim what was
+  destroyed - the destroyed records are, by definition, not in the evidence.
+
+severity: high
+weight: 70
+
+attack:
+  technique: T1070.001
+  name: Indicator Removal - Clear Windows Event Logs
+
+select:
+  event_type: [log_cleared]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: log_cleared
+    - field: source_artifact
+      op: equals
+      value: evtx.security
+    - field: source_locator
+      op: matches
+      value: "^EventRecordID=\\d+$"
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 1
+  note: >
+    Exactly one EID 1102 exists in the whole corpus, in collection_s1_v2. This
+    rule therefore has one positive case across all three collections, so its
+    negative tests carry more weight than its positive one: two clean
+    collections that must produce zero findings are the substance of the check.
+    Recorded as measured, not estimated.
+
+false_positive_notes: >
+  A legitimate administrator clearing a log produces an identical record. The
+  rule is an indicator, not a verdict, and the finding text says so. On this
+  corpus the base rate in a collection containing no attack is zero, which is
+  what makes the indicator worth its weight here and would not hold on a
+  production estate.
+
+notes: >
+  The source_locator condition is not cosmetic. CD-004 requires a locator that
+  resolves back to the evidence, and this was confirmed on 382 of 382 rows in
+  s1_v2 and 10,455 of 10,455 in clean_b with zero exceptions. A finding for a
+  log clear whose locator does not name an EventRecordID cannot be taken back to
+  the .evtx, and section 7 of the schema makes that a defect rather than a
+  cosmetic gap.
+
+references:
+  - "docs/contract-decisions.md CD-004, CD-007"
+  - "groundtruth/Scenario1.md"

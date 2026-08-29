@@ -1,0 +1,89 @@
+# Atomic rule 1 of 6. Compressed week, Day 2 (A-3).
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0001
+type: atomic
+title: Process executed from a user-writable location
+enabled: true
+
+description: >
+  Fires on an EID 4688 process creation whose image path sits in a directory an
+  unprivileged user can write to - a profile Downloads folder, a Temp
+  directory, Public, or ProgramData. Claims that a process ran from that
+  location and names the record. Claims nothing about the binary's contents,
+  its origin, or whether the execution was authorised.
+
+severity: medium
+weight: 45
+
+attack:
+  technique: T1204.002
+  name: User Execution - Malicious File
+
+select:
+  event_type: [process_exec]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: process_exec
+    - field: source_artifact
+      op: equals
+      value: evtx.security
+    - field: path
+      op: present
+  any:
+    - field: path
+      op: matches
+      value: '(?i)\\users\\[^\\]+\\downloads\\'
+    - field: path
+      op: matches
+      value: '(?i)\\appdata\\local\\temp\\'
+    - field: path
+      op: matches
+      value: '(?i)\\appdata\\roaming\\'
+    - field: path
+      op: matches
+      value: '(?i)\\windows\\temp\\'
+    - field: path
+      op: matches
+      value: '(?i)\\users\\public\\'
+    - field: path
+      op: matches
+      value: '(?i)^[a-z]:\\programdata\\[^\\]+\.exe$'
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  note: >
+    Not yet measured; requires a pipeline run over each collection. Recorded as
+    unmeasured rather than guessed at 0. Both baselines are developer
+    workstations carrying Visual Studio, SQL Server, SSMS, VS Code and Cursor,
+    so a non-trivial base rate from installer and updater activity under
+    AppData is expected rather than surprising.
+
+notes: >
+  Prefetch is deliberately excluded from select. For source_artifact=prefetch,
+  Event.path holds a bare executable name and not a path at all - the parser
+  says so explicitly in details.path_source=prefetch_executable_name - so every
+  path-shaped condition here would evaluate false against it, silently. Naming
+  only evtx.security makes that exclusion visible in the rule instead of
+  hiding it in the data.
+
+  The regexes carry an inline (?i) rather than ci: true because the schema
+  restricts ci to the string operators. The intent is the same.
+
+false_positive_notes: >
+  This rule cannot detect the Scenario 1 binary, and that is a property of the
+  evidence rather than of the rule. The EID 4688 for invoice_scan.exe does not
+  exist: it was destroyed by the actor's log clear at 2026-08-23T23:05:06. The
+  only surviving witness to that execution is Prefetch, which carries no path.
+  A Week 4 evaluation must therefore not count this rule's silence on s1_v2 as
+  a miss - the record it would have matched was deleted before collection.
+
+references:
+  - "docs/contract-decisions.md CD-007, CD-010"
+  - "docs/details-schema.md, Prefetch section, path_source"
