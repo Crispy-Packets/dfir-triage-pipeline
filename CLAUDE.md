@@ -3,21 +3,21 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  124 passed, 15 skipped
+    python -m pytest -q               ->  145 passed, 19 skipped
     python rules\validate_rules.py    ->  schema 1.2.0  rules 6  errors 0  warnings 0
 
-The 15 skips are collection-backed integration tests, active only when
+The 19 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
 
     $env:DFIR_TEST_COLLECTION = "%USERPROFILE%\dfir-evidence\collection_clean_b"
-    python -m pytest -q   ->  130 passed, 9 skipped
+    python -m pytest -q   ->  154 passed, 10 skipped
 
 Counts differ per collection, because some assertions are about one collection
 only. All three must be green:
 
-    collection_clean_a  ->  130 passed,  9 skipped
-    collection_clean_b  ->  130 passed,  9 skipped
-    collection_s1_v2    ->  134 passed,  5 skipped
+    collection_clean_a  ->  154 passed, 10 skipped
+    collection_clean_b  ->  154 passed, 10 skipped
+    collection_s1_v2    ->  159 passed,  5 skipped
 
 Last measured 2026-08-30 on Python 3.11. When these numbers change, change them
 here in the same commit -- a gate line that no longer matches the run it

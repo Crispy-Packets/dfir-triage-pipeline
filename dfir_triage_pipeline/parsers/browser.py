@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from ..model import Event
+from ..paths import derive as derive_path
 from . import register
 
 # Chrome/Edge store times as microseconds since 1601-01-01 UTC -- the FILETIME
@@ -115,6 +116,11 @@ def record_to_event(record: dict) -> Event:
     # the size, so the key is omitted (CD-012's absent-is-not-zero rule).
     if record.get("total_bytes"):
         details["bytes"] = str(record["total_bytes"])
+
+    # B-9. The download target is the strongest link between a browser record
+    # and a later execution: it is how invoice_scan.exe in Edge history joins to
+    # INVOICE_SCAN.EXE in Prefetch, which carries no path at all.
+    details.update(derive_path(record["target_path"]))
 
     return Event(
         timestamp=webkit_to_utc(record["start_time"]),

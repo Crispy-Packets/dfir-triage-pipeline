@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from ..model import Event
+from ..paths import derive as derive_path
 from . import register
 from .registry import filetime_to_utc
 
@@ -107,6 +108,11 @@ def record_to_event(record: dict) -> Event:
     sha1 = sha1_from_file_id(values.get("FileId"))
     if sha1:
         details["sha1"] = sha1
+
+    # B-9. Amcache lowercases the paths it stores while the EVTX channels keep
+    # the case the OS used, so these derived fields are what let a binary seen
+    # here be matched with the same binary seen in a 4688 record.
+    details.update(derive_path(record["path"]))
 
     return Event(
         timestamp=record["last_write"],

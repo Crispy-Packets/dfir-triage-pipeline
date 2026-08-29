@@ -8,6 +8,7 @@ from pathlib import Path
 from evtx import PyEvtxParser
 
 from ..model import Event
+from ..paths import derive as derive_path
 from . import register
 
 NS = {"e": "http://schemas.microsoft.com/win/2004/08/events/event"}
@@ -175,6 +176,15 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     return details
 
 
+def _path_details(eid: int, data: dict[str, str]) -> dict[str, str]:
+    """B-9 derived fields for the path this record carries, if any.
+
+    Kept separate from _details_for because the path is read by _path_for and
+    the two would otherwise duplicate the per-EID knowledge of where it lives.
+    """
+    return derive_path(_path_for(eid, data))
+
+
 # Channel filename -> source_artifact. The PowerShell operational channel is
 # written by the OS as "Microsoft-Windows-PowerShell%4Operational.evtx": %4 is
 # an escaped forward slash from the channel name "Microsoft-Windows-PowerShell/
@@ -247,7 +257,7 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         user=_user_for(eid, data),
         path=_path_for(eid, data),
         confidence="high",
-        details=_details_for(eid, data),
+        details={**_details_for(eid, data), **_path_details(eid, data)},
     )
 
 

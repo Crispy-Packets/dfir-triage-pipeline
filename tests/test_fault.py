@@ -26,9 +26,13 @@ def raising_parser():
             raise EOFError("truncated")
             yield  # unreachable, but makes this a generator function
 
-    parsers._REGISTRY.append(RaisingParser())
+    injected = RaisingParser()
+    parsers._REGISTRY.append(injected)
     yield
-    parsers._REGISTRY.clear()
+    # Remove only what was injected. clear() emptied the whole registry, so
+    # every collection-backed test running afterwards saw zero parsers and
+    # silently produced zero events -- a passing test that asserted nothing.
+    parsers._REGISTRY.remove(injected)
 
 
 def test_raising_parser_does_not_end_the_run(tmp_path, raising_parser):

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from ..model import Event
+from ..paths import derive as derive_path
 from . import register
 
 # Autorun locations. Machine-wide keys live in SOFTWARE and run for every user;
@@ -122,6 +123,11 @@ def record_to_event(record: dict) -> Event:
         "key_last_write": record["key_last_write"].isoformat().replace("+00:00", "Z"),
         "value_count_in_key": str(record["value_count_in_key"]),
     }
+
+    # B-9. Most autorun values are command lines rather than paths, and derive()
+    # returns nothing for those by design -- a canonical form built from a
+    # command line would join two unrelated records (CD-021, D-032).
+    details.update(derive_path(record["value_data"]))
     return Event(
         timestamp=record["key_last_write"],
         source_artifact="registry",

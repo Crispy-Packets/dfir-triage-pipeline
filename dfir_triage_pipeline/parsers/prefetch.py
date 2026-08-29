@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..model import Event
+from ..paths import derive as derive_path
 from . import register
 
 # FILETIME 0 renders as 1601-01-01. windowsprefetch 4.0.3 drops empty slots
@@ -147,6 +148,10 @@ def record_to_events(record: dict, relative_path: str) -> list[Event]:
     details_base = {
         "executable": executable,
         "path_source": "prefetch_executable_name",
+        # B-9. Prefetch records no path, so path_basename_canonical is the only
+        # field by which an execution here can be matched to a full path
+        # recorded elsewhere. derive() supplies it for a bare name.
+        **derive_path(executable),
     }
     if record.get("run_count") is not None:
         details_base["run_count"] = str(record["run_count"])

@@ -55,6 +55,28 @@ here before emission, same rule.
 | `script_block_text_bytes` | str(int) | `evtx.powershell` | Full byte length of the ORIGINAL script text, always the untruncated figure. Lets a consumer measure how much was not recorded instead of inferring it. |
 | `script_block_truncated` | str | `evtx.powershell` | Literal `true`, present only when the cap was hit. Absent means the text is complete. |
 
+## Derived path fields (B-9)
+
+Emitted by every parser that carries a path. These are **additions**, never
+replacements: CD-010 holds, and `Event.path` always keeps exactly what the
+artifact recorded alongside its derived form.
+
+A field is **omitted rather than guessed**. A consumer that finds
+`path_canonical` absent knows to fall back to `path`; a consumer handed a
+wrongly-derived value has no way to detect it, and a wrong canonical path
+silently joins two unrelated records.
+
+| key | type | emitted by | meaning |
+|---|---|---|---|
+| `path_canonical` | str | all with a path | Case-folded comparison form, separators normalised to `\`. Lowercasing is the entire transformation, and it is safe because Windows paths are case-insensitive -- a fact about the filesystem, not a guess. **Omitted** for command lines, `\Device\HarddiskVolumeN\` paths and values holding an unexpanded `%VARIABLE%`, because a canonical form exists for those but cannot be computed without inventing the drive or the expansion. |
+| `path_basename` | str | all with a path | Trailing component, in the case the artifact recorded. Omitted when the value has no separator, since there is nothing to extract -- Prefetch stores a bare name that is already its own basename. |
+| `path_basename_canonical` | str | all with a path | Lowercased basename: the cross-artifact join key CD-010 names. Present for separator-less values too, because Prefetch carries no path and this is the only field by which an execution recorded there can be matched to a full path recorded elsewhere. |
+
+Command lines receive **none** of the three. Their trailing token is an
+argument, not a filename, so even a basename would be wrong. Measured, that is
+95 rows of the 25,026 carrying a path -- all `service_install` and autorun
+values (CD-021, D-032).
+
 ## Registry
 
 Emitted by `registry`. The autorun value is the payload; the key's last-write

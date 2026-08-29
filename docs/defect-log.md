@@ -507,3 +507,63 @@ records why the "expand the variable and you are done" shortcut does not exist
 for ten of them. The distinction belongs with Week 3's `core/entity.py`, which
 owns executable extraction from command lines.
 
+
+## D-035  A test fixture emptied the parser registry, silencing later tests
+
+**Status:** fixed 2026-08-30 in `tests/test_fault.py`.
+
+`test_fault.py` injects a deliberately-raising parser to prove that one bad
+artifact does not end a run. Its fixture appended that parser to the
+module-level registry and tore down with:
+
+```python
+parsers._REGISTRY.clear()
+```
+
+`clear()` empties the **whole** registry, not just the injected entry. The
+fixture's own docstring says "inject a parser that always raises, then remove
+it" and warns that the registry is global state, so the intent was correct and
+the call did not match it.
+
+### What it silenced
+
+Every collection-backed test that ran after `test_fault.py` in the same session
+saw an empty registry. `collect_events` found no parser for any file, returned
+zero events, and the tests that iterate over those events passed **vacuously** --
+a loop over an empty list asserts nothing.
+
+Alphabetical collection order put `test_fault.py` before `test_ingest.py`,
+`test_paths.py`, `test_prefetch.py`, `test_registry.py` and
+`test_script_block_text.py`, so their evidence-backed assertions had been
+inert for as long as the fixture has existed.
+
+### How it surfaced
+
+A new B-9 test asserted that the Scenario 1 binary is reachable from three
+artifact families by one join key. It failed with an empty result set, passed
+when run alone, and passed in every pairwise combination tried. Only the full
+suite reproduced it -- which is the signature of leaked state rather than a
+logic error.
+
+The test was right and the pipeline was right. The harness was wrong.
+
+### Evidence that the fix restored real work
+
+Per-collection suite runtime roughly doubled, from about 13 seconds to about
+28, because those tests now parse the collections they always claimed to.
+
+| collection | before | after |
+|---|---|---|
+| clean_a | 153 passed, 11 skipped | 154 passed, 10 skipped |
+| clean_b | 153 passed, 11 skipped | 154 passed, 10 skipped |
+| s1_v2 | 1 failed, 157 passed | 159 passed, 5 skipped |
+
+**Fix:** hold a reference to the injected parser and `remove()` exactly it.
+
+### Why this one is worth recording
+
+It is the same failure mode as the rest of this log, one level up: a test suite
+that reported success by default. Nothing crashed, nothing was skipped, and the
+count of passing tests went **up** while the assertions were doing nothing. A
+green suite is evidence only if the tests ran against what they claim to.
+
