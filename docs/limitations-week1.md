@@ -235,6 +235,21 @@ scenario.
 
 ## Deferred to Week 2
 
-**Number of downloads in `collection_s1_v2` browser history** -- deferred until
-the browser parser exists. The ground truth records one download; whether the
-history contains others is unmeasured.
+**Number of downloads in `collection_s1_v2` browser history** -- *measured
+2026-08-30, no longer deferred.* The browser parser exists (B-5/B-6) and the
+count is **20**, of which **9 are `invoice_scan.exe`**.
+
+The ground truth records one download because one download is what the scenario
+specifies. The history holds nine, and the eight extras are the first two
+scenario attempts recorded in D-027: five at 201,216 bytes and three at 360,448
+bytes, all from `192.168.50.5:8000` on 20 and 21 August. The scenario download
+under test is the tenth artifact in the timeline -- 4,608 bytes from
+`192.168.50.2:8000` at 2026-08-23T22:20:06.710763Z.
+
+The baselines carry 10 (`clean_a`) and 11 (`clean_b`) downloads, all benign
+installers and coursework, and **no `invoice_scan` artifact in either**.
+
+The consequence for a download-to-execution rule is the one D-027 already
+states: filename is not a usable join key on this corpus, because nine
+downloads share the name and only one is the run under test. Size and source
+host separate them.

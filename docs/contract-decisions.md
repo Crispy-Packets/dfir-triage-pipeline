@@ -369,6 +369,16 @@ CD-021  Event.path for service_install carries the service ImagePath exactly as 
         UNC device path (7), an environment-variable form such as %SystemRoot% (14),
         and a bare drive path (1).
 
+        Amended 2026-08-30 (D-032). The fourteen are two distinct forms, not one.
+        Four carry an explicit variable (%SystemRoot%\system32\svchost.exe -k
+        print, and %SystemRoot%\System32\VBoxService.exe). The other ten are
+        root-relative driver images with no prefix at all --
+        system32\DRIVERS\RsFx0800.sys and similar -- which the Service Control
+        Manager resolves against %SystemRoot% implicitly. Every total in this
+        clause was re-verified on 2026-08-30 and reproduces exactly; only the
+        classification is refined, because a canonicaliser cannot treat an
+        explicit variable and an implicit root alike.
+
         No normalisation is applied in Week 1. CD-010 already forbids a parser from
         rewriting what the artifact recorded, and inventing a path here would fabricate
         one for 54 of 55 rows. The consequence is that path is not a join key for
@@ -380,6 +390,14 @@ CD-022  Event.user carries the account exactly as the artifact recorded it. No c
         folding, no domain stripping, no mapping of well-known SIDs to a canonical
         name. Measured on clean_b, 2026-08-28: 24 distinct values across 10,455 EVTX
         rows.
+
+        Scope note added 2026-08-30. Those 10,455 rows are evtx.security and
+        evtx.system only, which was every EVTX row that existed when the figure
+        was taken. The PowerShell channel was added afterwards (B-8), so the
+        same collection now yields 11,452 EVTX rows and 26 distinct values. The
+        two extra values are NT Service account spellings from the operational
+        channel; the clause and its reasoning are unchanged. Re-verified in the
+        original scope on 2026-08-30 and the figure reproduces exactly.
 
         Two of those values mean absent -- the empty string (6 rows) and the literal
         "-" (134 rows) -- and they are not interchangeable: "-" is a value the log

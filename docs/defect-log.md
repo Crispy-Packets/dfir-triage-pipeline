@@ -459,3 +459,51 @@ Edge, not PowerShell". The Edge download is real, but PowerShell was also used:
 five `DownloadFile` blocks against both attacker hosts between 21:53:19 and
 22:16:21 on 2026-08-23, all in evidence.
 
+
+## D-032  CD-021's environment-variable bucket conflates two path forms
+
+**Status:** recorded 2026-08-30. CD-021's totals are correct; its classification
+is not granular enough to build a path canonicaliser against.
+
+Verifying CD-021 against the evidence before starting B-9 reproduced every
+headline figure: 55 `service_install` rows, exactly one bare filesystem path
+(`C:\Windows\System32\svchost.exe`), 27 quoted-executable-plus-arguments, 7
+`\SystemRoot`/UNC device paths, 6 unquoted drive paths with arguments.
+
+The clause records the fifth form as "an environment-variable form such as
+`%SystemRoot%` (14)". Measured, that bucket is two different things:
+
+| form | count | example |
+|---|---|---|
+| environment variable prefix | 4 | `%SystemRoot%\system32\svchost.exe -k print` |
+| **root-relative driver path** | **10** | `system32\DRIVERS\RsFx0800.sys` |
+
+The ten are kernel driver images written relative to the system root with **no
+prefix at all** -- no drive letter, no leading separator, no variable. The
+Service Control Manager resolves them against `%SystemRoot%` implicitly.
+
+### Why it matters for B-9
+
+These two forms need opposite handling in a canonicaliser:
+
+- `%SystemRoot%\...` **is** absolute once the variable is expanded, and the
+  variable is explicit in the string, so expansion is a mechanical substitution.
+- `system32\DRIVERS\...` looks like a relative path and expanding it requires
+  knowing the implicit rule that the SCM applies `%SystemRoot%`. That knowledge
+  is a forensic claim about how the value would have resolved, not a fact the
+  artifact recorded.
+
+A canonicaliser written from the clause as worded would treat all 14 as
+prefixed, find no variable in ten of them, and either emit them unchanged as
+though they were already canonical, or fabricate a root. Both are wrong in the
+way CD-010 forbids.
+
+### Resolution
+
+CD-021's total and its conclusion stand: `path` is not a join key for
+`service_install`, and no normalisation happens in Week 1. B-9 emits **no**
+canonical field for any of the 55 rows, which was already the plan; this defect
+records why the "expand the variable and you are done" shortcut does not exist
+for ten of them. The distinction belongs with Week 3's `core/entity.py`, which
+owns executable extraction from command lines.
+

@@ -34,11 +34,14 @@ scenario has already been decommissioned once.
 
 ## 3. Count downloads in `collection_s1_v2` browser history
 
-Deferred from Week 1 because no browser parser existed. The ground truth records
-one download; whether the history holds others is unmeasured, and an unmeasured
-count cannot support a false-positive claim about download-to-execution rules.
+*Done 2026-08-30.* The browser parser exists and the count is **20 in
+`collection_s1_v2`**, of which 9 are `invoice_scan.exe`: eight from the two
+abandoned attempts recorded in D-027, plus the one under test. Baselines carry
+10 and 11 downloads and no `invoice_scan` artifact.
 
-Depends on the browser downloads parser below.
+This discharges the false-positive concern in the direction that matters: a
+download-to-execution rule keyed on filename would match nine downloads for one
+execution. Size and source host are the discriminating fields.
 
 ---
 
