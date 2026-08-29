@@ -377,3 +377,85 @@ The rule is kept as written. The indicator is sound in general and its failure
 here is a property of the evidence rather than a fault in the logic. Tuning it
 to fire on this corpus would be fitting the rule to one scenario.
 
+
+## D-031  4104 discarded the script text, which blocked an entire rule
+
+**Status:** fixed 2026-08-30 in `parsers/evtx_windows.py`.
+
+The 4104 handler kept the fragment identifiers and dropped `ScriptBlockText`.
+The stated reasoning was that a single block can run to tens of kilobytes, that
+`details` is carried in every timeline row, and that the text stays recoverable
+from the source record through `source_locator`.
+
+The first two points were sound. The third was true but not sufficient: a rule
+evaluates `Event` objects and never reopens the `.evtx`, so "recoverable from
+the evidence" does not mean "available to the rule layer". The consequence was
+that **no field on `Event` said what a script did**, and R-ATOMIC-0003 -- one of
+the six atomic rules the plan requires -- could not be written at all. It was
+parked in `rules/blocked/` with three options and a stated preference.
+
+### What the measurement changed
+
+The size objection was tested rather than argued. Across the 3,249 script
+blocks in the three collections the distribution is strongly bimodal:
+
+| | value |
+|---|---|
+| median | 339 bytes |
+| p90 | ~15,000 bytes |
+| max | 19,919 bytes |
+
+The large blocks are VS Code and PowerShell profile initialisation. The
+attack-relevant blocks -- the five `WebClient.DownloadFile` calls that fetch
+`invoice_scan.exe` -- are **112 and 113 bytes**.
+
+So the objection holds for benign initialisation noise and not for the text a
+detection rule needs. A 4,096-byte cap stores every attack block whole and
+truncates only the initialisation blocks: 418 of 1,270 in s1_v2.
+
+### Fix
+
+Option 1 of the three in the draft. `details` now carries:
+
+- `script_block_text` -- capped at `SCRIPT_BLOCK_TEXT_CAP` (4096 UTF-8 bytes),
+  truncated on a character boundary so the value is never invalid text
+- `script_block_text_bytes` -- the **full** original length, always, so a
+  consumer can measure what was not recorded rather than infer it
+- `script_block_truncated` -- literal `true`, present only when the cap was hit
+
+All three are declared in `docs/details-schema.md` per CD-012, along with
+`ScriptBlockId`, `MessageNumber`, `MessageTotal` and `Path`, which had been
+emitted since B-8 without ever being declared -- a CD-012 gap of my own.
+
+### The clause that makes the cap honest
+
+A capped field may be read by **positive operators only**. `not_contains`
+against a field holding the first 4 KB of a 20 KB script asserts an absence the
+evidence does not support, and would read as a clean negative. That constraint
+was Person A's, raised before the field existed, and it is the reason this is a
+usable field rather than a misleading one.
+
+### Consequence for the corpus
+
+R-ATOMIC-0003 now measures 3 / 3 / 8 and detects the delivery step that
+R-ATOMIC-0001 structurally cannot see (D-030): the 4688 for `invoice_scan.exe`
+was destroyed by the log clear, but the PowerShell operational channel was not
+cleared, so the download survives there. Scenario 1 now has three independent
+surviving witnesses -- R-ATOMIC-0002 on the clear, R-ATOMIC-0003 on the
+delivery, R-ATOMIC-0006 on the persistence.
+
+Two alternatives from the draft were dropped after measurement.
+`frombase64string` matched 123 blocks in each baseline against 67 in s1_v2 --
+Cursor's shell integration encoding environment variables -- so it fired nearly
+twice as often on clean hosts as on the scenario and inverted the rule's
+discriminating power. `invoke-expression`/`iex` matched 2 against 4, too few to
+carry signal. Both are sound indicators in general; they were removed because of
+what this corpus measures, and that distinction belongs in the Week 4 write-up.
+
+### Premise corrected
+
+While blocked, the draft recorded that Scenario 1's delivery was "HTTP through
+Edge, not PowerShell". The Edge download is real, but PowerShell was also used:
+five `DownloadFile` blocks against both attacker hosts between 21:53:19 and
+22:16:21 on 2026-08-23, all in evidence.
+

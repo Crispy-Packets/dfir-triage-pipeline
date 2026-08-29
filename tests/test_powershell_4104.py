@@ -60,14 +60,24 @@ def test_fragment_identifiers_are_kept():
     assert d["MessageTotal"] == "3"
 
 
-def test_script_text_is_not_carried_in_details():
-    """ScriptBlockText can run to tens of kilobytes and details is written into
-    every timeline row. The text stays recoverable from the source record via
-    source_locator, which is what CD-003 and CD-004 exist for."""
+def test_script_text_is_carried_under_a_declared_cap():
+    """Superseded the original assertion that the text is dropped entirely.
+
+    Dropping it blocked R-ATOMIC-0003 outright: no Event field said what a
+    script did, so the rule could not be written. It is now carried under
+    SCRIPT_BLOCK_TEXT_CAP with the truncation declared. The raw key name is
+    still absent -- the value is emitted as script_block_text, because it is
+    not the verbatim field once a cap can apply to it.
+
+    Cap behaviour itself is pinned in tests/test_script_block_text.py; this
+    test guards the boundary between the two designs. See D-031."""
+    from dfir_triage_pipeline.parsers.evtx_windows import SCRIPT_BLOCK_TEXT_CAP
+
     long_text = "Write-Output 'x'; " * 500
     d = _event(text=long_text).details
     assert "ScriptBlockText" not in d
-    assert all(len(v) < 200 for v in d.values())
+    assert len(d["script_block_text"].encode()) <= SCRIPT_BLOCK_TEXT_CAP
+    assert d["script_block_text_bytes"] == str(len(long_text.encode()))
 
 
 def test_fragments_are_emitted_separately_not_reassembled():

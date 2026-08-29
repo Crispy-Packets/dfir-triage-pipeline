@@ -4,7 +4,7 @@ dependency and gate-count corrections raised on week2/rules-schema.
 
 Repository: dfir-triage-pipeline
 Branch:     week2/parsers-registry-browser
-Commit:     f5a951c6b1f9ac772a6a8c0484ebc7a932df5dad
+Commit:     59a95231d4ce01b4905885a7b39439d6071df044
 Python:     Python 3.11.9
 Platform:   Windows 11, Python 3.11 venv at .venv
 
@@ -12,33 +12,34 @@ Platform:   Windows 11, Python 3.11 venv at .venv
 All checks passed!
 
 === python -m pytest -q  (no collection) ===
-..s.................ss.................s...........sssss................ [ 54%]
-............s...................ss....................s....              [100%]
-118 passed, 13 skipped in 0.37s
+..s.................ss.................s...........sssss................ [ 51%]
+............s...................ss....................s......ss....      [100%]
+124 passed, 15 skipped in 0.41s
 
 === python rules/validate_rules.py ===
 PASS  atomic\R-ATOMIC-0001-suspicious-execution-location.yml
 PASS  atomic\R-ATOMIC-0002-log-clearing.yml
+PASS  atomic\R-ATOMIC-0003-encoded-powershell.yml
 PASS  atomic\R-ATOMIC-0004-suspicious-services.yml
 PASS  atomic\R-ATOMIC-0005-external-rdp.yml
 PASS  atomic\R-ATOMIC-0006-autorun-persistence.yml
 
-schema 1.2.0   rules 5   errors 0   warnings 0
+schema 1.2.0   rules 6   errors 0   warnings 0
 
 === python -m pytest -q  (DFIR_TEST_COLLECTION=collection_clean_a) ===
-.....................s.................s...........sssss................ [ 54%]
-......................................................s....              [100%]
-123 passed, 8 skipped in 7.41s
+.....................s.................s...........sssss................ [ 51%]
+......................................................s.......s....      [100%]
+130 passed, 9 skipped in 10.32s
 
 === python -m pytest -q  (DFIR_TEST_COLLECTION=collection_clean_b) ===
-.....................s.................s...........sssss................ [ 54%]
-......................................................s....              [100%]
-123 passed, 8 skipped in 7.40s
+.....................s.................s...........sssss................ [ 51%]
+......................................................s.......s....      [100%]
+130 passed, 9 skipped in 19.04s
 
 === python -m pytest -q  (DFIR_TEST_COLLECTION=collection_s1_v2) ===
-...................................................sssss................ [ 54%]
-...........................................................              [100%]
-126 passed, 5 skipped in 6.41s
+...................................................sssss................ [ 51%]
+...................................................................      [100%]
+134 passed, 5 skipped in 9.69s
 
 === pip show: declared runtime dependencies ===
 Name: evtx
@@ -59,12 +60,15 @@ rule            clean_a  clean_b    s1_v2
 -------------   -------  -------  -------
 R-ATOMIC-0001        42       48        1
 R-ATOMIC-0002         0        0        1
+R-ATOMIC-0003         3        3        8
 R-ATOMIC-0004         0        0        0
 R-ATOMIC-0005         0        0        0
 R-ATOMIC-0006         8        8        4
 
-R-ATOMIC-0003 is not listed: it is blocked pending the 4104 script-text
-decision and carries no measurable conditions yet.
+R-ATOMIC-0003 was unblocked on 2026-08-30 by capping the 4104 script
+text into details rather than dropping it (D-031). All six atomic rules
+now load and are measured. Its eight s1_v2 hits include the five
+WebClient DownloadFile blocks that fetch invoice_scan.exe.
 
 === A-4: EID 4720 account-creation base rate ===
 collection_clean_a  4  WDAGUtilityAccount, Youssef, janed, admin_local

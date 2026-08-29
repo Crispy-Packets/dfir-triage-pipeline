@@ -96,6 +96,38 @@ def _path_for(eid: int, data: dict[str, str]) -> str | None:
     return None
 
 
+# Cap on the script text carried in details, in UTF-8 bytes.
+#
+# Chosen by measuring the corpus rather than picked round: the 3,249 script
+# blocks across the three collections are bimodally distributed, with a median
+# of 339 bytes and a p90 of about 15 KB. The large blocks are VS Code and
+# PowerShell profile initialisation; the attack-relevant blocks in s1_v2 -- the
+# WebClient DownloadFile calls that fetch invoice_scan.exe -- are 112 and 113
+# bytes. A 4 KB cap therefore keeps every block a rule needs to read intact and
+# truncates only benign initialisation noise.
+#
+# Truncation is recorded, never silent: script_block_text_bytes always carries
+# the FULL byte length and script_block_truncated appears when the cap was hit.
+# A rule may only read the capped text with positive operators -- see
+# rules/schema.md. Asserting `not_contains` against the first 4 KB of a 20 KB
+# script claims something the evidence does not support.
+SCRIPT_BLOCK_TEXT_CAP = 4096
+
+
+def _truncate_utf8(text: str, cap: int) -> tuple[str, int, bool]:
+    """Cut text to at most cap UTF-8 bytes without splitting a character.
+
+    Returns (text, full_byte_length, was_truncated). The length is of the
+    ORIGINAL, so a consumer can always tell how much was not recorded.
+    """
+    raw = text.encode("utf-8")
+    if len(raw) <= cap:
+        return text, len(raw), False
+    # errors="ignore" drops a partial character at the boundary rather than
+    # emitting a replacement character that was never in the evidence.
+    return raw[:cap].decode("utf-8", errors="ignore"), len(raw), True
+
+
 def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     keep: tuple[str, ...]
     if eid in (4624, 4625):
@@ -115,15 +147,32 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     elif eid == 7045:
         keep = ("ServiceName", "ImagePath", "ServiceType", "StartType", "AccountName")
     elif eid == 4104:
-        # ScriptBlockText is deliberately NOT kept: a single block can run to
-        # tens of kilobytes, details is carried in every timeline row, and the
-        # text is recoverable from the source record via source_locator. The
-        # fragment identifiers are kept because without them a consumer cannot
-        # tell a whole script from one third of one.
+        # ScriptBlockText is carried, but capped -- see SCRIPT_BLOCK_TEXT_CAP.
+        # It was originally dropped entirely on the grounds that a block can run
+        # to tens of kilobytes. Measuring the corpus showed the objection holds
+        # only for benign initialisation blocks: the script text a detection
+        # rule needs is around 112 bytes. Dropping it blocked R-ATOMIC-0003
+        # outright, because no Event field carried what the script said.
+        #
+        # The fragment identifiers are kept because without them a consumer
+        # cannot tell a whole script from one third of one.
         keep = ("ScriptBlockId", "MessageNumber", "MessageTotal", "Path")
     else:
         keep = ()
-    return {k: data[k] for k in keep if k in data and data[k] != ""}
+    details = {k: data[k] for k in keep if k in data and data[k] != ""}
+
+    if eid == 4104 and data.get("ScriptBlockText"):
+        text, full_len, truncated = _truncate_utf8(
+            data["ScriptBlockText"], SCRIPT_BLOCK_TEXT_CAP
+        )
+        details["script_block_text"] = text
+        # Always the full length, so truncation is measurable rather than
+        # inferred from whether the text happens to look cut off.
+        details["script_block_text_bytes"] = str(full_len)
+        if truncated:
+            details["script_block_truncated"] = "true"
+
+    return details
 
 
 # Channel filename -> source_artifact. The PowerShell operational channel is

@@ -47,6 +47,13 @@ here before emission, same rule.
 | `ServiceType` | str | `evtx.system` | Service type from 7045, e.g. `user mode service`. |
 | `StartType` | str | `evtx.system` | Start type from 7045, e.g. `auto start`, `demand start`. |
 | `AccountName` | str | `evtx.system` | Account the service runs as, from 7045. |
+| `ScriptBlockId` | str | `evtx.powershell` | GUID shared by every fragment of one script block from 4104. The join key for reassembly. |
+| `MessageNumber` | str(int) | `evtx.powershell` | 1-based index of this fragment within its script block. |
+| `MessageTotal` | str(int) | `evtx.powershell` | Total fragment count for this script block. With MessageNumber, tells a whole script from one third of one. |
+| `Path` | str | `evtx.powershell` | Source file of the script block when it came from a file. Absent for interactive or in-memory blocks, which is meaningful and is why it is omitted rather than emitted empty. |
+| `script_block_text` | str | `evtx.powershell` | Script text from 4104, **capped at 4096 UTF-8 bytes** (`SCRIPT_BLOCK_TEXT_CAP`). Truncated on a character boundary. Because it may be partial, a rule may read it with POSITIVE operators only -- `not_contains` against a capped field asserts absence the evidence does not support. See D-031. |
+| `script_block_text_bytes` | str(int) | `evtx.powershell` | Full byte length of the ORIGINAL script text, always the untruncated figure. Lets a consumer measure how much was not recorded instead of inferring it. |
+| `script_block_truncated` | str | `evtx.powershell` | Literal `true`, present only when the cap was hit. Absent means the text is complete. |
 
 ## Registry
 

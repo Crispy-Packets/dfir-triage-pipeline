@@ -1,0 +1,125 @@
+# Atomic rule 3 of 6. Compressed week, Day 2 (A-3).
+#
+# Was blocked: no Event field carried the script text, because the 4104 parser
+# dropped ScriptBlockText. Unblocked 2026-08-30 by option 1 of the three the
+# draft set out - a bounded text key with honest truncation metadata. See D-031
+# and docs/details-schema.md.
+
+schema_version: "1.2.0"
+id: R-ATOMIC-0003
+type: atomic
+title: PowerShell script block with an in-memory download or encoded command
+enabled: true
+
+description: >
+  Fires on an EID 4104 script block whose recorded text carries an in-memory
+  download primitive or an encoded command. Claims that the block was logged
+  with that content and names the record. Because the text field is capped at
+  4096 bytes, a negative result means "not found in the recorded portion" and
+  never "absent" - which is why no condition here uses a negative operator.
+
+severity: high
+weight: 65
+
+attack:
+  technique: T1059.001
+  name: Command and Scripting Interpreter - PowerShell
+
+select:
+  event_type: [script_block]
+  source_artifact: [evtx.powershell]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: script_block
+    - field: details.script_block_text
+      op: present
+  any:
+    # Encoded command with a substantial payload. Zero matches corpus-wide;
+    # kept because it is the canonical form of this indicator.
+    - field: details.script_block_text
+      op: matches
+      value: '(?i)\s-(enc|encodedcommand|e|ec)\s+[A-Za-z0-9+/=]{40,}'
+    # Network fetch primitives. This is the alternative that carries the
+    # detection on this corpus.
+    - field: details.script_block_text
+      op: matches
+      value: '(?i)(net\.)?webclient|downloadstring|downloadfile|invoke-webrequest|\biwr\b|start-bitstransfer'
+    - field: details.script_block_text
+      op: matches
+      value: '(?i)-w(indowstyle)?\s+hidden'
+
+expected:
+  clean_a: 3
+  clean_b: 3
+  s1_v2: 8
+  note: >
+    Measured 2026-08-30 across all three collections, with the conditions as
+    written above.
+
+    The eight s1_v2 hits include the five WebClient DownloadFile blocks that
+    fetch invoice_scan.exe - three from 192.168.50.2 and two from the earlier
+    192.168.50.5 host - timestamped between 21:53:19 and 22:16:21 on
+    2026-08-23. Those five are a true detection of the delivery step.
+
+    The three hits in each baseline are the Day 1 benign-activity generator
+    script, which uses Invoke-WebRequest to produce ordinary browsing noise, and
+    two Cursor shell-integration blocks. They are benign and they are identical
+    in form to the attack, which is the honest limit of this indicator.
+
+  note_on_excluded_patterns: >
+    Two alternatives from the draft were dropped after measurement, and the
+    reason matters more than the change.
+
+    frombase64string matched 123 blocks in each baseline against 67 in s1_v2 -
+    a base rate nearly twice as high in the CLEAN collections. The blocks are
+    Cursor's shell integration base64-encoding environment variables when it
+    dumps PowerShell state. Keeping it would have made the rule fire 126 times
+    on a clean host and inverted its discriminating power: on this corpus, the
+    presence of base64 decoding is mild evidence AGAINST compromise. A rule
+    whose strongest alternative points the wrong way is worse than no rule.
+
+    invoke-expression / iex matched 2 in each baseline and 4 in s1_v2 - too few
+    to carry signal and, at 2:4, not discriminating either. It is a real
+    indicator in general and would be worth restoring on a corpus where it is
+    not swamped.
+
+    Both remain reasonable in the abstract. They were removed because they were
+    measured on this evidence, not because the technique is unsound, and that
+    distinction should survive into Week 4's write-up.
+
+false_positive_notes: >
+  The download alternative cannot distinguish an attacker fetching a payload
+  from a script fetching anything else, and on this corpus the benign case is
+  the lab's own activity generator. The rule is an indicator, not a verdict.
+
+  The 3:3:8 spread is the most favourable of any atomic rule here, but the
+  margin rests on five records that all describe one action - the same download
+  retried across two hosts. Week 4 must not read eight findings as eight
+  independent pieces of evidence; correlation should collapse them by
+  ScriptBlockId and by target.
+
+notes: >
+  This rule detects the delivery step that R-ATOMIC-0001 cannot see. The 4688
+  process creation for invoice_scan.exe was destroyed by the actor's log clear
+  at 23:05:06 (D-030), but the PowerShell operational channel was NOT cleared,
+  so the download survives there. Together with R-ATOMIC-0002 on the clear
+  itself and R-ATOMIC-0006 on the Run-key persistence, this gives three
+  independent surviving witnesses to Scenario 1.
+
+  It also corrects a premise recorded while the rule was blocked: the draft
+  stated that Scenario 1's delivery was "HTTP through Edge, not PowerShell".
+  The Edge download is real and is what the browser parser records, but
+  PowerShell was also used, and the script blocks are in the evidence.
+
+  Reading details.script_block_text with a negative operator is rejected by the
+  schema, because the field may hold only the first 4096 bytes of a longer
+  script. Asserting not_contains against it would claim an absence the evidence
+  does not support.
+
+references:
+  - "docs/defect-log.md D-030, D-031"
+  - "docs/details-schema.md, PowerShell section"
+  - "docs/contract-decisions.md CD-012"
