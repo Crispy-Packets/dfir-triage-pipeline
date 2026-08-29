@@ -712,26 +712,40 @@ Nothing here is a change to a Person A file, so none of it is done unilaterally
 
 Two items opened by writing the atomic rules on Day 2:
 
-**The EID 4104 script text is not carried on any field.** The parser keeps
-`ScriptBlockId`, `MessageNumber`, `MessageTotal` and `Path`, and deliberately
-drops `ScriptBlockText` because one block can run to tens of kilobytes and
-`details` rides in every timeline row. The reasoning is sound and the
-consequence is that **rule 3 of the six the plan requires cannot be written**:
-`path` is null for a script block, `action` is a fixed string, and no declared
-key holds what the script said. The rule is parked at
-`rules/blocked/R-ATOMIC-0003-encoded-powershell.yml.draft` with three ways out,
-in preference order. The preferred one is a `script_block_text` key capped at a
-stated byte count, with `script_block_text_bytes` carrying the full length and
-`script_block_truncated` marking the cap. If that is taken, this schema adds
-one clause with it: **a declared-truncated key may be read by positive
-operators only.** `not_contains` against the first N bytes of a 40 KB script
-asserts something the evidence cannot support and would read as a clean
-negative — the precise failure section 3.4 exists to prevent.
+**The EID 4104 script text is carried under a cap.** *(Resolved 2026-08-30.)*
+It was originally dropped, which blocked rule 3 of the six outright: `path` is
+null for a script block, `action` is a fixed string, and no declared key held
+what the script said. Option 1 of the three in the draft was taken.
+`details.script_block_text` now carries the text capped at 4096 UTF-8 bytes,
+with `script_block_text_bytes` holding the full original length and
+`script_block_truncated` present when the cap was hit. The cap was chosen by
+measurement: the corpus is bimodal, median 339 bytes and p90 about 15 KB, and
+the blocks a rule needs to read are 112 bytes. See D-031.
 
-**`regipy` is not in `pyproject.toml`.** `parsers/registry.py` and
-`parsers/amcache.py` both import it. It is imported lazily inside a function,
-so nothing fails at import time — the failure arrives when a parser runs, which
-is the worse of the two failure modes. It should be pinned alongside `pyyaml`.
+The clause this schema promised to add with it is now **enforced by the
+validator**, not merely stated:
+
+> A declared-truncated key may be read by positive operators only.
+
+`validate_rules.py` carries the set of truncated keys in `TRUNCATED_KEYS` and
+rejects two things against them:
+
+1. Any of `absent`, `not_equals`, `not_in`, `not_contains`, wherever it appears.
+2. **Any operator at all inside a `none:` block** — including a positive one.
+   `none: contains` reads "does not contain" however positively the operator
+   itself is spelled, so restricting the operator set alone would have left the
+   hole open. This goes beyond the clause as first written, and the extension is
+   the point: the property being protected is the assertion, not the keyword.
+
+Both rejections are verified against the validator rather than assumed, and a
+legitimate positive `matches` on the same field is confirmed to still pass.
+
+**`regipy` was not in `pyproject.toml`.** *(Resolved 2026-08-30.)* Both
+`parsers/registry.py` and `parsers/amcache.py` import it lazily inside a
+function, so nothing failed at import time and the failure arrived when a
+parser ran -- the worse of the two failure modes. `regipy==6.3.0` and
+`pyyaml==6.0.3` are both now pinned in `pyproject.toml`; pyyaml had been absent
+from the working venv entirely, so the rule validator could not run there.
 
 One coordination item, not a blocker:
 

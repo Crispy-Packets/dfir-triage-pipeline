@@ -57,6 +57,17 @@ EVENT_ATTRS = frozenset(
     }
 )
 
+# Declared-truncated details keys. A value under one of these may hold only the
+# first N bytes of a longer original, so a rule can prove presence in what was
+# recorded but can never prove absence from the whole. See schema section 3.4
+# and D-031.
+TRUNCATED_KEYS = frozenset({"script_block_text"})
+
+# Operators that assert an absence. Rejected against a truncated key wherever
+# they appear, and so is any operator inside a `none:` block -- `none: contains`
+# is "does not contain" however positively the operator itself reads.
+NEGATIVE_OPS = frozenset({"absent", "not_equals", "not_in", "not_contains"})
+
 NO_VALUE_OPS = frozenset({"present", "absent"})
 LIST_OPS = frozenset({"in", "not_in"})
 CI_OPS = frozenset(
@@ -194,7 +205,13 @@ def load_declared_details_keys(report: Report) -> set[str] | None:
     return keys
 
 
-def check_condition(node: Any, where: str, report: Report, details_refs: set[str]) -> None:
+def check_condition(
+    node: Any,
+    where: str,
+    report: Report,
+    details_refs: set[str],
+    block: str = "all",
+) -> None:
     if not isinstance(node, dict):
         report.error(where, "a condition must be a mapping")
         return
@@ -215,6 +232,21 @@ def check_condition(node: Any, where: str, report: Report, details_refs: set[str
             report.error(where, f"{field!r}: exactly one level of nesting (schema section 3.2)")
         else:
             details_refs.add(key)
+            if key in TRUNCATED_KEYS:
+                if op in NEGATIVE_OPS:
+                    report.error(
+                        where,
+                        f"{field!r} is a declared-truncated key and {op!r} asserts an "
+                        "absence it cannot support: the value may hold only the first "
+                        "bytes of a longer original (schema section 3.4)",
+                    )
+                elif block == "none":
+                    report.error(
+                        where,
+                        f"{field!r} is a declared-truncated key and cannot appear in a "
+                        "none: block -- negating a match over a truncated value asserts "
+                        "an absence the evidence cannot support (schema section 3.4)",
+                    )
     elif field not in EVENT_ATTRS:
         report.error(
             where,
@@ -261,7 +293,7 @@ def check_conditions_block(block: Any, where: str, report: Report, details_refs:
             report.error(f"{where}.{group}", "must be a list")
             continue
         for index, item in enumerate(items):
-            check_condition(item, f"{where}.{group}[{index}]", report, details_refs)
+            check_condition(item, f"{where}.{group}[{index}]", report, details_refs, group)
 
 
 def check_select(node: Any, where: str, report: Report, vocabulary: set[str] | None) -> list[str]:
