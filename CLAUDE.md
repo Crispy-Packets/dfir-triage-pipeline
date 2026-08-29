@@ -2,14 +2,26 @@
 
 ## Gate
 
-    python -m ruff check .     ->  All checks passed!
-    python -m pytest -q        ->  39 passed, 2 skipped
+    python -m ruff check .            ->  All checks passed!
+    python -m pytest -q               ->  118 passed, 13 skipped
+    python rules\validate_rules.py    ->  schema 1.2.0  rules 5  errors 0  warnings 0
 
-The 2 skips are Prefetch integration tests, active only when
+The 13 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
 
     $env:DFIR_TEST_COLLECTION = "%USERPROFILE%\dfir-evidence\collection_clean_b"
-    python -m pytest tests\test_prefetch.py -q   ->  19 passed
+    python -m pytest -q   ->  123 passed, 8 skipped
+
+Counts differ per collection, because some assertions are about one collection
+only. All three must be green:
+
+    collection_clean_a  ->  123 passed,  8 skipped
+    collection_clean_b  ->  123 passed,  8 skipped
+    collection_s1_v2    ->  126 passed,  5 skipped
+
+Last measured 2026-08-30 on Python 3.11. When these numbers change, change them
+here in the same commit -- a gate line that no longer matches the run it
+describes is worse than no gate line.
 
 ## Layout
 

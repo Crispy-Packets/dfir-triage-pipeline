@@ -55,15 +55,28 @@ conditions:
       value: '(?i)^[a-z]:\\programdata\\[^\\]+\.exe$'
 
 expected:
-  clean_a: unmeasured
-  clean_b: unmeasured
-  s1_v2: unmeasured
+  clean_a: 42
+  clean_b: 48
+  s1_v2: 1
   note: >
-    Not yet measured; requires a pipeline run over each collection. Recorded as
-    unmeasured rather than guessed at 0. Both baselines are developer
-    workstations carrying Visual Studio, SQL Server, SSMS, VS Code and Cursor,
-    so a non-trivial base rate from installer and updater activity under
-    AppData is expected rather than surprising.
+    Measured 2026-08-30 across all three collections (A-4, and A-10 brought
+    forward). The baseline counts are almost entirely Defender signature
+    updates: mpam-*.exe, MpSigStub and MpRecoveryEngine unpacking under
+    C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Temp. That is a service
+    account writing to its own profile Temp, which the AppData/Temp patterns
+    match by design. The six-row gap between the baselines is additional update
+    activity in clean_b's longer window, not a behavioural difference.
+
+    The single s1_v2 hit is NOT the attack. It is DismHost.exe under
+    admin_local's Temp at 2026-08-23T23:12:52, part of the Guest Additions
+    install (D-026) that lands inside the collection window. So the one finding
+    this rule produces on the scenario collection is a build artefact.
+
+    The prediction in false_positive_notes below was right about the cause and
+    wrong about the count: the rule does not go silent on s1_v2, it fires once
+    on something unrelated. Both halves matter for Week 4 -- a scoring model
+    that reads "R-ATOMIC-0001 fired on s1_v2" as evidence of the attack would be
+    reading a Guest Additions installer. Recorded as D-030.
 
 notes: >
   Prefetch is deliberately excluded from select. For source_artifact=prefetch,

@@ -39,6 +39,9 @@ here before emission, same rule.
 | `NewProcessId` | str | `evtx.security` | New process id from 4688, as recorded (hex in the XML). |
 | `SubjectDomainName` | str | `evtx.security` | Domain of the subject account. |
 | `SubjectLogonId` | str | `evtx.security` | Logon id linking a process-creation record to its session. |
+| `TargetUserName` | str | `evtx.security` | Account **created** by a 4720, as recorded. Distinct from `SubjectUserName`, which is the account that performed the creation. Without this an account-creation base rate can be counted but its members cannot be told apart, which is what A-4 requires (D-029). |
+| `TargetDomainName` | str | `evtx.security` | Domain or machine scope of the created account from 4720. Local accounts carry the machine name. |
+| `SubjectUserName` | str | `evtx.security` | Account that performed the recorded action, from 4688, 4720 and 1102. For 4720 this is the creator, never the created account. |
 | `ServiceName` | str | `evtx.system` | Service name from 7045. |
 | `ImagePath` | str | `evtx.system` | Service binary path from 7045, as recorded, including any arguments and quoting. |
 | `ServiceType` | str | `evtx.system` | Service type from 7045, e.g. `user mode service`. |

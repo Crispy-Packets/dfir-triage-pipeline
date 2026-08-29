@@ -5,6 +5,12 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "evtx==0.12.1",
     "windowsprefetch==4.0.3",
+    # Imported lazily inside parsers/registry.py and parsers/amcache.py, so a
+    # missing regipy fails when a hive is parsed rather than at import time.
+    # That is precisely why it has to be declared here.
+    "regipy==6.3.0",
+    # Read by rules/validate_rules.py.
+    "pyyaml==6.0.3",
 ]
 
 [project.optional-dependencies]

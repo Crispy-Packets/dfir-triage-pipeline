@@ -57,18 +57,25 @@ conditions:
       value: '(?i)\.ps1([ "]|$)'
 
 expected:
-  clean_a: unmeasured
-  clean_b: unmeasured
-  s1_v2: unmeasured
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
   note: >
-    Not yet measured. What is measured: 55 service_install rows exist across
-    the three collections, and s1_v2 carries 23 EID 7045 records against 16 in
-    each baseline. The seven extra are VirtualBox Guest Additions, installed at
-    23:13 on 2026-08-23 after the log clear and before acquisition (D-026).
-    A rule that fires on those is measuring the build difference between the
-    scenario image and the baselines, not the attack, and none of the patterns
-    above should match a VBox service image. Confirm that when the counts are
-    taken.
+    Measured 2026-08-30 across all three collections (A-4/A-10). Zero on all
+    three, which is the result the rule was written hoping for.
+
+    This confirms the check the previous note asked for: the 55 service_install
+    rows in the corpus include the seven extra VirtualBox Guest Additions
+    services in s1_v2 (16 in each baseline, 23 in s1_v2 -- D-026), and none of
+    them match any pattern here. VBoxGuest, VBoxMouse, VBoxSF and VBoxWddm all
+    carry system32 driver images with no interpreter and no user-writable path.
+    The rule therefore does not measure the build difference between the
+    scenario image and the baselines, which was the specific risk flagged when
+    it was written.
+
+    Zero on s1_v2 is not a miss: Scenario 1 establishes persistence through an
+    HKCU Run value, not a service, so there is no service installation to
+    detect. R-ATOMIC-0006 is the rule that carries that detection.
 
 notes: >
   Every pattern matches against a COMMAND LINE, not a filesystem path. CD-021,

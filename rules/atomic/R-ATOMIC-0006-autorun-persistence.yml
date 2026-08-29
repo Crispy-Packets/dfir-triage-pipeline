@@ -52,17 +52,33 @@ conditions:
       value: '(?i)\s-(enc|encodedcommand|w\s+hidden|windowstyle\s+hidden)'
 
 expected:
-  clean_a: unmeasured
-  clean_b: unmeasured
-  s1_v2: unmeasured
+  clean_a: 8
+  clean_b: 8
+  s1_v2: 4
   note: >
-    Not yet measured. Known to be present in s1_v2: the SecurityUpdate value
-    pointing at C:\Users\janed\Downloads\invoice_scan.exe, which the first
-    pattern matches. Also present are VBoxTray and SecurityHealth, both
-    carrying 2026-08-23T23:13:49.701914Z; both point into Program Files or
-    System32 and should NOT match. Confirm both halves of that when the counts
-    are taken - a rule that also fires on the Guest Additions autoruns is
-    measuring the build difference (D-026), not the attack.
+    Measured 2026-08-30 across all three collections (A-4/A-10). Both halves of
+    the check requested when this rule was written now hold.
+
+    The attack IS detected: the SecurityUpdate value pointing at
+    C:\Users\janed\Downloads\invoice_scan.exe is among the four s1_v2 hits. On
+    this corpus that makes R-ATOMIC-0006 the only atomic rule that fires on the
+    actual Scenario 1 persistence, and one of only two -- with R-ATOMIC-0002 --
+    that fires on the attack at all.
+
+    The Guest Additions autoruns are NOT matched: VBoxTray and SecurityHealth
+    both carry 2026-08-23T23:13:49.701914Z and both point into Program Files or
+    System32, so neither matches any pattern here. The rule is not measuring the
+    build difference (D-026).
+
+    The base rate is 8 in each baseline and 3 of the 4 in s1_v2: per-user
+    OneDrive.exe /background under AppData\Local, and the cmd.exe /q /c del
+    cleanup values OneDrive writes during setup. These are benign and identical
+    in structure to the attack -- a user-writable path in an autorun -- which is
+    the honest limit of this indicator. It is a high base rate for a rule
+    weighted 60, and Week 4 should expect roughly 8 findings per clean host
+    before any tuning. Suppressing OneDrive by name would improve the numbers
+    and would be exactly the kind of corpus-fitting that does not survive
+    contact with a different estate, so it is not done here.
 
 notes: >
   This rule makes no time claim, which is the whole reason it is safe to write

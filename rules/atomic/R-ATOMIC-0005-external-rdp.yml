@@ -42,17 +42,24 @@ conditions:
       value: ["-", "::1", "127.0.0.1", "0.0.0.0"]
 
 expected:
-  clean_a: unmeasured
-  clean_b: unmeasured
+  clean_a: 0
+  clean_b: 0
   s1_v2: 0
   note: >
-    Zero on s1_v2, and that is measured rather than assumed: the whole
-    post-clear Security log holds 58 logon rows, entirely SYSTEM and service
-    accounts plus admin_local twice. There is no RDP anywhere in the scenario.
-    The rule is written because the plan requires the indicator to exist and
-    because a rule that never fires still has to be shown to be capable of
-    firing - which is what its positive unit test is for. Its zero on s1_v2 is
-    a negative test result, not a miss.
+    Measured 2026-08-30 across all three collections (A-4/A-10). Zero
+    everywhere. The s1_v2 zero was already measured when the rule was written;
+    the two baseline zeros are new and complete the picture.
+
+    There is no RDP anywhere in this corpus. Every lab session was on the
+    VirtualBox console, so no logon of type 10 was ever produced. The rule's
+    positive capability is therefore evidenced only by its unit test, which is
+    what that test exists for -- a rule that has never fired on real data and
+    has no test proving it can fire is indistinguishable from a broken one.
+
+    For Week 4 this is a clean negative control: three collections, no
+    detections, no false positives. It contributes no discriminating signal
+    between baseline and scenario and should carry no weight in any model
+    trained on this corpus.
 
 notes: >
   RFC1918 addresses are deliberately NOT excluded. The lab's attacker host sits

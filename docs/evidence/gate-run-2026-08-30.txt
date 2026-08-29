@@ -1,0 +1,83 @@
+Gate run recorded 2026-08-30. Every block below is verbatim command
+output, not a transcription. Produced for A-4/A-10 and for the
+dependency and gate-count corrections raised on week2/rules-schema.
+
+Repository: dfir-triage-pipeline
+Branch:     week2/parsers-registry-browser
+Commit:     f5a951c6b1f9ac772a6a8c0484ebc7a932df5dad
+Python:     Python 3.11.9
+Platform:   Windows 11, Python 3.11 venv at .venv
+
+=== python -m ruff check . ===
+All checks passed!
+
+=== python -m pytest -q  (no collection) ===
+..s.................ss.................s...........sssss................ [ 54%]
+............s...................ss....................s....              [100%]
+118 passed, 13 skipped in 0.37s
+
+=== python rules/validate_rules.py ===
+PASS  atomic\R-ATOMIC-0001-suspicious-execution-location.yml
+PASS  atomic\R-ATOMIC-0002-log-clearing.yml
+PASS  atomic\R-ATOMIC-0004-suspicious-services.yml
+PASS  atomic\R-ATOMIC-0005-external-rdp.yml
+PASS  atomic\R-ATOMIC-0006-autorun-persistence.yml
+
+schema 1.2.0   rules 5   errors 0   warnings 0
+
+=== python -m pytest -q  (DFIR_TEST_COLLECTION=collection_clean_a) ===
+.....................s.................s...........sssss................ [ 54%]
+......................................................s....              [100%]
+123 passed, 8 skipped in 7.41s
+
+=== python -m pytest -q  (DFIR_TEST_COLLECTION=collection_clean_b) ===
+.....................s.................s...........sssss................ [ 54%]
+......................................................s....              [100%]
+123 passed, 8 skipped in 7.40s
+
+=== python -m pytest -q  (DFIR_TEST_COLLECTION=collection_s1_v2) ===
+...................................................sssss................ [ 54%]
+...........................................................              [100%]
+126 passed, 5 skipped in 6.41s
+
+=== pip show: declared runtime dependencies ===
+Name: evtx
+Version: 0.12.1
+Name: windowsprefetch
+Version: 4.0.3
+Name: regipy
+Version: 6.3.0
+Name: PyYAML
+Version: 6.0.3
+
+=== measured rule base rates ===
+Produced by evaluating each rule's YAML conditions over the events the
+pipeline emits for each collection. These are the values now recorded in
+the expected: block of each rule.
+
+rule            clean_a  clean_b    s1_v2
+-------------   -------  -------  -------
+R-ATOMIC-0001        42       48        1
+R-ATOMIC-0002         0        0        1
+R-ATOMIC-0004         0        0        0
+R-ATOMIC-0005         0        0        0
+R-ATOMIC-0006         8        8        4
+
+R-ATOMIC-0003 is not listed: it is blocked pending the 4104 script-text
+decision and carries no measurable conditions yet.
+
+=== A-4: EID 4720 account-creation base rate ===
+collection_clean_a  4  WDAGUtilityAccount, Youssef, janed, admin_local
+collection_clean_b  5  the above plus testuser
+collection_s1_v2    0  Security log cleared 23:05:06; none created after
+
+WDAGUtilityAccount is a built-in Windows account created at install, not
+a lab account. Youssef, janed and admin_local were created 2026-08-12.
+testuser was staged 2026-08-24T18:44:37Z and clean_b was acquired at
+18:58:05Z, thirteen minutes later. Every account creation in this corpus
+is benign, which is what A-4 exists to establish.
+
+=== total events ingested ===
+collection_clean_a  13210 events, 0 files failed
+collection_clean_b  13556 events, 0 files failed
+collection_s1_v2     3429 events, 0 files failed

@@ -295,3 +295,85 @@ execution timing -- which is why the parser emits `timestamp_type="presence"`.
 
 Pinned by `tests/test_amcache.py::test_scenario_binary_is_absent_from_amcache`
 so the absence is not later mistaken for a parser regression.
+
+
+## D-029  EID 4720 recorded the creating account but not the created account
+
+**Status:** fixed 2026-08-30 in `parsers/evtx_windows.py`.
+
+The 4720 handler kept `SubjectUserName` and `SubjectDomainName` only. Those name
+the account that *performed* the creation. The account that was *created* lives
+in `TargetUserName`, which was discarded.
+
+Every account-creation event therefore named the operator and never the new
+account. The rows were present and correctly counted -- the defect did not lose
+events -- but they were indistinguishable from one another.
+
+### How it surfaced
+
+A-4 requires the account-creation base rate to be measured, so Week 4 cannot
+mistake a routine account creation for a detection. Counting was possible; the
+purpose was not. Separating four standing lab accounts from one deliberately
+staged `testuser` needs the names, and the pipeline could not supply them.
+
+### Fix
+
+`_details_for` now keeps `TargetUserName`, `TargetDomainName`,
+`SubjectUserName` and `SubjectDomainName` for EID 4720. All four are declared in
+`docs/details-schema.md` per CD-012; `SubjectUserName` had never been declared
+at all and now is. Pinned by `tests/test_account_created.py`, which asserts both
+that the created account is named and that creator and created stay distinct --
+conflating them inverts the finding.
+
+### Not a contract change
+
+`Event.user` still carries `SubjectUserName` for 4720, unchanged. CD-011 defines
+`user` as the account responsible for the action, and for an account creation
+that is the creator. The created account is a property of the event, which is
+what `details` is for.
+
+
+## D-030  R-ATOMIC-0001's only finding on the scenario collection is a build artefact
+
+**Status:** recorded 2026-08-30, not a defect in the rule or the pipeline. It is
+a measured property of the corpus that Week 4 scoring must account for.
+
+R-ATOMIC-0001 fires on EID 4688 process creations from user-writable locations.
+Measured base rates: **42 in clean_a, 48 in clean_b, 1 in s1_v2**.
+
+### The one scenario finding is not the attack
+
+The single s1_v2 hit is `DismHost.exe` under `admin_local`'s Temp at
+2026-08-23T23:12:52, part of the VirtualBox Guest Additions install that lands
+inside the collection window (D-026).
+
+`invoice_scan.exe` does not appear in this rule's output and **cannot**. Every
+EID 4688 row in `collection_s1_v2` is timestamped 23:05:06 or later, because the
+actor cleared the Security log at 23:05:06.614816Z. The execution was at
+22:57:15.832788Z -- eight minutes earlier, inside the destroyed span. The only
+surviving witness is Prefetch, which carries a bare executable name rather than
+a path (CD-010), so no path-shaped condition can match it.
+
+The rule's `false_positive_notes` predicted the cause of this correctly before
+any measurement. It predicted the wrong count: the expectation was silence on
+s1_v2, and the measurement is one finding on something unrelated.
+
+### Consequences
+
+1. **A finding count is not a detection count.** On this corpus R-ATOMIC-0001
+   produces 90 baseline findings and 1 scenario finding, and the scenario
+   finding is a false positive. A model reading "fired on s1_v2" as evidence of
+   compromise would be reading a Guest Additions installer.
+2. **The anti-forensics worked.** This is the clearest measured consequence of
+   the log clear in the corpus: an indicator that should have caught the
+   execution has had its evidence deleted. That is worth stating plainly in the
+   evaluation rather than presenting the rule as simply ineffective.
+3. **Only two atomic rules fire on the actual attack** -- R-ATOMIC-0002 on the
+   log clear itself, and R-ATOMIC-0006 on the Run-key persistence.
+
+### Not corrected
+
+The rule is kept as written. The indicator is sound in general and its failure
+here is a property of the evidence rather than a fault in the logic. Tuning it
+to fire on this corpus would be fitting the rule to one scenario.
+

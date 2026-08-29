@@ -103,7 +103,13 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     elif eid == 4688:
         keep = ("CommandLine", "ParentProcessName", "NewProcessId", "SubjectDomainName")
     elif eid == 4720:
-        keep = ("SubjectUserName", "SubjectDomainName")
+        # TargetUserName is the account that was CREATED; SubjectUserName is the
+        # account that created it. Keeping only the subject was a defect: it
+        # left every account-creation row naming the operator and never the new
+        # account, so a base rate could be counted but its members could not be
+        # told apart. Distinguishing four standing lab accounts from one staged
+        # testuser is exactly what A-4 needs. See D-029.
+        keep = ("TargetUserName", "TargetDomainName", "SubjectUserName", "SubjectDomainName")
     elif eid == 1102:
         keep = ("SubjectUserName", "SubjectDomainName", "SubjectLogonId")
     elif eid == 7045:
