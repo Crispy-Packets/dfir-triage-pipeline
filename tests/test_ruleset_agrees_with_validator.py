@@ -9,6 +9,7 @@ two ever disagree about the real rules in the repository, the gate fails.
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -104,3 +105,36 @@ def test_every_window_justification_cites_a_number():
     for rule in load_rules(RULES_ROOT, include_disabled=True):
         if rule.window is not None:
             assert any(ch.isdigit() for ch in rule.window.justification)
+
+
+def test_claude_md_gate_line_matches_this_run(request):
+    """CLAUDE.md's pytest figure must match the suite it describes.
+
+    That file carries its own instruction -- "when these numbers change, change
+    them here in the same commit" -- and the figure went stale three times in
+    two days anyway, each time because a commit that added tests set the number
+    from the previous measurement. An instruction a human has to remember is a
+    defect waiting for a busy afternoon.
+
+    So it is checked instead. `passed + skipped` must equal what this session
+    collected. Anyone adding a test now gets a failure naming the new number
+    rather than a document that quietly stops being true.
+
+    Skipped on a partial run, because the gate line describes the whole suite.
+    """
+    positional = [a for a in request.config.invocation_params.args
+                  if not a.startswith("-")]
+    if positional:
+        pytest.skip("partial run; the gate line describes the full suite")
+
+    text = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
+    match = re.search(r"->\s+(\d+)\s+passed,\s+(\d+)\s+skipped", text)
+    assert match, "CLAUDE.md has no 'N passed, M skipped' gate line to check"
+
+    stated = int(match.group(1)) + int(match.group(2))
+    collected = request.session.testscollected
+    assert stated == collected, (
+        f"CLAUDE.md's gate line totals {stated} but this run collected "
+        f"{collected}. Update the line in the same commit as the change that "
+        f"moved it -- that file says so itself."
+    )
