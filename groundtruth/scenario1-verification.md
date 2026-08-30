@@ -5,6 +5,19 @@ before any comparison was run: `MATCHED`, `DESTROYED`, `NOT-EVALUABLE`,
 `NOT-PARSED`, `MISSED`. `MISSED` is the only category that denotes a pipeline
 failure.
 
+> **Superseded for verdicts by `groundtruth/scenario1-verification-week3.md`
+> (2026-08-30).** This sheet remains the Week 1 record and is not edited. Two
+> things in it are stale and are corrected there rather than here:
+>
+> * Row 9 quotes `event_id` `8a5def6de6c37254`. That record is now
+>   `5573ac8d6a6363d2` — `timestamp_type` entered the `event_id` content hash
+>   when `CD-019` landed. The evidence did not change; the identifier did.
+> * Six rows carry `NOT-PARSED` because the parsers did not exist. Three now
+>   resolve to `MATCHED`.
+>
+> Read this sheet for what Week 1 could establish. Read the Week 3 sheet for
+> what the pipeline now produces.
+
 **Status: complete for Week 1.** The pipeline was run over all three
 collections on 2026-08-26 and every row below carries a final verdict. The
 `MISSED` count is **0**.

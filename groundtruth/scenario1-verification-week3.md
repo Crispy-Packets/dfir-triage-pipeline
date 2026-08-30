@@ -155,10 +155,28 @@ now the *independent check* on the machine one, which is a stronger position
 than either alone.
 
 **Changed — six `NOT-PARSED` ground-truth rows.** Three of the six resolved to
-`MATCHED`. Three did not, and the reasons are structural rather than
-provisional: `$MFT` and the marker file need a file-system parser that is not in
-the seven declared families, and UserAssist needs registry coverage beyond
-Run/RunOnce. Those three should be restated as scope rather than as backlog.
+`MATCHED`. Three did not, and **an earlier version of this section called all
+three "scope rather than backlog". That was wrong for two of them**, and reading
+`docs/week2-plan.md` against the delivered tree is what showed it.
+
+That plan's item 4 lists five parsers in dependency order: Amcache, **Shimcache**,
+Registry autoruns, Browser downloads, and **MFT (narrow mode)**. Three were
+delivered. Shimcache and MFT were not, and nothing marks them as dropped.
+
+So the honest split is:
+
+| row | artefact | why it is still `NOT-PARSED` |
+|---|---|---|
+| 3 | `$MFT` | **Planned and not delivered.** Week 2 plan item 4, "narrow mode", last in dependency order. Backlog, not scope |
+| 6 | marker file | Depends on row 3. Same status |
+| 7b | UserAssist | Genuinely out of scope: never in the parser list, and the registry parser reads Run/RunOnce only |
+
+Shimcache is in the same position as MFT — planned, not delivered, unmarked —
+though no ground-truth row depends on it. `CD-019` names it in the `presence`
+parenthetical, so a reader may reasonably expect it to exist.
+
+Calling undelivered work "scope" flatters the result. Two rows are backlog and
+should be reported as backlog.
 
 **Unchanged — the Guest Additions gap is permanent.** `s1_v2` carries the
 VirtualBox install and the baselines do not; the guest state that could have
