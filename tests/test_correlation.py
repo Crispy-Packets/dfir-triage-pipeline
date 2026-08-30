@@ -8,6 +8,8 @@ acceptance gate turns on.
 
 from __future__ import annotations
 
+import dataclasses
+import random
 from datetime import timedelta
 from pathlib import Path
 
@@ -25,7 +27,7 @@ from conftest import (
 )
 
 from dfir_triage_pipeline.core import engine
-from dfir_triage_pipeline.core.ruleset import load_rules
+from dfir_triage_pipeline.core.ruleset import Window, load_rules, parse_duration
 
 RULES_ROOT = Path(__file__).resolve().parent.parent / "rules"
 
@@ -221,6 +223,50 @@ class TestFabricatedJoin:
             assert all(v for _, v in f.entity_keys)
 
 
+class TestWindowSearch:
+    """A non-zero window.min must not cause a valid chain to be missed.
+
+    All four current rules use min: PT0S, where the earliest ordered candidate
+    is always the best one. The schema permits a non-zero minimum, and an
+    earlier engine took the first ordered candidate, tested the window once and
+    abandoned the anchor if it failed -- so a candidate that violated the
+    minimum hid a valid one behind it. A miss with no error is the worst
+    failure this engine can produce, which is why it is pinned here.
+    """
+
+    def _with_min(self, rule, minimum: str):
+        return dataclasses.replace(
+            rule,
+            window=Window("download", "execution", parse_duration(minimum),
+                          parse_duration("PT45M"), "probe: minimum enforced"),
+        )
+
+    def test_a_candidate_failing_the_minimum_does_not_hide_a_valid_one(self, rules):
+        tightened = self._with_min(rules["R-CORR-0001"], "PT10M")
+        events = [
+            download(),
+            execution(at=ARRIVAL + timedelta(minutes=2)),   # violates min
+            execution(at=ARRIVAL + timedelta(minutes=20)),  # valid
+        ]
+        findings = run_one(tightened, events)
+        assert len(findings) == 1
+        assert findings[0].window_observed_seconds == pytest.approx(1200.0)
+
+    def test_no_valid_candidate_still_produces_nothing(self, rules):
+        tightened = self._with_min(rules["R-CORR-0001"], "PT10M")
+        events = [download(), execution(at=ARRIVAL + timedelta(minutes=2))]
+        assert run_one(tightened, events) == []
+
+    def test_a_truncated_search_is_reported_rather_than_silent(self, rules, monkeypatch):
+        """If the search budget is ever reached the engine stops looking, which
+        is a possible miss. It has to say so."""
+        monkeypatch.setattr(engine, "SEARCH_BUDGET", 1)
+        events = [download(at=ARRIVAL - timedelta(days=d)) for d in range(4)]
+        events += [download(), execution()]
+        _, stats = engine.run([rules["R-CORR-0001"]], events)
+        assert "R-CORR-0001" in stats.search_truncated
+
+
 class TestDeterminism:
     """Schema section 9."""
 
@@ -230,6 +276,20 @@ class TestDeterminism:
         first, _ = engine.run(list(rules.values()), events)
         second, _ = engine.run(list(rules.values()), list(reversed(events)))
         assert [f.finding_id for f in first] == [f.finding_id for f in second]
+
+    def test_thirty_shuffles_produce_identical_output(self, rules):
+        """Reversing the input is a weak shuffle. Random orderings are the test
+        that actually exercises the sort's tie-breakers."""
+        events = [download(), execution(), runkey(), log_cleared(),
+                  service_install(user="admin_local", at=LOG_CLEAR - timedelta(minutes=3)),
+                  download(at=ARRIVAL - timedelta(days=2), total_bytes="360448")]
+        reference = [f.finding_id for f in engine.run(list(rules.values()), events)[0]]
+        rng = random.Random(20260830)
+        for _ in range(30):
+            shuffled = events[:]
+            rng.shuffle(shuffled)
+            produced, _ = engine.run(list(rules.values()), shuffled)
+            assert [f.finding_id for f in produced] == reference
 
     def test_findings_sort_by_time_then_rule(self, rules):
         events = [download(), execution(), runkey(), log_cleared()]

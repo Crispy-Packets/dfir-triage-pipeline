@@ -36,6 +36,13 @@ PRESENCE_ARTIFACTS = frozenset({"registry", "amcache"})
 
 _NEGATIVE_OPS = frozenset({"not_equals", "not_in", "not_contains"})
 
+#: Candidate examinations allowed per rule, per entity group. Generous: the real
+#: groups are single digits, because they are keyed on one executable name. If it
+#: is ever reached the search stops, which is a possible MISSED, so the rule is
+#: recorded in `search_truncated` and the run summary prints it. A truncated
+#: search that says nothing would be the same silent miss in a new costume.
+SEARCH_BUDGET = 100_000
+
 
 @dataclass
 class EngineStats:
@@ -46,12 +53,15 @@ class EngineStats:
     rules_evaluated: int = 0
     absent_field_skips: dict[str, int] = None  # type: ignore[assignment]
     findings_by_rule: dict[str, int] = None  # type: ignore[assignment]
+    search_truncated: set[str] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.absent_field_skips is None:
             self.absent_field_skips = {}
         if self.findings_by_rule is None:
             self.findings_by_rule = {}
+        if self.search_truncated is None:
+            self.search_truncated = set()
 
 
 # --------------------------------------------------------------------------- #
@@ -309,7 +319,7 @@ def evaluate_correlation(rule: Rule, events: Sequence[Any], stats: EngineStats) 
 
     findings: list[Finding] = []
     for key in sorted(shared):
-        combination = _first_valid_combination(rule, per_step, key, windowed)
+        combination = _first_valid_combination(rule, per_step, key, windowed, stats)
         if combination is None:
             continue
         matched = list(combination)
@@ -333,42 +343,60 @@ def _first_valid_combination(
     per_step: dict[str, dict[tuple[str, ...], list[Any]]],
     key: tuple[str, ...],
     windowed: Sequence[Step],
+    stats: EngineStats | None = None,
 ) -> list[tuple[Step, Any]] | None:
-    """Earliest combination of windowed steps satisfying order and window.
+    """Earliest combination of windowed steps satisfying order AND window.
 
-    Earliest rather than every combination, for two reasons: it is bounded, and
+    Earliest rather than every combination, for two reasons: it is bounded and
     it is deterministic. Reporting one finding per entity per rule is also the
-    honest shape -- five downloads of the same binary followed by one execution
-    is one chain observed once, not five chains.
+    honest shape -- five downloads of one binary followed by one execution is
+    one chain observed once, not five chains.
+
+    **This searches candidates rather than taking the first that satisfies
+    ordering.** An earlier version picked, for each later step, the first
+    candidate at or after the previous one, tested the window once, and gave up
+    on the anchor if it failed. With `window.min` greater than zero that misses
+    real chains: a candidate two minutes after the anchor fails a `PT10M`
+    minimum, and the version that gave up never reached the valid one twenty
+    minutes later. All four current rules use `min: PT0S`, where the earliest
+    ordered candidate is always the best one, so nothing in the corpus was
+    affected -- but the schema permits a non-zero minimum, and a miss with no
+    error is the worst failure this engine can produce. Found by probing the
+    engine after the week closed, not by a test that already existed.
     """
     if rule.window is None:
         raise ValueError(f"{rule.rule_id}: a correlation rule must carry a window")
     if not windowed:
         return []
-    first = windowed[0]
-    for anchor in per_step[first.name].get(key, []):
-        chain: list[tuple[Step, Any]] = [(first, anchor)]
-        previous = anchor
-        ok = True
-        for step in windowed[1:]:
-            picked = None
-            for candidate in per_step[step.name].get(key, []):
-                if rule.order == "strict" and candidate.timestamp < previous.timestamp:
-                    continue
-                picked = candidate
-                break
-            if picked is None:
-                if step.optional:
-                    continue
-                ok = False
-                break
-            chain.append((step, picked))
-            previous = picked
-        if not ok:
-            continue
-        if _window_holds(rule, chain):
-            return chain
-    return None
+
+    budget = [SEARCH_BUDGET]
+
+    def search(index: int, previous: Any, chain: list[tuple[Step, Any]]):
+        if index == len(windowed):
+            return list(chain) if _window_holds(rule, chain) else None
+        step = windowed[index]
+        for candidate in per_step[step.name].get(key, []):
+            if budget[0] <= 0:
+                if stats is not None:
+                    stats.search_truncated.add(rule.rule_id)
+                return None
+            budget[0] -= 1
+            if (
+                previous is not None
+                and rule.order == "strict"
+                and candidate.timestamp < previous.timestamp
+            ):
+                continue
+            chain.append((step, candidate))
+            found = search(index + 1, candidate, chain)
+            chain.pop()
+            if found is not None:
+                return found
+        if step.optional:
+            return search(index + 1, previous, chain)
+        return None
+
+    return search(0, None, [])
 
 
 def _window_holds(rule: Rule, chain: Sequence[tuple[Step, Any]]) -> bool:

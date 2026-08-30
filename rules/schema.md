@@ -1,11 +1,12 @@
 # Rule schema
 
-    schema_version: 1.4.0
+    schema_version: 1.4.1
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
     1.3.0:          2026-08-30, when the correlation engine was written
     1.4.0:          2026-08-30, after the first real run over all three collections
+    1.4.1:          2026-08-30, after probing the engine for misses
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -65,7 +66,12 @@ informing it, and both are written up here as clauses:
 One rule per file. Filename is `<id>-<slug>.yml`, lowercase slug, hyphens only.
 
 `rules/blocked/` holds rules that are fully specified but cannot load, because
-something they depend on does not exist yet. Their filenames end `.yml.draft`,
+something they depend on does not exist yet. **It is empty as of 2026-08-30** —
+`R-ATOMIC-0003` moved into `atomic/` once Person B capped the 4104 script text
+(D-031). The convention stands for the next one, and
+`tests/test_ruleset_agrees_with_validator.py` asserts it against a draft the
+test creates rather than against whatever the directory happens to hold: an
+empty directory made the original version of that test iterate over nothing. Their filenames end `.yml.draft`,
 which keeps them out of the validator's glob **by design, not by accident**: a
 blocked rule left in `atomic/` would fail every run, and one written against a
 field that does not exist would match nothing and report that as a clean
@@ -635,6 +641,22 @@ scenario's arrival at `2026-08-23T22:20:06.710763Z` and its execution at
 chosen because it looks tidy misses the only download-to-execution chain in the
 corpus.
 
+**How a combination is chosen.** For each candidate of the first windowed step,
+in timestamp order, the engine searches the later steps' candidates and returns
+the first combination that satisfies both the ordering and the window. It
+**searches** rather than taking the first candidate that satisfies ordering
+alone: with a `window.min` above zero, a candidate that violates the minimum
+would otherwise hide a valid one behind it, and the result is a miss with no
+error — the worst outcome this engine can produce. The current four rules all
+use `min: PT0S` with `order: strict`, where the earliest ordered candidate is
+always the best one, so no finding in this corpus is affected either way.
+
+The search is bounded per rule per entity group. Real groups are single digits,
+because they are keyed on one executable name. If the bound is ever reached the
+engine stops looking, which is a possible miss, so the rule is recorded and the
+run summary prints `SEARCH TRUNCATED`. A truncated search that said nothing
+would be the same silent miss in a different costume.
+
 `order: strict` requires each windowed step's timestamp to be greater than or
 equal to the previous one. `order: any` permits any ordering within the window.
 `presence` steps are outside the ordering either way.
@@ -884,6 +906,7 @@ a change to either one is raised before it is made.
 | Version | Date | Change |
 |---|---|---|
 | 1.0.0 | 2026-08-29 | First frozen version. Field addressing, join fields, missing-field behaviour, and the `timestamp_type` rule (A-1, A-2). |
+| 1.4.1 | 2026-08-30 | Documents how a windowed combination is chosen, after probing the engine found a real miss: it took the first candidate satisfying ordering, tested the window once, and abandoned the anchor if it failed — so with a `window.min` above zero a candidate violating the minimum hid a valid one behind it. No current rule is affected (all use `min: PT0S` with `order: strict`), and it is fixed and pinned regardless. Also records that a truncated search is reported rather than silent, and that `rules/blocked/` is now empty. |
 | 1.4.0 | 2026-08-30 | `expected` is required on **every** rule, not only atomic ones (section 8.1). The first run of the engine over all three collections showed every correlation rule carrying a clean-host base rate and none of them recording it — `R-CORR-0003` fires five times on a collection with no attack, at critical severity. The four rules most likely to be read as detections were the four with no measurement beside them. All four `expected` blocks are populated from that run. |
 | 1.3.0 | 2026-08-30 | Written alongside the correlation engine. **Corrects a bug in this document**: 4.2 said the image token is the longest leading prefix ending in an executable extension; it is the shortest, and an argument that is itself a path was being taken for the image. Adds step 5 to the same extraction, so a sentence cannot become an executable name. Moves the truncated-key clause into new section 3.5, where a rule author will find it, and records the `none:`-block extension Person B added in enforcing it. Absorbs D-032's sixth ImagePath form. Opens the aggregation gap in section 11. No change to any rule field, so 1.0.0, 1.1.0 and 1.2.0 files still load. |
 | 1.2.0 | 2026-08-29 | Written while the six atomic rules were being drafted. Adds the `rules/blocked/` convention and the `.yml.draft` exclusion (section 1), and two items to section 11: the EID 4104 script-text gap that blocks `R-ATOMIC-0003`, and `regipy` missing from `pyproject.toml`. No change to any rule field, so 1.0.0 and 1.1.0 files still load. |

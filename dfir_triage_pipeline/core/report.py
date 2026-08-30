@@ -35,6 +35,13 @@ def summary_lines(findings: Sequence[Finding], stats: EngineStats) -> list[str]:
         count = stats.findings_by_rule[rule_id]
         lines.append(f"  {rule_id}: {count}")
 
+    if stats.search_truncated:
+        # A truncated search may have skipped a valid chain. Saying so is the
+        # difference between a known gap and a silent miss.
+        lines.append("SEARCH TRUNCATED -- a valid chain may have been missed:")
+        for rule_id in sorted(stats.search_truncated):
+            lines.append(f"  {rule_id}")
+
     if stats.absent_field_skips:
         # A rule whose skip count equals the number of events it selected is
         # doing nothing at all, and this is the only place that becomes visible.

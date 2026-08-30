@@ -39,14 +39,28 @@ def test_the_engine_loads_every_file_the_checker_checked(validator):
     assert loaded == on_disk
 
 
-def test_drafts_are_excluded_by_extension_not_by_accident():
-    """rules/blocked/ holds rules that are specified but cannot load. If a
-    .yml.draft ever entered the glob it would fail every run, which is exactly
-    why the exclusion is spelled out in schema section 1."""
-    drafts = list(RULES_ROOT.rglob("*.yml.draft"))
-    loaded = {r.source_path for r in load_rules(RULES_ROOT, include_disabled=True)}
-    for draft in drafts:
-        assert draft.name not in loaded
+def test_drafts_are_excluded_by_extension_not_by_accident(tmp_path):
+    """rules/blocked/ holds rules that are specified but cannot load.
+
+    This asserts against a draft it creates rather than against whatever
+    happens to be in rules/blocked/. That directory is empty now that
+    R-ATOMIC-0003 moved into atomic/, so the original version of this test
+    iterated over nothing and proved nothing -- the same vacuous-loop failure
+    the A-9 mutation check caught elsewhere.
+    """
+    (tmp_path / "atomic").mkdir()
+    real = RULES_ROOT / "atomic" / "R-ATOMIC-0002-log-clearing.yml"
+    (tmp_path / "atomic" / real.name).write_text(real.read_text(encoding="utf-8"),
+                                                 encoding="utf-8")
+    (tmp_path / "blocked").mkdir()
+    (tmp_path / "blocked" / "R-TEST-9999-parked.yml.draft").write_text(
+        real.read_text(encoding="utf-8"), encoding="utf-8")
+
+    loaded = {r.source_path for r in load_rules(tmp_path, include_disabled=True)}
+    assert loaded == {real.name}, (
+        "a .yml.draft entered the loader's glob; rules/blocked/ would then fail "
+        "every run, which is what schema section 1 spells the exclusion out for"
+    )
 
 
 def test_every_correlation_rule_names_a_shared_entity():

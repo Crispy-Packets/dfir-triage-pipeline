@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     raise SystemExit(2) from None
 
 SCHEMA_MAJOR = "1"
-SCHEMA_VERSION = "1.4.0"
+SCHEMA_VERSION = "1.4.1"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_DOC = REPO_ROOT / "docs" / "contract-decisions.md"
