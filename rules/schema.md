@@ -1,10 +1,11 @@
 # Rule schema
 
-    schema_version: 1.3.0
+    schema_version: 1.4.0
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
     1.3.0:          2026-08-30, when the correlation engine was written
+    1.4.0:          2026-08-30, after the first real run over all three collections
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -129,7 +130,7 @@ omitted field is a load-time error, not an implied value.
 | `conditions` | mapping | section 3 |
 | `enabled` | boolean | a disabled rule is still loaded and still validated |
 
-Atomic rules additionally carry:
+Every rule additionally carries:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -728,6 +729,37 @@ Two rules where the field carries most of the weight:
 measured the value is the string `unmeasured`, which the validator accepts and
 Day 5 reports. It is never guessed and never silently `0`.
 
+### 8.1 Correlation rules carry it too — added in 1.4.0
+
+Until 1.4.0 `expected` was required on atomic rules only. That was a hole, and
+the first real run over all three collections found it:
+
+| rule | severity / weight | clean_a | clean_b | s1_v2 |
+|---|---|---|---|---|
+| `R-CORR-0001` download → execution | high / 75 | 3 | 4 | 3 |
+| `R-CORR-0002` failed logon → success | medium / 40 | 2 | 2 | 0 |
+| `R-CORR-0003` execution → Run key | **critical / 85** | **5** | **5** | 5 |
+| `R-CORR-0004` service → log clear | critical / 80 | 0 | 0 | 0 |
+
+`R-CORR-0003` fires **five times on a collection containing no attack**, at the
+highest severity and weight in the rule set — OneDrive, msedge,
+SecurityHealthSystray, OneDriveSetup and a `cmd.exe` RunOnce uninstaller. Its
+count is identical across all three collections: the scenario adds one true
+positive and removes one benign one, and the total does not move. On this corpus
+that rule is an inventory of autostart software with one real detection inside
+it.
+
+This is section 8's own argument, one layer up. The `expected` field exists
+because a rule firing on `EID 4720` in a clean baseline is the indicator's base
+rate and not a pipeline false positive, and the same is true of a chain. Leaving
+correlation rules out meant the four rules a reader is most likely to quote as
+detections were the four with nothing recorded beside them. A Week 4 figure
+counting three `R-CORR-0001` hits on `s1_v2` as three detections would be
+counting two software installers.
+
+`expected` is therefore required on every rule, and the validator enforces it on
+both kinds.
+
 ---
 
 ## 9. Determinism
@@ -852,6 +884,7 @@ a change to either one is raised before it is made.
 | Version | Date | Change |
 |---|---|---|
 | 1.0.0 | 2026-08-29 | First frozen version. Field addressing, join fields, missing-field behaviour, and the `timestamp_type` rule (A-1, A-2). |
+| 1.4.0 | 2026-08-30 | `expected` is required on **every** rule, not only atomic ones (section 8.1). The first run of the engine over all three collections showed every correlation rule carrying a clean-host base rate and none of them recording it — `R-CORR-0003` fires five times on a collection with no attack, at critical severity. The four rules most likely to be read as detections were the four with no measurement beside them. All four `expected` blocks are populated from that run. |
 | 1.3.0 | 2026-08-30 | Written alongside the correlation engine. **Corrects a bug in this document**: 4.2 said the image token is the longest leading prefix ending in an executable extension; it is the shortest, and an argument that is itself a path was being taken for the image. Adds step 5 to the same extraction, so a sentence cannot become an executable name. Moves the truncated-key clause into new section 3.5, where a rule author will find it, and records the `none:`-block extension Person B added in enforcing it. Absorbs D-032's sixth ImagePath form. Opens the aggregation gap in section 11. No change to any rule field, so 1.0.0, 1.1.0 and 1.2.0 files still load. |
 | 1.2.0 | 2026-08-29 | Written while the six atomic rules were being drafted. Adds the `rules/blocked/` convention and the `.yml.draft` exclusion (section 1), and two items to section 11: the EID 4104 script-text gap that blocks `R-ATOMIC-0003`, and `regipy` missing from `pyproject.toml`. No change to any rule field, so 1.0.0 and 1.1.0 files still load. |
 | 1.1.0 | 2026-08-29 | Reconciled against `week2/parsers-registry-browser` @ `0994251`. Six PENDING-B dependencies resolved and the shim table replaced by a verified static map including `evtx.powershell`. Added 4.7 (a filename does not identify a download, D-027), 5.4 (the measured presence-before-download case, D-027) and 6.2 (`optional`, and Amcache never required, D-028). Aligned 4.4 with `CD-022`, which distinguishes a recorded `-` from an absent field. Minor version, not major: every 1.0.0 rule file still loads. |

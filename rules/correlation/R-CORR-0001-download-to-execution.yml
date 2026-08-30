@@ -89,4 +89,22 @@ window:
     anything past about PT45M starts admitting the arrival-to-EID-1102 span of
     44m 59.971593s as though it were a delivery-to-execution gap.
 
+expected:
+  clean_a: 3
+  clean_b: 4
+  s1_v2: 3
+  note: >
+    Measured 2026-08-30 from the first real run of the engine over all three
+    collections. Every clean-host hit is a benign installer downloaded and then
+    run: ssms-setup-enu.exe (417.191408s), CursorUserSetup-x64-3.15.6.exe
+    (629.979194s) and npp.8.9.6.2.installer.x64.exe (51.145571s) in clean_a,
+    plus 7z2602-x64.exe (129.115515s) in clean_b.
+
+    That is the point of recording it. Download-then-execute is what software
+    installation looks like, so this rule's discriminating power comes entirely
+    from WHAT was downloaded, not from the shape of the chain. On s1_v2 it fires
+    three times and only one of those is the scenario: the same ssms-setup and
+    npp installers appear there too. A Week 4 figure that counts three
+    correlation hits on s1_v2 as three detections is counting two installers.
+
 order: strict

@@ -72,4 +72,22 @@ window:
     burst means operationally - an interactive retry sequence is minutes, not
     hours - and it is the figure to revisit first if this chain ever fires.
 
+expected:
+  clean_a: 2
+  clean_b: 2
+  s1_v2: 0
+  note: >
+    Measured 2026-08-30. Both baseline hits are the same two events in each
+    collection: youssef with 54.065624s between failure and success, and
+    admin_local with **10.028 milliseconds** between them.
+
+    The second one is worth reading twice. A failure and a success ten
+    milliseconds apart for one account is a single interactive logon sequence --
+    a credential submitted, rejected on one authentication package and accepted
+    on the next -- not a brute-force attempt. This rule cannot tell those apart,
+    because the schema has no aggregation operator and the rule is therefore one
+    failure followed by one success rather than a burst (schema section 11). The
+    zero on s1_v2 is honest: that collection holds exactly one EID 4625 in the
+    whole post-clear log, so there is nothing here to detect.
+
 order: strict

@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     raise SystemExit(2) from None
 
 SCHEMA_MAJOR = "1"
-SCHEMA_VERSION = "1.3.0"
+SCHEMA_VERSION = "1.4.0"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_DOC = REPO_ROOT / "docs" / "contract-decisions.md"
@@ -523,8 +523,13 @@ def validate_file(path: Path, report: Report, details_refs: set[str],
     check_select(data.get("select"), f"{where}.select", report, vocabulary)
     check_conditions_block(data.get("conditions"), f"{where}.conditions", report, details_refs)
 
+    # Required on BOTH kinds since 1.4.0. It was atomic-only until the first
+    # real run showed R-CORR-0003 firing five times on a collection with no
+    # attack in it -- the four rules most likely to be quoted as detections were
+    # the four with no recorded base rate.
+    check_expected(data.get("expected"), f"{where}.expected", report)
+
     if rule_type == "atomic":
-        check_expected(data.get("expected"), f"{where}.expected", report)
         for key in ("steps", "join", "window", "order"):
             if key in data:
                 report.error(where, f"{key} is a correlation field and has no meaning here")

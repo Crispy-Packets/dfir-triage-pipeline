@@ -3,25 +3,26 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  171 passed, 20 skipped
-    python rules\validate_rules.py    ->  schema 1.3.0  rules 10  errors 0  warnings 0
+    python -m pytest -q               ->  246 passed, 16 skipped
+    python rules\validate_rules.py    ->  schema 1.4.0  rules 10  errors 0  warnings 0
 
-The 20 skips are collection-backed integration tests, active only when
+The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
 
     $env:DFIR_TEST_COLLECTION = "%USERPROFILE%\dfir-evidence\collection_clean_b"
-    python -m pytest -q   ->  181 passed, 10 skipped
+    python -m pytest -q
 
 Counts differ per collection, because some assertions are about one collection
-only. All three must be green:
+only. All three must be green. The per-collection figures were last measured
+before the Week 3 rule and engine tests landed and are therefore NOT quoted
+here: 181/10, 181/10 and 186/5 were correct at 78c9426 and are now certainly
+low by the number of tests added since. They are left blank rather than
+carried forward wrong -- an unmeasured figure is honest, a stale one is not.
 
-    collection_clean_a  ->  181 passed, 10 skipped
-    collection_clean_b  ->  181 passed, 10 skipped
-    collection_s1_v2    ->  186 passed,  5 skipped
-
-Last measured 2026-08-30 on Python 3.11. When these numbers change, change them
-here in the same commit -- a gate line that no longer matches the run it
-describes is worse than no gate line.
+The three-line gate above was measured 2026-08-30 on Python 3.11, at 56b21d6
+plus the schema 1.4.0 rule changes. When these numbers change, change them here
+in the same commit -- a gate line that no longer matches the run it describes is
+worse than no gate line.
 
 ## Layout
 

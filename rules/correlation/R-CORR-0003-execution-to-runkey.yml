@@ -88,4 +88,32 @@ window:
     by every sibling value under it, so even without D-027 it could not carry an
     interval. details.value_count_in_key says how many siblings share it.
 
+expected:
+  clean_a: 5
+  clean_b: 5
+  s1_v2: 5
+  note: >
+    Measured 2026-08-30, and this is the number that most needs stating next to
+    the rule rather than discovered in Week 4.
+
+    **This rule fires five times on a collection containing no attack**, at
+    critical severity and weight 85. In clean_a: onedrive.exe, msedge.exe,
+    onedrivesetup.exe, securityhealthsystray.exe and a cmd.exe RunOnce
+    uninstaller. clean_b is the same five. On s1_v2 it also fires five times --
+    onedrive.exe, msedge.exe, securityhealthsystray.exe, vboxtray.exe, and
+    invoice_scan.exe.
+
+    So on this corpus the rule is an inventory of autostart software with one
+    real detection inside it, not a detector. The identical count across all
+    three collections is the clearest statement of that available: the scenario
+    adds one true positive and removes one benign one, and the total does not
+    move. Its weight of 85 is a claim about how much a single finding is worth,
+    and this base rate says that claim needs qualifying by what the entity is,
+    not by the fact that the chain matched.
+
+    Nothing here is a fault in the rule. Software that runs and is also
+    registered to run at logon is exactly what the rule describes, and most such
+    software is legitimate. The failure would be reporting the s1_v2 five as
+    five detections.
+
 order: any

@@ -78,6 +78,26 @@ window:
     caught by reading docs/evidence/day5-run-2026-08-30.md against the primary
     record rather than against the planning document that carried the error.
 
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  note: >
+    Measured 2026-08-30. Zero on all three, which is the correct result and not
+    a failure to detect: no service creation in this corpus is followed by a log
+    clear by the same principal, and the one EID 1102 that exists was performed
+    by admin_local with no preceding service installation attributable to that
+    account.
+
+    Two mechanisms produce the zero and both are deliberate. The 23 EID 7045
+    records in s1_v2 are overwhelmingly LocalSystem and NT service accounts,
+    which section 4.4 excludes as non-principals, so the VirtualBox Guest
+    Additions services (D-026) never enter the join. And the join is on
+    entity.user because a log-clearing record carries no path at all.
+
+    Like R-ATOMIC-0005, this rule exists because the plan requires the
+    indicator, and its zero is a negative test result rather than a miss.
+
 order: strict
 
 # Why entity.user and not entity.exe_name: a log-clearing record carries no path

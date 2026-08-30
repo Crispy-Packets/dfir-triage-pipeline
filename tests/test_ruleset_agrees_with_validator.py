@@ -69,6 +69,21 @@ def test_every_presence_step_is_excluded_from_the_window():
                 )
 
 
+def test_every_rule_records_its_measured_base_rate():
+    """Schema 8.1, added in 1.4.0.
+
+    `expected` was required on atomic rules only until the first run over all
+    three collections showed R-CORR-0003 firing five times on a collection with
+    no attack in it. The four rules most likely to be read as detections were
+    the four with no measurement recorded beside them.
+    """
+    for rule in load_rules(RULES_ROOT, include_disabled=True):
+        names = {name for name, _ in rule.expected}
+        assert names == {"clean_a", "clean_b", "s1_v2"}, (
+            f"{rule.rule_id} does not record a base rate for every collection"
+        )
+
+
 def test_every_window_justification_cites_a_number():
     """A round figure chosen because it looks tidy misses the only chain in the
     corpus, so the justification has to carry a measurement."""
