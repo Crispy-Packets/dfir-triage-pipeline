@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  246 passed, 16 skipped
+    python -m pytest -q               ->  247 passed, 16 skipped
     python rules\validate_rules.py    ->  schema 1.4.0  rules 10  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -19,8 +19,7 @@ here: 181/10, 181/10 and 186/5 were correct at 78c9426 and are now certainly
 low by the number of tests added since. They are left blank rather than
 carried forward wrong -- an unmeasured figure is honest, a stale one is not.
 
-The three-line gate above was measured 2026-08-30 on Python 3.11, at 56b21d6
-plus the schema 1.4.0 rule changes. When these numbers change, change them here
+The three-line gate above was measured 2026-08-30 on Python 3.11, at 0ede799. When these numbers change, change them here
 in the same commit -- a gate line that no longer matches the run it describes is
 worse than no gate line.
 
