@@ -1,0 +1,92 @@
+# Correlation chain 1 of 4. Compressed week, Day 3 (A-5, A-6).
+
+schema_version: "1.3.0"
+id: R-CORR-0001
+type: correlation
+title: A downloaded file was executed
+enabled: true
+
+description: >
+  Joins a browser download to an execution of the same executable name. Claims
+  that a file with that name arrived through the browser and that a file with
+  that name later ran, and reports the interval between the two records.
+  Claims nothing about the two being byte-identical - nothing in the evidence
+  establishes that, and the finding names both records so a reader can check.
+
+severity: high
+weight: 75
+
+attack:
+  technique: T1204.002
+  name: User Execution - Malicious File
+
+select:
+  event_type: [file_download]
+  source_artifact: [browser]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_download
+
+steps:
+  - name: download
+    select:
+      event_type: [file_download]
+      source_artifact: [browser]
+    conditions:
+      all:
+        - field: details.target_path
+          op: present
+        - field: details.url
+          op: present
+        - field: details.bytes
+          op: present
+    in_window: true
+    optional: false
+    ambiguity_ack: >
+      D-027. This step matches ANY download of the name, deliberately, because a
+      general rule cannot know which size or host is the interesting one.
+      Selection is done by the window and by strict ordering instead: the nine
+      earlier invoice_scan.exe downloads in collection_s1_v2 sit two and three
+      days before the execution and fall outside a 45-minute window, while the
+      real one at 4,608 bytes from 192.168.50.2:8000 sits 37 minutes before it.
+      details.url and details.bytes are required to be present so the finding
+      names which download it matched rather than leaving a reader to guess.
+
+  - name: execution
+    select:
+      event_type: [process_exec]
+      source_artifact: [prefetch, evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: process_exec
+    in_window: true
+    optional: false
+
+join:
+  on: [entity.exe_name]
+
+window:
+  from: download
+  to: execution
+  min: PT0S
+  max: PT45M
+  justification: >
+    Measured, not chosen. The one download-to-execution interval this corpus
+    contains is 2026-08-23T22:20:06.710763Z to 2026-08-23T22:57:15.832787Z, which
+    is 37m 09.122024s from the raw FILETIME. What the ENGINE sees is one
+    microsecond more: windowsprefetch returns 22:57:15.832788Z and the FILETIME
+    134319994358327870 converts to .832787Z, a known disagreement recorded as
+    D-013. Both figures are quoted because the boundary tests sit at one
+    microsecond, so which one is meant is not a detail.
+
+    PT45M is that figure plus about 470 seconds of headroom, and the headroom is
+    stated rather than hidden: a tidy PT30M misses the only chain there is, and
+    anything past about PT45M starts admitting the arrival-to-EID-1102 span of
+    44m 59.971593s as though it were a delivery-to-execution gap.
+
+order: strict

@@ -4,7 +4,7 @@
 
     python -m ruff check .            ->  All checks passed!
     python -m pytest -q               ->  171 passed, 20 skipped
-    python rules\validate_rules.py    ->  schema 1.2.0  rules 6  errors 0  warnings 0
+    python rules\validate_rules.py    ->  schema 1.3.0  rules 10  errors 0  warnings 0
 
 The 20 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:

@@ -1,0 +1,89 @@
+# Correlation chain 4 of 4. Compressed week, Day 3 (A-5).
+
+schema_version: "1.3.0"
+id: R-CORR-0004
+type: correlation
+title: A service was installed and the security log was then cleared
+enabled: true
+
+description: >
+  Joins a service installation to a subsequent security-log clearing performed
+  by the same principal. Claims that one account did both, in that order, within
+  the window, and names both records. Claims no causal link between them.
+
+severity: critical
+weight: 80
+
+attack:
+  technique: T1070.001
+  name: Indicator Removal - Clear Windows Event Logs
+
+select:
+  event_type: [service_install]
+  source_artifact: [evtx.system]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: service_install
+
+steps:
+  - name: service
+    select:
+      event_type: [service_install]
+      source_artifact: [evtx.system]
+    conditions:
+      all:
+        - field: details.ServiceName
+          op: present
+    in_window: true
+    optional: false
+
+  - name: clear
+    select:
+      event_type: [log_cleared]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: log_cleared
+    in_window: true
+    optional: false
+
+join:
+  on: [entity.user]
+
+window:
+  from: service
+  to: clear
+  min: PT0S
+  max: PT30M
+  justification: >
+    The corpus contains no service-creation-to-log-clear pair, so this interval
+    is derived from the nearest measured analogue rather than from the chain
+    itself: the only action-to-clear interval on record is execution at
+    2026-08-23T22:57:15.832787Z to the EID 1102 at 2026-08-23T23:05:06.682356Z,
+    which is 7m 50.849569s. PT30M is that figure with substantial headroom,
+    stated as such. It is an assumption resting on one measurement, not a
+    measurement, and it is labelled that way so Week 4 does not cite it as one.
+
+    An earlier draft of this clause put the clear at 23:05:12.794670Z and the
+    interval at 7m 56.961883s. That timestamp is the OPERATOR LOG's entry, which
+    groundtruth/scenario1-verification.md records as 6.112314 s late; the EID
+    1102 in the collected evidence is EventRecordID 28,201 at 23:05:06.682356Z.
+    Quoting an operator-log time in an evidence column is precisely the
+    conflation this project's verification method exists to catch, and it was
+    caught by reading docs/evidence/day5-run-2026-08-30.md against the primary
+    record rather than against the planning document that carried the error.
+
+order: strict
+
+# Why entity.user and not entity.exe_name: a log-clearing record carries no path
+# at all, so the two steps share no executable and a join on exe_name could never
+# match. entity.user is the only key both records can supply. That has a useful
+# side effect - the 23 EID 7045 records in s1_v2 are overwhelmingly LocalSystem
+# and NT service accounts, which schema section 4.4 excludes as non-principals,
+# so the VirtualBox Guest Additions services (D-026) drop out of this rule before
+# it evaluates anything rather than being filtered afterwards.

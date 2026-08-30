@@ -1,0 +1,75 @@
+# Correlation chain 2 of 4. Compressed week, Day 3 (A-5).
+
+schema_version: "1.3.0"
+id: R-CORR-0002
+type: correlation
+title: A failed logon was followed by a success for the same account
+enabled: true
+
+description: >
+  Joins an EID 4625 failure to a subsequent EID 4624 success for the same
+  principal within a short window. Claims that the same account failed and then
+  succeeded, and reports the interval. Claims nothing about the two attempts
+  coming from the same source - the rule does not compare IpAddress, because a
+  legitimate retry from a second device would then be missed and an attacker
+  behind one address would be indistinguishable from a user who mistyped.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1110
+  name: Brute Force
+
+select:
+  event_type: [logon_failed]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: logon_failed
+
+steps:
+  - name: failure
+    select:
+      event_type: [logon_failed]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: logon_failed
+    in_window: true
+    optional: false
+
+  - name: success
+    select:
+      event_type: [logon]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: logon
+    in_window: true
+    optional: false
+
+join:
+  on: [entity.user]
+
+window:
+  from: failure
+  to: success
+  min: PT0S
+  max: PT10M
+  justification: >
+    Not derivable from this corpus: collection_s1_v2 contains exactly one EID
+    4625 in the whole post-clear log, so no failure-to-success interval has ever
+    been measured here. PT10M is therefore declared as an assumption rather than
+    a measurement, which is the honest label. It is bounded by what a logon
+    burst means operationally - an interactive retry sequence is minutes, not
+    hours - and it is the figure to revisit first if this chain ever fires.
+
+order: strict
