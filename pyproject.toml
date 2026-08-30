@@ -11,6 +11,8 @@ dependencies = [
     "regipy==6.3.0",
     # Read by rules/validate_rules.py.
     "pyyaml==6.0.3",
+    # Isolation Forest for the anomaly layer. Pulls in numpy and scipy.
+    "scikit-learn==1.5.2",
 ]
 
 [project.optional-dependencies]
