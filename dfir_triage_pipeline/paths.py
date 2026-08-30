@@ -43,6 +43,12 @@ _ENV_VAR = re.compile(r"%[A-Za-z_][A-Za-z0-9_()]*%")
 # \Device\HarddiskVolume2\... -- a kernel path with no drive letter.
 _DEVICE_PATH = re.compile(r"(?i)^\\device\\harddiskvolume\d+\\")
 
+# A path naming only a root: a drive letter with optional separators, or
+# separators alone. Matched explicitly because trailing-character stripping
+# cannot express it -- "C:\\".rstrip("\\\\/") is "C:", and stripping the
+# colon then leaves "C", which is truthy and would pass.
+_IS_ROOT_ONLY = re.compile(r"(?i)^(?:[a-z]:)?[\\\\/]*$")
+
 
 def looks_like_command_line(value: str) -> bool:
     """True when the value carries arguments as well as a path.
@@ -124,6 +130,15 @@ def derive(value: str | None) -> dict[str, str]:
     if not text or looks_like_command_line(text):
         # A command line gets nothing at all. Its trailing token is an argument,
         # not a filename, so even a basename would be wrong (CD-021, D-032).
+        return {}
+
+    # A value naming only a root -- "C:\\", "\\\\", "\\" -- is a directory, not a file.
+    # Every consumer of these fields is asking about a binary, so a root
+    # entering the pipeline as a canonical path with no join key would be a
+    # silent oddity rather than a useful value. Not present in this corpus
+    # (checked: zero occurrences); a Startup folder entry or a directory
+    # ImagePath would produce one.
+    if _IS_ROOT_ONLY.match(text):
         return {}
 
     out: dict[str, str] = {}

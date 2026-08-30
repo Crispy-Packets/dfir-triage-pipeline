@@ -121,6 +121,35 @@ class TestDerive:
         assert derive("") == {}
         assert derive("   ") == {}
 
+    @pytest.mark.parametrize("root", ["C:\\", "C:", "\\", "\\\\", "/", "c:/"])
+    def test_root_only_paths_yield_nothing(self, root):
+        """A root names a directory, not a file, and every consumer of these
+        fields is asking about a binary. Without this a drive root would enter
+        the pipeline as a canonical path carrying no join key.
+
+        Found by probing inputs the corpus does not contain -- zero occurrences
+        in all three collections -- but a Startup folder entry or a directory
+        ImagePath would produce one, and the failure would be silent."""
+        assert derive(root) == {}
+
+    def test_unc_paths_are_handled(self):
+        """No drive letter, but a real resolvable location. Not in this
+        corpus; a domain-joined host would produce them constantly.
+        """
+        unc = r"\\fileserver\share\tool.exe"
+        out = derive(unc)
+        assert out["path_basename"] == "tool.exe"
+        assert out["path_canonical"] == unc.lower()
+
+    def test_unicode_paths_survive_canonicalisation(self):
+        """Amcache lowercases with OS rules and Python with its own. They
+        need not agree on every script, but neither may raise nor corrupt.
+        """
+        name = "Str\u00f6m.exe"
+        out = derive(f"C:\\Users\\\u00dcn\u00efcode\\{name}")
+        assert out["path_basename"] == name
+        assert out["path_basename_canonical"] == name.lower()
+
 
 COLLECTION = os.environ.get("DFIR_TEST_COLLECTION")
 
@@ -135,10 +164,18 @@ class TestAgainstRealEvidence:
         """CD-010 is the contract B-9 must not break. The derived fields are
         additions; if any parser had overwritten `path` with its canonical form
         this would catch it."""
+        checked = 0
         for e in self._events():
             if e.path and "path_canonical" in e.details:
                 if e.path != e.path.lower():
                     assert e.details["path_canonical"] != e.path
+                    checked += 1
+        # Without this the test passes when the parsers emit nothing, which is
+        # how D-035 hid a broken registry behind a green suite.
+        assert checked > 100, (
+            f"only {checked} mixed-case paths examined; the parsers are not "
+            "producing what this test claims to check"
+        )
 
     def test_derived_fields_are_present_on_almost_every_path(self):
         """Coverage should be near-total. If it drops sharply, either a parser
@@ -154,10 +191,18 @@ class TestAgainstRealEvidence:
     def test_no_canonical_field_for_any_service_install(self):
         """CD-021: these carry command lines, not paths. Emitting a canonical
         form for them would join unrelated records."""
+        checked = 0
         for e in self._events():
             if e.event_type == "service_install" and e.path:
                 if looks_like_command_line(e.path):
                     assert "path_canonical" not in e.details
+                    checked += 1
+        # Every collection carries exactly ten command-line service rows
+        # (CD-021, D-032). A drop to zero means the parser stopped, not that
+        # the contract started holding.
+        assert checked == 10, (
+            f"expected 10 command-line service_install rows, examined {checked}"
+        )
 
 
 @pytest.mark.skipif(not COLLECTION, reason="DFIR_TEST_COLLECTION not set")

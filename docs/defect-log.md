@@ -567,3 +567,94 @@ that reported success by default. Nothing crashed, nothing was skipped, and the
 count of passing tests went **up** while the assertions were doing nothing. A
 green suite is evidence only if the tests ran against what they claim to.
 
+
+## D-036  Loop-only assertions could pass on empty input
+
+**Status:** fixed 2026-08-30 in `tests/test_paths.py`.
+
+Found by a deliberate audit for the D-035 pattern rather than by a failure. A
+static scan of all 16 test files for functions whose every assertion sits inside
+a `for` loop, with no guard that the loop body runs, returned five candidates.
+
+Three were safe: they iterate module-level constants, which cannot be empty.
+Two iterate parsed evidence:
+
+| test | rows examined today |
+|---|---|
+| `test_original_path_is_never_modified` | 10,438 in `clean_a` |
+| `test_no_canonical_field_for_any_service_install` | 10 in every collection |
+
+Both do real work. Neither would have failed if the parsers stopped emitting --
+the assertions would simply never execute, and the suite would go green. That is
+precisely how D-035 stayed hidden.
+
+**Fix:** both now count what they examined and assert a floor. The service test
+asserts exactly 10, the figure CD-021 and D-032 fix; a drop to zero means the
+parser stopped, not that the contract started holding.
+
+Not a defect that ever produced a wrong result. Recorded because the audit is
+the point: the same shape has now caused one real failure (D-035) and been found
+twice, so it is worth checking for deliberately.
+
+
+## D-037  Root-only paths produced a canonical form with no join key
+
+**Status:** fixed 2026-08-30 in `paths.py`.
+
+`derive("C:\\")` returned `{"path_canonical": "c:\\"}` and no basename. A root
+names a directory, not a file, and every consumer of these fields is asking
+about a binary -- so a drive root would have entered the pipeline as a canonical
+path carrying no join key.
+
+Found by probing inputs the corpus does not contain. Zero occurrences across all
+three collections, so the gate could never have caught it, but a Startup folder
+entry or a service with a directory `ImagePath` produces one and the failure
+would be silent.
+
+**The first fix was wrong**, which is worth recording. It tried:
+
+```python
+if not text.rstrip("\\/").rstrip(":"):
+```
+
+`"C:\\".rstrip("\\/")` is `"C:"`, and stripping the colon leaves `"C"`, which is
+truthy. Trailing-character stripping cannot express "is this only a root". The
+working check matches the shape explicitly, with the reason recorded beside it
+so the same wrong simplification is not reintroduced.
+
+Also probed and correct without change: UNC paths, paths with trailing
+whitespace, unicode path components, extensionless files, and command lines
+using forward slashes. Those are now tests.
+
+
+## D-038  Isolation Forest cannot honour contamination on tied data
+
+**Status:** recorded 2026-08-30, not a defect. A property worth knowing before
+it is mistaken for one.
+
+An audit check asserted that the training-set outlier rate should land near the
+configured contamination of 5%. On a synthetic fixture of 100 rows drawing from
+9 distinct feature values it came out at **1.0%**, which reads as a
+misconfiguration.
+
+It is not. Isolation Forest scores by how few splits isolate a point, and
+identical points cannot be separated from one another, so with heavy ties the
+model cannot produce a 5% tail however it is configured.
+
+On real evidence the rate tracks the setting closely, per family:
+
+| family | n | training outlier rate |
+|---|---|---|
+| `amcache` | 830 | 5.06% |
+| `evtx.powershell` | 997 | 3.71% |
+| `evtx.security` | 10,439 | 5.00% |
+| `prefetch` | 1,248 | 5.05% |
+
+`evtx.powershell` sits low for the same reason in milder form: its rows carry no
+run count and no path, so many are identical in feature space.
+
+The consequence for interpretation is that **the outlier rate is a floor, not a
+guarantee**, and a family whose rows are largely identical will report fewer
+outliers than configured. Not something to tune away -- the alternative would be
+flagging arbitrary members of a tied group.
+
