@@ -1,0 +1,119 @@
+# Correlation chain 3 of 4. Compressed week, Day 3 (A-5).
+#
+# This is the rule the whole timestamp_type decision was made for. Read the
+# window justification before changing anything here.
+
+schema_version: "1.3.0"
+id: R-CORR-0003
+type: correlation
+title: An executed binary is also registered to run at logon
+enabled: true
+
+description: >
+  Joins an execution to a Run or RunOnce value naming the same executable.
+  Claims that a binary which ran is also registered for autostart, and names
+  both records. **Reports no interval between them, deliberately** - the
+  registry step carries no time of its own that can be ordered against the
+  execution. See the window justification.
+
+severity: critical
+weight: 85
+
+attack:
+  technique: T1547.001
+  name: Boot or Logon Autostart Execution - Registry Run Keys / Startup Folder
+
+select:
+  event_type: [persistence_autorun]
+  source_artifact: [registry]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: persistence_autorun
+
+steps:
+  - name: execution
+    select:
+      event_type: [process_exec]
+      source_artifact: [prefetch, evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: process_exec
+    in_window: true
+    optional: false
+
+  - name: persistence
+    select:
+      event_type: [persistence_autorun]
+      source_artifact: [registry]
+    conditions:
+      all:
+        - field: details.value_name
+          op: present
+        - field: details.key_last_write
+          op: present
+    in_window: false
+    optional: false
+
+join:
+  on: [entity.exe_name]
+
+window:
+  from: execution
+  to: execution
+  min: PT0S
+  max: PT1S
+  justification: >
+    Degenerate on purpose, and this is the important clause in the file. The
+    window spans the execution step alone, because the persistence step is
+    excluded from it - in_window is false and the finding reports no interval.
+
+    D-027 is the measurement that forces this. The SecurityUpdate autorun in
+    collection_s1_v2 carries a key last-write of 2026-08-21T01:34:07.976260Z
+    while the download it points at is 2026-08-23T22:20:06.710763Z. The
+    persistence is therefore 2 days 20h 46m OLDER than the file it launches,
+    because the value was written during an earlier attempt at the scenario and
+    the baseline restore before the recorded run did not clear it. The artifact
+    is genuine persistence pointing at the genuine payload; only its timestamp
+    belongs to a different attempt.
+
+    Any window over [execution, persistence] therefore does one of two wrong
+    things: it finds nothing, or - if widened past three days to "fix" that - it
+    reports persistence preceding its own delivery and calls it a chain. A Run
+    key's timestamp is the containing KEY's last-write time in any case, shared
+    by every sibling value under it, so even without D-027 it could not carry an
+    interval. details.value_count_in_key says how many siblings share it.
+
+expected:
+  clean_a: 5
+  clean_b: 5
+  s1_v2: 5
+  note: >
+    Measured 2026-08-30, and this is the number that most needs stating next to
+    the rule rather than discovered in Week 4.
+
+    **This rule fires five times on a collection containing no attack**, at
+    critical severity and weight 85. In clean_a: onedrive.exe, msedge.exe,
+    onedrivesetup.exe, securityhealthsystray.exe and a cmd.exe RunOnce
+    uninstaller. clean_b is the same five. On s1_v2 it also fires five times --
+    onedrive.exe, msedge.exe, securityhealthsystray.exe, vboxtray.exe, and
+    invoice_scan.exe.
+
+    So on this corpus the rule is an inventory of autostart software with one
+    real detection inside it, not a detector. The identical count across all
+    three collections is the clearest statement of that available: the scenario
+    adds one true positive and removes one benign one, and the total does not
+    move. Its weight of 85 is a claim about how much a single finding is worth,
+    and this base rate says that claim needs qualifying by what the entity is,
+    not by the fact that the chain matched.
+
+    Nothing here is a fault in the rule. Software that runs and is also
+    registered to run at logon is exactly what the rule describes, and most such
+    software is legitimate. The failure would be reporting the s1_v2 five as
+    five detections.
+
+order: any

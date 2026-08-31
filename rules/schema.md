@@ -1,9 +1,12 @@
 # Rule schema
 
-    schema_version: 1.2.0
+    schema_version: 1.4.1
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
+    1.3.0:          2026-08-30, when the correlation engine was written
+    1.4.0:          2026-08-30, after the first real run over all three collections
+    1.4.1:          2026-08-30, after probing the engine for misses
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -34,6 +37,14 @@ resolved all six: `CD-019`, `CD-020`, `CD-021` and `CD-022` exist,
 and column 2 of the CSV, and all five parsers are landed and registered. Only
 `pyyaml` is still outstanding (section 11).
 
+**What changed in 1.3.0.** Writing the engine found three things the document
+had wrong or missing, and one of them was a bug in this document rather than in
+the code: section 4.2 said the image token is the **longest** leading prefix
+ending in an executable extension. It is the **shortest**. Section 4.2 now says
+so and a test pins it. Section 3.5 is new and holds the truncated-key clause,
+which had been living in section 11 where a rule author would never look for it.
+Section 4.2 also absorbs D-032's sixth ImagePath form.
+
 Two entries in `docs/defect-log.md` change this schema rather than merely
 informing it, and both are written up here as clauses:
 
@@ -55,7 +66,12 @@ informing it, and both are written up here as clauses:
 One rule per file. Filename is `<id>-<slug>.yml`, lowercase slug, hyphens only.
 
 `rules/blocked/` holds rules that are fully specified but cannot load, because
-something they depend on does not exist yet. Their filenames end `.yml.draft`,
+something they depend on does not exist yet. **It is empty as of 2026-08-30** —
+`R-ATOMIC-0003` moved into `atomic/` once Person B capped the 4104 script text
+(D-031). The convention stands for the next one, and
+`tests/test_ruleset_agrees_with_validator.py` asserts it against a draft the
+test creates rather than against whatever the directory happens to hold: an
+empty directory made the original version of that test iterate over nothing. Their filenames end `.yml.draft`,
 which keeps them out of the validator's glob **by design, not by accident**: a
 blocked rule left in `atomic/` would fail every run, and one written against a
 field that does not exist would match nothing and report that as a clean
@@ -120,7 +136,7 @@ omitted field is a load-time error, not an implied value.
 | `conditions` | mapping | section 3 |
 | `enabled` | boolean | a disabled rule is still loaded and still validated |
 
-Atomic rules additionally carry:
+Every rule additionally carries:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -254,6 +270,35 @@ to be false; a condition on an absent field is already false, so it satisfies
 `none`. That is deliberate and it is the only place where absence contributes to
 a match — and it does so visibly, because the rule author wrote `none`.
 
+### 3.5 Declared-truncated keys
+
+A `details` key may be declared as holding only the first N bytes of a longer
+original. `script_block_text` is the first: capped at 4096 UTF-8 bytes, with
+`script_block_text_bytes` carrying the full original length and
+`script_block_truncated` present when the cap was hit (D-031).
+
+**A declared-truncated key may be read by positive operators only.**
+
+A rule can prove that what was recorded contains something. It can never prove
+that the whole original did not, because the part that was cut off is not in
+evidence. `not_contains` against the first 4 KB of a 40 KB script asserts an
+absence the evidence cannot support, and it would read as a clean negative.
+
+The validator enforces this in two ways, and the second is the one that
+matters:
+
+1. `absent`, `not_equals`, `not_in` and `not_contains` are rejected against a
+   truncated key wherever they appear.
+2. **Any operator at all is rejected inside a `none:` block**, including a
+   positive one. `none: [{op: contains}]` reads "does not contain" however
+   positively the operator itself is spelled. Restricting the operator set
+   alone would have left the hole open.
+
+The second rule is wider than the clause this schema first wrote, and the
+widening is the point: what is being protected is the assertion, not the
+keyword. Credit where due — the clause was specified here and the gap in it was
+found by Person B while implementing it.
+
 ---
 
 ## 4. Join fields
@@ -292,13 +337,31 @@ so the derivation is per family and it is allowed to fail.
 Extraction, applied to whichever token the table names:
 
 1. If the string begins with `"`, the image token is the text up to the next `"`.
-2. Otherwise, if the string contains whitespace, the image token is the longest
-   leading prefix that ends, at a token boundary, in `.exe`, `.com`, `.sys`,
-   `.dll`, `.bat`, `.cmd`, `.ps1` or `.scr`, matched case-insensitively.
-   If there is no such prefix the key is **absent** — it is not guessed.
+2. Otherwise, if the string contains whitespace, the image token is the
+   **shortest** leading prefix that ends, at a token boundary, in `.exe`,
+   `.com`, `.sys`, `.dll`, `.bat`, `.cmd`, `.ps1`, `.scr`, `.msi`, `.vbs` or
+   `.js`, matched case-insensitively. If there is no such prefix the key is
+   **absent** — it is not guessed.
 3. Take the text after the last `\` or `/`.
 4. Case-fold.
-5. If the result is empty, the key is **absent**.
+5. If the result contains whitespace and does not itself end in one of those
+   extensions, the key is **absent**: a sentence is not a file name, and two
+   unrelated events carrying the same prose would otherwise join on it.
+6. If the result is empty, the key is **absent**.
+
+**Shortest, not longest — corrected in 1.3.0, and the difference is not
+academic.** Given
+
+    C:\Program Files\App\run.exe -config C:\other\thing.exe
+
+the longest such prefix runs to `thing.exe`, which is an argument. The shortest
+is `run.exe`, which is the image. Versions 1.0.0 to 1.2.0 of this document said
+longest and were wrong. Pinned by
+`tests/test_entity.py::test_shortest_leading_prefix_not_longest`.
+
+Step 5 was added for the same reason and found the same way: by a test, not by
+reading. A registry autorun value is free text, so `run this thing please` was
+becoming an `entity.exe_name` of `run this thing please`.
 
 An absent entity key never joins. It does not join to another absent key, and it
 does not join to the empty string. `CONTRACT-RULES` section 3 again: absent is
@@ -312,11 +375,30 @@ UNC device path (7), environment-variable form such as `%SystemRoot%` (14), and
 bare drive path (1). Emitting no key is a `NOT-PARSED` outcome that Day 5 can
 count. Emitting a wrong key is a fabricated join that Day 5 cannot see.
 
+**D-032 splits the fourth of those into two, and the split matters here.** Of
+the fourteen "environment-variable form" rows, only four carry an explicit
+variable (`%SystemRoot%\system32\svchost.exe -k print`). The other ten are
+root-relative driver images with no prefix at all —
+`system32\DRIVERS\RsFx0800.sys` and similar — which the Service Control Manager
+resolves against `%SystemRoot%` implicitly. A canonicaliser written from the
+clause as it originally stood would look for a variable, find none in those ten,
+and either pass them through as already-canonical or invent a root; both are
+wrong under `CD-010`. The extraction above is unaffected, because it takes a
+basename and never roots anything — but it is unaffected by accident rather than
+by design, and saying so is the difference between a fact and a coincidence.
+Both forms are pinned in `tests/test_entity.py`.
+
 `CD-021` assigns the implementation of this extraction to Week 3's
-`core/entity.py`, which sits under `dfir_triage_pipeline/**` and is therefore
-Person B's file. This section is the specification it implements; the two must
-not drift. Flagged as a coordination item in section 11 rather than resolved
-unilaterally.
+`core/entity.py`. That module now exists, written by Person A, and it sits under
+`dfir_triage_pipeline/` because `CD-021` put it there — the one place the
+ownership table's boundary is crossed, by the contract's own instruction rather
+than by drift. This section is the specification it implements.
+
+It is a thin module on purpose. `paths.derive` (B-9) already emits
+`path_basename_canonical` for every value it can canonicalise, and
+`core/entity.py` prefers that declared key over anything it computes itself. It
+adds only the case `paths.py` deliberately declines: a command line, where the
+executable has to be extracted before a basename means anything.
 
 ### 4.3 Joining on `path` is forbidden
 
@@ -559,6 +641,22 @@ scenario's arrival at `2026-08-23T22:20:06.710763Z` and its execution at
 chosen because it looks tidy misses the only download-to-execution chain in the
 corpus.
 
+**How a combination is chosen.** For each candidate of the first windowed step,
+in timestamp order, the engine searches the later steps' candidates and returns
+the first combination that satisfies both the ordering and the window. It
+**searches** rather than taking the first candidate that satisfies ordering
+alone: with a `window.min` above zero, a candidate that violates the minimum
+would otherwise hide a valid one behind it, and the result is a miss with no
+error — the worst outcome this engine can produce. The current four rules all
+use `min: PT0S` with `order: strict`, where the earliest ordered candidate is
+always the best one, so no finding in this corpus is affected either way.
+
+The search is bounded per rule per entity group. Real groups are single digits,
+because they are keyed on one executable name. If the bound is ever reached the
+engine stops looking, which is a possible miss, so the rule is recorded and the
+run summary prints `SEARCH TRUNCATED`. A truncated search that said nothing
+would be the same silent miss in a different costume.
+
 `order: strict` requires each windowed step's timestamp to be greater than or
 equal to the previous one. `order: any` permits any ordering within the window.
 `presence` steps are outside the ordering either way.
@@ -652,6 +750,37 @@ Two rules where the field carries most of the weight:
 `expected` values are recorded as measured; where a count has not yet been
 measured the value is the string `unmeasured`, which the validator accepts and
 Day 5 reports. It is never guessed and never silently `0`.
+
+### 8.1 Correlation rules carry it too — added in 1.4.0
+
+Until 1.4.0 `expected` was required on atomic rules only. That was a hole, and
+the first real run over all three collections found it:
+
+| rule | severity / weight | clean_a | clean_b | s1_v2 |
+|---|---|---|---|---|
+| `R-CORR-0001` download → execution | high / 75 | 3 | 4 | 3 |
+| `R-CORR-0002` failed logon → success | medium / 40 | 2 | 2 | 0 |
+| `R-CORR-0003` execution → Run key | **critical / 85** | **5** | **5** | 5 |
+| `R-CORR-0004` service → log clear | critical / 80 | 0 | 0 | 0 |
+
+`R-CORR-0003` fires **five times on a collection containing no attack**, at the
+highest severity and weight in the rule set — OneDrive, msedge,
+SecurityHealthSystray, OneDriveSetup and a `cmd.exe` RunOnce uninstaller. Its
+count is identical across all three collections: the scenario adds one true
+positive and removes one benign one, and the total does not move. On this corpus
+that rule is an inventory of autostart software with one real detection inside
+it.
+
+This is section 8's own argument, one layer up. The `expected` field exists
+because a rule firing on `EID 4720` in a clean baseline is the indicator's base
+rate and not a pipeline false positive, and the same is true of a chain. Leaving
+correlation rules out meant the four rules a reader is most likely to quote as
+detections were the four with nothing recorded beside them. A Week 4 figure
+counting three `R-CORR-0001` hits on `s1_v2` as three detections would be
+counting two software installers.
+
+`expected` is therefore required on every rule, and the validator enforces it on
+both kinds.
 
 ---
 
@@ -747,6 +876,21 @@ parser ran -- the worse of the two failure modes. `regipy==6.3.0` and
 `pyyaml==6.0.3` are both now pinned in `pyproject.toml`; pyyaml had been absent
 from the working venv entirely, so the rule validator could not run there.
 
+**The schema has no aggregation operator, and one required chain needs it.**
+*(Opened 2026-08-30 by writing R-CORR-0002.)* The plan's second chain is
+"failed-logon **burst** -> success". A burst is a count over a window — N
+failures for one principal inside T — and the condition grammar in section 3
+evaluates one event at a time. There is no `count`, no `within`, no grouping
+aggregate.
+
+`R-CORR-0002` is therefore written as *one* failure followed by a success,
+which is a weaker claim than the plan asked for, and its description says so
+rather than implying otherwise. It is not faked with a threshold the engine
+cannot enforce. Closing this properly means either a `count` operator in 2.0.0
+or a documented limitation in Week 4; the second is honest and the first is
+better, and the choice is not urgent because `collection_s1_v2` contains exactly
+one EID 4625 in the whole post-clear log, so no burst exists to detect.
+
 One coordination item, not a blocker:
 
 `CD-021` assigns executable extraction to Week 3's `core/entity.py`, which sits
@@ -762,5 +906,8 @@ a change to either one is raised before it is made.
 | Version | Date | Change |
 |---|---|---|
 | 1.0.0 | 2026-08-29 | First frozen version. Field addressing, join fields, missing-field behaviour, and the `timestamp_type` rule (A-1, A-2). |
+| 1.4.1 | 2026-08-30 | Documents how a windowed combination is chosen, after probing the engine found a real miss: it took the first candidate satisfying ordering, tested the window once, and abandoned the anchor if it failed — so with a `window.min` above zero a candidate violating the minimum hid a valid one behind it. No current rule is affected (all use `min: PT0S` with `order: strict`), and it is fixed and pinned regardless. Also records that a truncated search is reported rather than silent, and that `rules/blocked/` is now empty. |
+| 1.4.0 | 2026-08-30 | `expected` is required on **every** rule, not only atomic ones (section 8.1). The first run of the engine over all three collections showed every correlation rule carrying a clean-host base rate and none of them recording it — `R-CORR-0003` fires five times on a collection with no attack, at critical severity. The four rules most likely to be read as detections were the four with no measurement beside them. All four `expected` blocks are populated from that run. |
+| 1.3.0 | 2026-08-30 | Written alongside the correlation engine. **Corrects a bug in this document**: 4.2 said the image token is the longest leading prefix ending in an executable extension; it is the shortest, and an argument that is itself a path was being taken for the image. Adds step 5 to the same extraction, so a sentence cannot become an executable name. Moves the truncated-key clause into new section 3.5, where a rule author will find it, and records the `none:`-block extension Person B added in enforcing it. Absorbs D-032's sixth ImagePath form. Opens the aggregation gap in section 11. No change to any rule field, so 1.0.0, 1.1.0 and 1.2.0 files still load. |
 | 1.2.0 | 2026-08-29 | Written while the six atomic rules were being drafted. Adds the `rules/blocked/` convention and the `.yml.draft` exclusion (section 1), and two items to section 11: the EID 4104 script-text gap that blocks `R-ATOMIC-0003`, and `regipy` missing from `pyproject.toml`. No change to any rule field, so 1.0.0 and 1.1.0 files still load. |
 | 1.1.0 | 2026-08-29 | Reconciled against `week2/parsers-registry-browser` @ `0994251`. Six PENDING-B dependencies resolved and the shim table replaced by a verified static map including `evtx.powershell`. Added 4.7 (a filename does not identify a download, D-027), 5.4 (the measured presence-before-download case, D-027) and 6.2 (`optional`, and Amcache never required, D-028). Aligned 4.4 with `CD-022`, which distinguishes a recorded `-` from an absent field. Minor version, not major: every 1.0.0 rule file still loads. |

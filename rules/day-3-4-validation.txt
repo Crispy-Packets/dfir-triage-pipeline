@@ -1,0 +1,187 @@
+Days 3 and 4 validation record
+Person A, compressed week (Weeks 2+3). Steps A-5 through A-9.
+rules/schema.md 1.3.0. Built on 78c9426.
+
+READ THIS FIRST.
+The output below was produced in the assistant's Linux sandbox against a copy of
+this tree. It is a record of what the checks do, not evidence of a local run.
+The local run is FYP\run-day34-gate.ps1, transcript FYP\day34-gate-log.txt. The
+repo's standing rule is that a document may not assert a repository state, only
+cite the command that establishes it.
+
+================================================================
+1. Rule validator
+================================================================
+PASS  atomic/R-ATOMIC-0001-suspicious-execution-location.yml
+PASS  atomic/R-ATOMIC-0002-log-clearing.yml
+PASS  atomic/R-ATOMIC-0003-encoded-powershell.yml
+PASS  atomic/R-ATOMIC-0004-suspicious-services.yml
+PASS  atomic/R-ATOMIC-0005-external-rdp.yml
+PASS  atomic/R-ATOMIC-0006-autorun-persistence.yml
+PASS  correlation/R-CORR-0001-download-to-execution.yml
+PASS  correlation/R-CORR-0002-failed-logon-to-success.yml
+PASS  correlation/R-CORR-0003-execution-to-runkey.yml
+PASS  correlation/R-CORR-0004-service-to-log-clear.yml
+
+schema 1.3.0   rules 10   errors 0   warnings 0
+exit status: 0
+
+================================================================
+2. ruff, at the pinned 0.6.9 with the repo's own settings
+================================================================
+ruff 0.6.9
+All checks passed!
+exit status: 0
+
+================================================================
+3. Tests
+================================================================
+........................................................................ [ 98%]
+.                                                                        [100%]
+73 passed in 0.48s
+
+  positive          test_correlation.py::TestPositive
+  negative          test_correlation.py::TestNegative
+  boundary-window   test_correlation.py::TestBoundaryWindow
+  ordering          test_correlation.py::TestOrdering
+  duplicate         test_correlation.py::TestDuplicate
+  missing-field     test_engine_conditions.py::TestMissingField
+  A-9 fabricated    test_correlation.py::TestFabricatedJoin
+
+================================================================
+4. Mutation check -- do the tests catch what they claim
+================================================================
+Three deliberate defects were introduced into engine.py, the suite run against
+each, and the engine restored.
+
+  1  an absent entity key falls back to the empty string
+     caught by TestFabricatedJoin::test_events_with_no_derivable_principal
+               _do_not_group_together, and TestNegative
+  2  negative operators return true on an absent field
+     caught by TestMissingField, all three parametrisations
+  3  a presence-typed member is allowed to carry an interval
+     caught by TestPresenceNeverEntersAWindow::test_runkey_chain_reports
+               _no_interval
+
+Mutation 1 was originally caught only by a negative test and NOT by the A-9
+tests that claim to cover it: one of those iterated over findings that were
+never produced, so its loop body never ran. It now asserts an explicit empty
+list, and a second test drives the absent-key path directly. The suite passed
+before and after; only the mutation showed one of them was vacuous.
+
+================================================================
+5. Scenario 1, reconstructed by the engine rather than by hand
+================================================================
+Synthetic events carrying the real timestamps, so this exercises the engine
+rather than the parsers.
+
+Rules      : 10 evaluated over 5 events
+Findings   : 6
+  R-ATOMIC-0001: 0
+  R-ATOMIC-0002: 1
+  R-ATOMIC-0003: 0
+  R-ATOMIC-0004: 1
+  R-ATOMIC-0005: 0
+  R-ATOMIC-0006: 1
+  R-CORR-0001: 1
+  R-CORR-0002: 0
+  R-CORR-0003: 1
+  R-CORR-0004: 1
+
+[high] R-ATOMIC-0006 Autorun value pointing at a user-writable path or an interpreter (weight 60, T1547.001)
+  time claim : none
+  entity     : entity.exe_name=invoice_scan.exe, entity.host=windows10, entity.user=janed
+  evidence   : persistence_autorun: C/Users/janed/NTUSER.DAT :: hive_path=\Software\Microsoft\Windows\CurrentVersion\Run\SecurityUpdate @ 2026-08-21T01:34:07.976260+00:00 (presence)
+  note       : this event records existence, not when it happened
+
+[critical] R-CORR-0003 An executed binary is also registered to run at logon (weight 85, T1547.001)
+  time claim : observed_occurrence
+  entity     : entity.exe_name=invoice_scan.exe
+  evidence   : execution: C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf :: run_slot=0 @ 2026-08-23T22:57:15.832788+00:00 (last_run)
+  evidence   : persistence: C/Users/janed/NTUSER.DAT :: hive_path=\Software\Microsoft\Windows\CurrentVersion\Run\SecurityUpdate @ 2026-08-21T01:34:07.976260+00:00 (presence)
+  note       : a presence-typed member carries no time of its own: its timestamp is the containing key's last-write time, shared with its sibling values, and it is excluded from the interval (schema 5.2, D-027)
+
+[high] R-CORR-0001 A downloaded file was executed (weight 75, T1204.002)
+  time claim : observed_interval
+  interval   : 2229.122025s
+  entity     : entity.exe_name=invoice_scan.exe
+  evidence   : download: C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/History :: downloads.id=826 @ 2026-08-23T22:20:06.710763+00:00 (recorded)
+  evidence   : execution: C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf :: run_slot=0 @ 2026-08-23T22:57:15.832788+00:00 (last_run)
+
+[high] R-ATOMIC-0004 Service installed with an interpreter or user-writable image (weight 55, T1543.003)
+  time claim : observed_occurrence
+  entity     : entity.exe_name=svc.exe, entity.host=windows10, entity.user=admin_local
+  evidence   : service_install: C/Windows/System32/winevt/logs/System.evtx :: EventRecordID=9001 @ 2026-08-23T23:01:06.682356+00:00 (recorded)
+
+[critical] R-CORR-0004 A service was installed and the security log was then cleared (weight 80, T1070.001)
+  time claim : observed_interval
+  interval   : 240.000000s
+  entity     : entity.user=admin_local
+  evidence   : service: C/Windows/System32/winevt/logs/System.evtx :: EventRecordID=9001 @ 2026-08-23T23:01:06.682356+00:00 (recorded)
+  evidence   : clear: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28201 @ 2026-08-23T23:05:06.682356+00:00 (recorded)
+
+[high] R-ATOMIC-0002 Windows event log cleared (weight 70, T1070.001)
+  time claim : observed_occurrence
+  entity     : entity.host=windows10, entity.user=admin_local
+  evidence   : log_cleared: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28201 @ 2026-08-23T23:05:06.682356+00:00 (recorded)
+
+================================================================
+6. A defect this found in Person A's own work
+================================================================
+
+Reading docs/evidence/day5-run-2026-08-30.md against the primary record
+exposed a conflation in the Day 3 draft, not in that document.
+
+  EID 1102, EventRecordID 28,201, in the collected Security.evtx:
+                                        2026-08-23T23:05:06.682356Z
+  The operator log's own entry for the same action, 6.112314 s late:
+                                        2026-08-23T23:05:12.794670Z
+
+groundtruth/scenario1-verification.md records both and the delta explicitly.
+The compressed-week plan's A-6 table labels the OPERATOR time as 'EID 1102',
+and the Day 3 draft inherited that: tests/conftest.py built an evtx.security
+EID-1102 fixture at the operator time, and R-CORR-0004's window justification
+derived 7m 56.961883s from it. Both are corrected -- the fixture now carries
+23:05:06.682356Z and the interval is 7m 50.849569s -- and conftest.py names
+both timestamps side by side so the next reader cannot repeat it.
+
+A second conflation of the same kind was corrected with it. The .pf's raw
+FILETIME 134319994358327870 converts to 22:57:15.832787Z, which every
+ground-truth document quotes, but windowsprefetch returns .832788Z and that
+is what reaches the engine (D-013). The fixture now uses the parser-emitted
+value, because the engine never sees the other one, and the observed interval
+is 2229.122025s rather than 2229.122024s. One microsecond does not matter
+until the boundary tests sit at one microsecond, which these do.
+
+================================================================
+7. Other things writing the engine found
+================================================================
+
+1. A bug in the schema. Section 4.2 said the image token is the LONGEST
+   leading prefix ending in an executable extension. It is the shortest --
+   for 'run.exe -config C:\other\thing.exe' the longest runs to an argument.
+   Corrected in 1.3.0, pinned by test_shortest_leading_prefix_not_longest.
+
+2. A sentence was becoming an executable name. 'run this thing please'
+   resolved to an entity.exe_name of itself, so two unrelated events
+   carrying the same prose would have joined on it. Step 5 of the extraction
+   now rejects a candidate with whitespace that does not end in an image
+   extension.
+
+3. PT45M is 28 milliseconds from spanning the whole scenario. Arrival to the
+   EID 1102 is 44m 59.971593s. Nothing is wrong -- a log clear is not a
+   process_exec, so the select prevents it -- but the margin is thinner than
+   it looks and R-CORR-0001's justification now says so.
+
+4. Chain 4 cannot join on an executable. A log-clearing record carries no
+   path, so R-CORR-0004 joins on entity.user. Side effect: the LocalSystem
+   and NT service accounts behind the Guest Additions services (D-026) are
+   not principals under section 4.4, so they drop out before evaluation.
+
+5. The schema has no aggregation operator, and chain 2 needs one. R-CORR-0002
+   is written as one failure followed by a success rather than a burst, and
+   says so. Recorded in schema section 11.
+
+6. D-032's sixth ImagePath form is handled, but it was handled by accident:
+   the extraction takes a basename and never roots anything. Written into
+   section 4.2 and pinned in test_entity.py so it is now true by design.

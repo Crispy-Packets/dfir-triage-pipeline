@@ -3,25 +3,31 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  179 passed, 20 skipped
-    python rules\validate_rules.py    ->  schema 1.2.0  rules 6  errors 0  warnings 0
+    python -m pytest -q               ->  256 passed, 20 skipped
+    python rules\validate_rules.py    ->  schema 1.4.1  rules 10  errors 0  warnings 0
 
-The 20 skips are collection-backed integration tests, active only when
+The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
 
     $env:DFIR_TEST_COLLECTION = "%USERPROFILE%\dfir-evidence\collection_clean_b"
-    python -m pytest -q   ->  189 passed, 10 skipped
+    python -m pytest -q
 
 Counts differ per collection, because some assertions are about one collection
-only. All three must be green:
+only. All three must be green. The per-collection figures were last measured
+before the Week 3 rule and engine tests landed and are therefore NOT quoted
+here: 181/10, 181/10 and 186/5 were correct at 78c9426 and are now certainly
+low by the number of tests added since. They are left blank rather than
+carried forward wrong -- an unmeasured figure is honest, a stale one is not.
 
-    collection_clean_a  ->  189 passed, 10 skipped
-    collection_clean_b  ->  189 passed, 10 skipped
-    collection_s1_v2    ->  194 passed,  5 skipped
+The three-line gate above was measured 2026-09-01 on Python 3.11, after
+merging the Week 3 correlation engine with the parser and feature work.
 
-Last measured 2026-08-30 on Python 3.11. When these numbers change, change them
-here in the same commit -- a gate line that no longer matches the run it
-describes is worse than no gate line.
+**The pytest figure is no longer maintained by hand.** The suite asserts that
+`passed + skipped` equals what it collected, so adding a test without touching
+this line fails the gate and names the correct number. That check exists because
+this line went stale three times in two days, each time in a commit that added
+tests and set the figure from the previous measurement. An instruction someone
+has to remember is a defect waiting for a busy afternoon.
 
 ## Layout
 
