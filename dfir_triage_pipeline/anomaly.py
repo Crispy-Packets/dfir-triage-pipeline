@@ -37,11 +37,69 @@ class Scored:
     `score` is the raw decision function: lower is more anomalous. It is not a
     probability and not a severity, and it is comparable only against other
     scores from the same fitted model.
+
+    `percentile_in_family` is the reportable form. Under `PerFamilyModel` each
+    family has its own fitted forest, so raw scores are not comparable between
+    families: a -0.09 from the Prefetch model and a -0.09 from the Amcache
+    model are not the same statement. The percentile is, by construction.
+
+    It is a RANK, not a probability. 0.0 is the most anomalous row in its
+    family and 100.0 the least. A row at 2.0 is "in the most unusual 2% of
+    rows of this kind", which is a statement about the population scored -- not
+    a 98% chance of anything. Rescaling it to look like a probability is
+    rejected in `docs/feature-decisions.md`; the acceptance gate requires the
+    ML be labelled as anomaly prioritisation rather than a malicious verdict,
+    and a number that reads as confidence-of-malice fights that label.
     """
 
     event: object
     score: float
     is_outlier: bool
+    #: The family this row was scored within. Empty when a bare `AnomalyModel`
+    #: was used directly, which does not know what it was fitted on.
+    family: str = ""
+    #: Rank position within `family`, 0.0 (most anomalous) to 100.0. `None`
+    #: when the row was not scored as part of a family population.
+    percentile_in_family: float | None = None
+
+
+def assign_percentiles(scores: list[Scored], family: str) -> list[Scored]:
+    """Return `scores` with `family` and `percentile_in_family` filled in.
+
+    Ties share the lowest position they span. Isolation Forest cannot isolate
+    identical rows, so tied scores are common and D-038 is the same phenomenon
+    seen from the other side: `evtx.powershell` reports 3.71% outliers against
+    a 5% setting because its rows are largely identical. Handing tied rows
+    different percentiles would invent an ordering the model did not produce.
+    """
+    if not scores:
+        return []
+
+    order = sorted(range(len(scores)), key=lambda i: scores[i].score)
+    n = len(scores)
+    out: list[Scored | None] = [None] * n
+
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and scores[order[j + 1]].score == scores[order[i]].score:
+            j += 1
+        # Position of the tie block's first member, as a percentage. A single
+        # row is a block of one, so the general form covers the untied case.
+        pct = 100.0 * i / n if n > 1 else 0.0
+        for k in range(i, j + 1):
+            idx = order[k]
+            s = scores[idx]
+            out[idx] = Scored(
+                event=s.event,
+                score=s.score,
+                is_outlier=s.is_outlier,
+                family=family,
+                percentile_in_family=pct,
+            )
+        i = j + 1
+
+    return [s for s in out if s is not None]
 
 
 class AnomalyModel:
@@ -164,7 +222,9 @@ class PerFamilyModel:
             model = self.models.get(family)
             if model is None:
                 continue
-            out.extend(model.score(features.build(rows, rarity)))
+            # Percentiles are assigned within the family population being
+            # scored, which is what makes them comparable across families.
+            out.extend(assign_percentiles(model.score(features.build(rows, rarity)), family))
         return out
 
 
