@@ -200,7 +200,7 @@ class PerFamilyModel:
             if len(rows) < MIN_TRAINING_ROWS:
                 self.unscored_families.add(family)
                 continue
-            table = features.build(rows, rarity)
+            table = features.build(rows, rarity, family)
             self.models[family] = AnomalyModel(self._n_estimators).fit(table)
         return self
 
@@ -224,7 +224,8 @@ class PerFamilyModel:
                 continue
             # Percentiles are assigned within the family population being
             # scored, which is what makes them comparable across families.
-            out.extend(assign_percentiles(model.score(features.build(rows, rarity)), family))
+            table = features.build(rows, rarity, family)
+            out.extend(assign_percentiles(model.score(table), family))
         return out
 
 

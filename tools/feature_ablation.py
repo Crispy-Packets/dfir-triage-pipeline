@@ -25,14 +25,21 @@ ALL = features.FEATURE_NAMES
 
 def run(drop: str | None) -> tuple[int, int, float, int]:
     """Fit and score with one feature zeroed. Returns rank, total, pct, n_scored."""
-    keep = [i for i, n in enumerate(ALL) if n != drop]
-
     orig_build = features.build
 
-    def build_reduced(events, rarity=None):
-        t = orig_build(events, rarity)
-        rows = [tuple(r[i] for i in keep) for r in t.rows]
-        names = tuple(ALL[i] for i in keep)
+    def build_reduced(events, rarity=None, family=None):
+        """Drop `drop` from whatever set this family would normally get.
+
+        Family-aware since the per-family split: a feature the family does not
+        carry cannot be ablated from it, and dropping by global index would
+        remove the wrong column entirely.
+        """
+        t = orig_build(events, rarity, family)
+        if drop is None or drop not in t.names:
+            return t
+        idx = [i for i, n in enumerate(t.names) if n != drop]
+        rows = [tuple(r[i] for i in idx) for r in t.rows]
+        names = tuple(t.names[i] for i in idx)
         return features.FeatureTable(names=names, rows=rows, events=t.events)
 
     features.build = build_reduced
