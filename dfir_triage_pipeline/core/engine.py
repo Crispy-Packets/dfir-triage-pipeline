@@ -177,7 +177,45 @@ def _is_user_writable(raw: str) -> bool:
     return any(m in text for m in _USER_WRITABLE_MARKERS)
 
 
-def evaluate_condition(event: Any, cond: Condition, stats: EngineStats | None = None) -> bool:
+@dataclass(frozen=True, slots=True)
+class RunContext:
+    """Corpus-level facts a condition may ask about, computed once per run.
+
+    Only `entity_counts` for now: how many events in the whole run name each
+    executable, keyed by `entity.exe_name`. It is what `op: rarity_*` reads.
+
+    Computed over the events being SCORED, not over a training baseline, and
+    the difference matters for what a rule may claim. `features.build_rarity_index`
+    fits a profile on a training collection and applies it unchanged, so it can
+    say "unseen in the baseline". A rule can only say "rare within this
+    collection". The weaker claim is the honest one for a layer that receives no
+    training set, and a rule's description must not imply the stronger one.
+    """
+
+    entity_counts: dict[str, int]
+
+    @classmethod
+    def build(cls, events: Sequence[Any]) -> RunContext:
+        counts: dict[str, int] = {}
+        for event in events:
+            name = entity.exe_name(event)
+            if name:
+                counts[name] = counts.get(name, 0) + 1
+        return cls(entity_counts=counts)
+
+
+#: An empty context. Conditions that need corpus facts evaluate false against it
+#: rather than raising, so a caller that builds a Finding by hand -- every unit
+#: test that does not go through `run()` -- still works.
+EMPTY_CONTEXT = RunContext(entity_counts={})
+
+
+def evaluate_condition(
+    event: Any,
+    cond: Condition,
+    stats: EngineStats | None = None,
+    context: RunContext | None = None,
+) -> bool:
     """One condition against one event.
 
     The clause that matters: **a negative operator is false on an absent
@@ -194,14 +232,43 @@ def evaluate_condition(event: Any, cond: Condition, stats: EngineStats | None = 
     if cond.op == "absent":
         return absent
 
+    if cond.op in _RARITY_OPS:
+        return _evaluate_rarity(event, cond, context or EMPTY_CONTEXT)
+
     if absent:
         if stats is not None:
             stats.absent_field_skips[cond.field] = stats.absent_field_skips.get(cond.field, 0) + 1
         return False
 
+    # Cross-field comparison (schema 2.0.0, gap 3). The right-hand side is read
+    # from the same event, and an absent right-hand side is false for the same
+    # reason an absent left-hand side is: a comparison against nothing is not a
+    # match, and treating it as one would make a missing field into evidence.
+    if cond.value_field is not None:
+        raw_right = read_field(event, cond.value_field)
+        if raw_right is _SENTINEL:
+            if stats is not None:
+                stats.absent_field_skips[cond.value_field] = (
+                    stats.absent_field_skips.get(cond.value_field, 0) + 1
+                )
+            return False
+        left = _fold(value, cond.ci)
+        right = _fold(raw_right, cond.ci)
+        return _apply(left, right, value, raw_right, cond)
+
     left = _fold(value, cond.ci)
     right = _fold(cond.value, cond.ci)
+    return _apply(left, right, value, cond.value, cond)
 
+
+def _apply(left: Any, right: Any, raw_left: Any, raw_right: Any, cond: Condition) -> bool:
+    """Operator dispatch, shared by the literal and cross-field paths.
+
+    `left`/`right` are case-folded when `ci` is set; `raw_left`/`raw_right` are
+    not, and the two operators that must not fold use them: `matches` compiles
+    its pattern as written, and `_compare` needs the original types rather than
+    folded strings.
+    """
     if cond.op == "equals":
         return left == right
     if cond.op == "not_equals":
@@ -219,12 +286,46 @@ def evaluate_condition(event: Any, cond: Condition, stats: EngineStats | None = 
     if cond.op == "ends_with":
         return isinstance(left, str) and left.endswith(str(right))
     if cond.op == "matches":
-        return bool(re.search(str(cond.value), str(value)))
+        return bool(re.search(str(raw_right), str(raw_left)))
     if cond.op == "is_user_writable":
-        return _is_user_writable(str(value)) is bool(cond.value)
+        return _is_user_writable(str(raw_left)) is bool(raw_right)
     if cond.op in ("gt", "gte", "lt", "lte"):
-        return _compare(value, cond.value, cond.op)
+        return _compare(raw_left, raw_right, cond.op)
     raise KeyError(f"unknown operator {cond.op!r}; the set is closed (schema section 3.3)")
+
+
+#: Operators that ask about the corpus rather than about one event.
+_RARITY_OPS = frozenset({"entity_count_lte", "entity_count_gte"})
+
+
+def _evaluate_rarity(event: Any, cond: Condition, context: RunContext) -> bool:
+    """How many events in this run name the same executable.
+
+    The claim a rule may make with this is deliberately narrow: **rare within
+    this collection**, never "unseen in a baseline". The engine receives no
+    training set, so it cannot distinguish a binary that is new from one that is
+    merely infrequent here. `features.build_rarity_index` makes the stronger
+    claim because it is given a training profile; this is not that.
+
+    An event with no derivable executable name returns False rather than a count
+    of zero. Zero would read as "maximally rare" and would make every EVTX
+    log-on record the rarest thing in the collection.
+    """
+    name = entity.exe_name(event)
+    if not name:
+        return False
+    count = context.entity_counts.get(name, 0)
+    if count == 0:
+        # The event carries a name the context never saw, which happens only
+        # when a caller scores events the context was not built from. Treating
+        # it as maximally rare would invent a fact.
+        return False
+    threshold = cond.value
+    if not isinstance(threshold, int) or isinstance(threshold, bool):
+        raise ValueError(f"{cond.op} requires an integer value, got {threshold!r}")
+    if cond.op == "entity_count_lte":
+        return count <= threshold
+    return count >= threshold
 
 
 def _compare(left: Any, right: Any, op: str) -> bool:
@@ -248,17 +349,20 @@ def _compare(left: Any, right: Any, op: str) -> bool:
 
 
 def evaluate_conditions(
-    event: Any, conditions: Conditions, stats: EngineStats | None = None
+    event: Any,
+    conditions: Conditions,
+    stats: EngineStats | None = None,
+    context: RunContext | None = None,
 ) -> bool:
     for cond in conditions.all_of:
-        if not evaluate_condition(event, cond, stats):
+        if not evaluate_condition(event, cond, stats, context):
             return False
     if conditions.any_of and not any(
-        evaluate_condition(event, c, stats) for c in conditions.any_of
+        evaluate_condition(event, c, stats, context) for c in conditions.any_of
     ):
         return False
     for cond in conditions.none_of:
-        if evaluate_condition(event, cond, stats):
+        if evaluate_condition(event, cond, stats, context):
             return False
     return True
 
@@ -284,12 +388,89 @@ def _time_claim_for(event: Any) -> str:
     return "observed_interval"
 
 
-def evaluate_atomic(rule: Rule, events: Sequence[Any], stats: EngineStats) -> list[Finding]:
+def _burst_findings(rule: Rule, matched: Sequence[Any]) -> list[Finding]:
+    """One finding per burst: N matching events sharing a key inside a window.
+
+    A sliding window over each group's events in time order. The first window
+    that reaches `count` produces a finding and the group is then **skipped**,
+    rather than emitting one finding per position the window could occupy --
+    fifty failed logons in a minute is one spray observed once, and reporting it
+    fifty times would be the same event counted repeatedly.
+
+    Events whose `group_by` key cannot be derived are dropped, not pooled. A
+    shared "unknown" bucket would manufacture a burst out of unrelated events,
+    which is the fabricated-join failure the engine exists to prevent.
+    """
+    agg = rule.aggregate
+    assert agg is not None
+
+    grouped: dict[str, list[Any]] = {}
+    for event in matched:
+        key = entity.resolve(event, agg.group_by)
+        if key:
+            grouped.setdefault(key, []).append(event)
+
+    findings: list[Finding] = []
+    for key in sorted(grouped):
+        bucket = sorted(
+            grouped[key],
+            key=lambda e: (e.timestamp, e.source_file, e.source_locator, e.event_id),
+        )
+        start = 0
+        for end in range(len(bucket)):
+            while bucket[end].timestamp - bucket[start].timestamp > agg.within:
+                start += 1
+            size = end - start + 1
+            if size < agg.count:
+                continue
+            members = bucket[start : end + 1]
+            span = (members[-1].timestamp - members[0].timestamp).total_seconds()
+            findings.append(
+                Finding(
+                    rule_id=rule.rule_id,
+                    rule_version=rule.schema_version,
+                    schema_version=rule.schema_version,
+                    title=rule.title,
+                    severity=rule.severity,
+                    weight=rule.weight,
+                    attack_technique=rule.attack_technique,
+                    matched=tuple(MatchedEvent.of(e) for e in members),
+                    entity_keys=((agg.group_by, key),),
+                    # A burst spans real recorded times, so unlike a presence
+                    # event it CAN claim an interval.
+                    time_claim="observed_interval",
+                    window_observed_seconds=span,
+                    reason=(
+                        f"{rule.title}: {size} matching events for {agg.group_by}={key} "
+                        f"within {span:.3f}s (threshold {agg.count} in "
+                        f"{agg.within.total_seconds():.0f}s)"
+                    ),
+                )
+            )
+            break  # one finding per group; see docstring
+    return findings
+
+
+def evaluate_atomic(
+    rule: Rule,
+    events: Sequence[Any],
+    stats: EngineStats,
+    context: RunContext | None = None,
+) -> list[Finding]:
+    if rule.aggregate is not None:
+        matched = [
+            e
+            for e in events
+            if matches_select(e, rule.select)
+            and evaluate_conditions(e, rule.conditions, stats, context)
+        ]
+        return _burst_findings(rule, matched)
+
     findings: list[Finding] = []
     for event in events:
         if not matches_select(event, rule.select):
             continue
-        if not evaluate_conditions(event, rule.conditions, stats):
+        if not evaluate_conditions(event, rule.conditions, stats, context):
             continue
         keys = entity.keys_for(event)
         claim = "none" if event.timestamp_type == "presence" else "observed_occurrence"
@@ -340,40 +521,91 @@ def _join_key(event: Any, join_on: Sequence[str]) -> tuple[str, ...] | None:
 
 
 def _candidates(
-    step: Step, events: Sequence[Any], join_on: Sequence[str], stats: EngineStats
+    step: Step,
+    events: Sequence[Any],
+    join_on: Sequence[str],
+    stats: EngineStats,
+    context: RunContext | None = None,
 ) -> dict[tuple[str, ...], list[Any]]:
+    # A step may join on a narrower key set than the rule (gap 6): a lateral
+    # chain joins the execution on the binary while the principal changes. The
+    # loader guarantees an override shares at least one key with `join.on`, so
+    # the projection below always has something to project onto.
+    effective = step.join_override or tuple(join_on)
+
     grouped: dict[tuple[str, ...], list[Any]] = {}
     for event in events:
         if not matches_select(event, step.select):
             continue
-        if not evaluate_conditions(event, step.conditions, stats):
+        if not evaluate_conditions(event, step.conditions, stats, context):
             continue
-        key = _join_key(event, join_on)
+        key = _join_key(event, effective)
         if key is None:
             continue
+        if step.join_override:
+            # Re-key onto the SHARED subset so this step's buckets line up with
+            # the other steps'. The override's extra keys have already done
+            # their filtering work in _join_key -- an event whose override key
+            # could not be derived was dropped above.
+            shared_key = tuple(
+                entity.resolve(event, k) or "" for k in tuple(join_on)
+            )
+            if any(not part for part in shared_key):
+                continue
+            key = shared_key
         grouped.setdefault(key, []).append(event)
     for bucket in grouped.values():
         bucket.sort(key=lambda e: (e.timestamp, e.source_file, e.source_locator, e.event_id))
     return grouped
 
 
-def evaluate_correlation(rule: Rule, events: Sequence[Any], stats: EngineStats) -> list[Finding]:
+def evaluate_correlation(
+    rule: Rule,
+    events: Sequence[Any],
+    stats: EngineStats,
+    context: RunContext | None = None,
+) -> list[Finding]:
     if rule.window is None:
         # ruleset.load_rule guarantees this, so reaching it means a rule was
         # built by hand and bypassed the loader. Fail loudly, never silently.
         raise ValueError(f"{rule.rule_id}: a correlation rule must carry a window")
     per_step = {
-        step.name: _candidates(step, events, rule.join_on, stats) for step in rule.steps
+        step.name: _candidates(step, events, rule.join_on, stats, context)
+        for step in rule.steps
     }
-    windowed = [s for s in rule.steps if s.in_window]
-    unwindowed = [s for s in rule.steps if not s.in_window]
+    # A negative step contributes no candidates to the join and is checked
+    # against each surviving key instead -- see below. It is excluded from the
+    # window by the loader, so it cannot appear in either list here.
+    present_steps = [s for s in rule.steps if not s.absent]
+    absent_steps = [s for s in rule.steps if s.absent]
+    windowed = [s for s in present_steps if s.in_window]
+    unwindowed = [s for s in present_steps if not s.in_window]
 
     required_keys = [
-        set(per_step[s.name]) for s in rule.steps if not s.optional
+        set(per_step[s.name]) for s in present_steps if not s.optional
     ]
     if not required_keys:
         return []
     shared = set.intersection(*required_keys)
+
+    # Drop every key for which a negative step DID match. The rule claims the
+    # absence, so a key with a matching event is not a finding.
+    for step in absent_steps:
+        shared -= set(per_step[step.name])
+
+    # Repetition bounds, checked per key. min_count > 1 is a stronger
+    # requirement than membership of `shared`, which only proves one candidate.
+    bounded = [s for s in present_steps if s.min_count > 1 or s.max_count is not None]
+    if bounded:
+        kept = set()
+        for key in shared:
+            if all(
+                s.min_count <= len(per_step[s.name].get(key, []))
+                and (s.max_count is None or len(per_step[s.name].get(key, [])) <= s.max_count)
+                for s in bounded
+            ):
+                kept.add(key)
+        shared = kept
 
     findings: list[Finding] = []
     for key in sorted(shared):
@@ -527,15 +759,19 @@ def _build_finding(
 def run(rules: Iterable[Rule], events: Sequence[Any]) -> tuple[list[Finding], EngineStats]:
     """Evaluate every enabled rule. Findings come back in deterministic order."""
     stats = EngineStats(events_seen=len(events))
+    # Built once for the whole run rather than per rule: the counts are a
+    # property of the corpus, not of any rule, and rebuilding them per rule
+    # would be both slower and an invitation for two rules to disagree.
+    context = RunContext.build(events)
     findings: list[Finding] = []
     for rule in sorted(rules, key=lambda r: r.rule_id):
         if not rule.enabled:
             continue
         stats.rules_evaluated += 1
         produced = (
-            evaluate_atomic(rule, events, stats)
+            evaluate_atomic(rule, events, stats, context)
             if rule.kind == "atomic"
-            else evaluate_correlation(rule, events, stats)
+            else evaluate_correlation(rule, events, stats, context)
         )
         stats.findings_by_rule[rule.rule_id] = len(produced)
         findings.extend(produced)

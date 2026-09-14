@@ -77,6 +77,11 @@ class Condition:
     value: Any = None
     ci: bool = False
     has_value: bool = False
+    #: Compare `field` against another FIELD rather than against `value`
+    #: (schema 2.0.0, gap 3). Exactly one of `value` and `value_field` may be
+    #: given: a condition that carried both would have two right-hand sides and
+    #: no defined precedence.
+    value_field: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +104,51 @@ class Step:
     conditions: Conditions
     in_window: bool
     optional: bool
+    #: Negative step (schema 2.0.0, gap 2): the chain matches only when NO event
+    #: satisfies this step for the joined entity. "Executed with no arrival
+    #: record" is the shape -- how a tool that did not come through the download
+    #: path is caught.
+    #:
+    #: A negative step is excluded from the window by construction: there is no
+    #: event to measure an interval to. `absent: true` with `in_window: true` is
+    #: a load-time error rather than a silently ignored flag.
+    absent: bool = False
+    #: Repetition (schema 2.0.0, gap 7). `min_count` events must satisfy this
+    #: step for the entity; `max_count` is an upper bound, None for unbounded.
+    #: "One execution, then five or more registry writes" is the shape.
+    min_count: int = 1
+    max_count: int | None = None
+    #: Multi-entity chains (schema 2.0.0, gap 6). When set, this step joins on
+    #: these keys instead of the rule's `join.on`. Lateral movement is the
+    #: shape it exists for: user A's credentials used on host B, where the
+    #: binary is the constant and the principal changes.
+    #:
+    #: The override must share at least one key with `join.on`, checked at load
+    #: time. Without that overlap the steps have no common ground and the
+    #: "chain" would be two unrelated events reported as one -- the fabricated
+    #: join the engine exists to prevent.
+    join_override: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Aggregate:
+    """A burst condition on an atomic rule (schema 2.0.0, gap 1).
+
+    N matching events sharing `group_by` inside `within`. The plan's second
+    chain -- "failed-logon **burst** -> success" -- needed this and could not be
+    written, so `R-CORR-0002` says *one* failure followed by a success, a weaker
+    claim that its description states rather than implies.
+
+    `group_by` is an entity key, never a raw field. A burst of failures against
+    one ACCOUNT is a spray; a burst across every account on a domain controller
+    at 09:00 is Monday morning. Grouping on `path` or `source_file` would
+    correlate events that share only a filename, which is why section 4.3
+    forbids joining on those.
+    """
+
+    count: int
+    within: timedelta
+    group_by: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +180,8 @@ class Rule:
     window: Window | None = None
     order: str = "any"
     expected: tuple[tuple[str, str], ...] = ()
+    #: Burst condition, atomic rules only (schema 2.0.0, gap 1).
+    aggregate: Aggregate | None = None
 
 
 def _conditions(node: Any, where: str) -> Conditions:
@@ -153,6 +205,18 @@ def _conditions(node: Any, where: str) -> Conditions:
                     re.compile(str(item.get("value")))
                 except re.error as exc:
                     raise RuleError(f"{where}.{group}[{index}]: regex: {exc}") from None
+            value_field = item.get("value_field")
+            if value_field is not None:
+                if not isinstance(value_field, str):
+                    raise RuleError(f"{where}.{group}[{index}]: value_field must be a string")
+                if "value" in item:
+                    # Two right-hand sides with no defined precedence. Rejected
+                    # rather than resolved, because either resolution would make
+                    # half of all such rules silently mean the other thing.
+                    raise RuleError(
+                        f"{where}.{group}[{index}]: value and value_field are mutually "
+                        "exclusive -- a condition has one right-hand side"
+                    )
             built.append(
                 Condition(
                     field=field,
@@ -160,12 +224,51 @@ def _conditions(node: Any, where: str) -> Conditions:
                     value=item.get("value"),
                     ci=bool(item.get("ci", False)),
                     has_value="value" in item,
+                    value_field=value_field,
                 )
             )
         groups[group] = tuple(built)
     if not any(groups.values()):
         raise RuleError(f"{where}: at least one of all/any/none must be non-empty")
     return Conditions(groups["all"], groups["any"], groups["none"])
+
+
+#: Entity keys an aggregate may group on. Same set section 4.3 permits for a
+#: correlation join, and for the same reason: `path` and `source_file` group
+#: events that share only a filename.
+_GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
+
+
+def _aggregate(node: Any, where: str) -> Aggregate | None:
+    """Parse an `aggregate:` block, or None when the rule has none."""
+    if node is None:
+        return None
+    if not isinstance(node, dict):
+        raise RuleError(f"{where}.aggregate: must be a mapping")
+
+    for required in ("count", "within", "group_by"):
+        if required not in node:
+            raise RuleError(f"{where}.aggregate: {required} is required")
+
+    count = node["count"]
+    if not isinstance(count, int) or isinstance(count, bool) or count < 2:
+        # Below 2 there is no burst: `count: 1` is the rule without the
+        # aggregate, written in a way that implies a threshold it does not
+        # enforce. Rejected rather than accepted as a no-op.
+        raise RuleError(f"{where}.aggregate.count: must be an integer of 2 or more")
+
+    within = parse_duration(str(node["within"]))
+    if within <= timedelta(0):
+        raise RuleError(f"{where}.aggregate.within: must be a positive duration")
+
+    group_by = node["group_by"]
+    if group_by not in _GROUPABLE:
+        raise RuleError(
+            f"{where}.aggregate.group_by: {group_by!r} is not groupable; "
+            f"one of {sorted(_GROUPABLE)} (schema section 4.3)"
+        )
+
+    return Aggregate(count=count, within=within, group_by=str(group_by))
 
 
 def _select(node: Any, where: str) -> Select:
@@ -217,6 +320,46 @@ def load_rule(path: Path) -> Rule:
             for required in ("name", "in_window", "optional"):
                 if required not in raw:
                     raise RuleError(f"{where}: {required} is required")
+            absent = bool(raw.get("absent", False))
+            min_count = raw.get("min_count", 1)
+            max_count = raw.get("max_count")
+
+            if absent:
+                if bool(raw["in_window"]):
+                    # There is no event to measure an interval to. Accepting the
+                    # combination and ignoring in_window would leave the rule
+                    # file asserting a window it does not have.
+                    raise RuleError(
+                        f"{where}: absent and in_window are mutually exclusive -- "
+                        "a step that matches nothing has no time to place in a window"
+                    )
+                if bool(raw["optional"]):
+                    # "Optional absence" is satisfied by everything: the step
+                    # passes when the event is missing AND when it is present.
+                    raise RuleError(f"{where}: absent and optional are mutually exclusive")
+                if "min_count" in raw or "max_count" in raw:
+                    raise RuleError(f"{where}: absent takes no min_count or max_count")
+
+            if not isinstance(min_count, int) or isinstance(min_count, bool) or min_count < 1:
+                raise RuleError(f"{where}.min_count: must be an integer of 1 or more")
+            if max_count is not None:
+                if not isinstance(max_count, int) or isinstance(max_count, bool):
+                    raise RuleError(f"{where}.max_count: must be an integer or omitted")
+                if max_count < min_count:
+                    raise RuleError(
+                        f"{where}.max_count: {max_count} is below min_count {min_count}, "
+                        "so the step can never be satisfied"
+                    )
+
+            raw_override = raw.get("join_override")
+            join_override: tuple[str, ...] = ()
+            if raw_override is not None:
+                if not isinstance(raw_override, list) or not raw_override:
+                    raise RuleError(f"{where}.join_override: must be a non-empty list")
+                join_override = tuple(str(k) for k in raw_override)
+                if absent:
+                    raise RuleError(f"{where}: absent steps take no join_override")
+
             steps.append(
                 Step(
                     name=str(raw["name"]),
@@ -224,6 +367,10 @@ def load_rule(path: Path) -> Rule:
                     conditions=_conditions(raw.get("conditions"), f"{where}.conditions"),
                     in_window=bool(raw["in_window"]),
                     optional=bool(raw["optional"]),
+                    absent=absent,
+                    min_count=min_count,
+                    max_count=max_count,
+                    join_override=join_override,
                 )
             )
         join = data.get("join") or {}
@@ -234,6 +381,16 @@ def load_rule(path: Path) -> Rule:
                 "rule that cannot name a shared entity cannot be loaded (schema 6.1)"
             )
         join_on = tuple(str(v) for v in raw_join)
+        # A step that joins on entirely different keys shares no ground with the
+        # rule, and the "chain" would be two unrelated events reported as one.
+        join_set = {str(k) for k in raw_join}
+        for step in steps:
+            if step.join_override and not (set(step.join_override) & join_set):
+                raise RuleError(
+                    f"{path.name}.steps[{step.name}].join_override: shares no key with "
+                    f"join.on {sorted(join_set)} -- a step joining on unrelated keys "
+                    "correlates unrelated events (schema section 4.3)"
+                )
         raw_window = data.get("window") or {}
         if not isinstance(raw_window, dict):
             raise RuleError(f"{path.name}: window must be a mapping")
@@ -280,6 +437,7 @@ def load_rule(path: Path) -> Rule:
         select=_select(data.get("select"), f"{path.name}.select"),
         conditions=_conditions(data.get("conditions"), f"{path.name}.conditions"),
         source_path=path.name,
+        aggregate=_aggregate(data.get("aggregate"), path.name),
         steps=tuple(steps),
         join_on=join_on,
         window=window,

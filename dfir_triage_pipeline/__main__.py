@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 
 from .core.engine import run as run_rules
+from .core.entity_score import aggregate as aggregate_entities
+from .core.entity_score import summary_lines as entity_summary_lines
 from .core.report import summary_lines, write_findings_csv
 from .core.ruleset import RuleError, load_rules
 from .ingest import collect_events
@@ -68,6 +70,12 @@ def main(argv: list[str] | None = None) -> int:
     findings, engine_stats = run_rules(rules, ordered)
     print()
     for line in summary_lines(findings, engine_stats):
+        print(line)
+
+    # Entity view. An analyst triages entities rather than rule matches, and one
+    # binary can be named by several rules -- see core/entity_score.py.
+    print()
+    for line in entity_summary_lines(aggregate_entities(findings)):
         print(line)
 
     if args.findings:
