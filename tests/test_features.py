@@ -381,3 +381,93 @@ class TestScriptShapeFeatures:
         for absent in ("path_depth", "path_is_user_writable", "run_count",
                        "seconds_since_previous_run_of_same_executable"):
             assert absent not in names
+
+
+class TestPublisherAndLocationFeatures:
+    """has_publisher and exec_location_rarity (2026-09-14).
+
+    Both answer the Discord/GIMP case: the model flagged benign installers
+    because they were executables in a baseline of books. These describe how a
+    binary sits among the others on the host rather than what it is called.
+    """
+
+    def _am(self, publisher=None, canonical=None):
+        details = {"path_basename_canonical": "x.exe"}
+        if publisher is not None:
+            details["publisher"] = publisher
+        if canonical:
+            details["path_canonical"] = canonical
+        return Event(
+            timestamp=BASE,
+            source_artifact="amcache",
+            event_type="program_inventoried",
+            action="a",
+            source_file="f",
+            source_locator="l",
+            timestamp_type="presence",
+            details=details,
+        )
+
+    def test_publisher_present_is_one(self):
+        names = features.FAMILY_FEATURES["amcache"]
+        i = names.index("has_publisher")
+        table = features.build([self._am(publisher="igor pavlov")], None, "amcache")
+        assert table.rows[0][i] == 1.0
+
+    def test_publisher_absent_is_zero(self):
+        """invoice_scan.exe carries None, which is what makes this useful."""
+        names = features.FAMILY_FEATURES["amcache"]
+        i = names.index("has_publisher")
+        assert features.build([self._am()], None, "amcache").rows[0][i] == 0.0
+
+    def test_blank_publisher_counts_as_absent(self):
+        names = features.FAMILY_FEATURES["amcache"]
+        i = names.index("has_publisher")
+        assert features.build([self._am(publisher="   ")], None, "amcache").rows[0][i] == 0.0
+
+    def test_the_vendor_name_never_enters_the_model(self):
+        """A boolean, not a category. Two different vendors are identical to the
+        model -- 'signed by Igor Pavlov' is tied to what happens to be installed
+        here; 'declared a publisher' transfers to another estate."""
+        names = features.FAMILY_FEATURES["amcache"]
+        i = names.index("has_publisher")
+        a = features.build([self._am(publisher="microsoft corporation")], None, "amcache")
+        b = features.build([self._am(publisher="igor pavlov")], None, "amcache")
+        assert a.rows[0][i] == b.rows[0][i] == 1.0
+
+    def test_location_rarity_is_a_share_of_the_collection(self):
+        names = features.FAMILY_FEATURES["prefetch"]
+        i = names.index("exec_location_rarity")
+        common = "c:" + chr(92) + "windows" + chr(92) + "system32" + chr(92) + "a.exe"
+        rare = "c:" + chr(92) + "users" + chr(92) + "u" + chr(92) + "downloads" + chr(92) + "b.exe"
+        events = [
+            _event(BASE + timedelta(minutes=n), leaf=f"a{n}.exe", canonical=common)
+            for n in range(9)
+        ] + [_event(BASE + timedelta(minutes=9), leaf="b.exe", canonical=rare)]
+        table = features.build(events, None, "prefetch")
+        shares = [r[i] for r in table.rows]
+        assert max(shares) == pytest.approx(0.9)
+        assert min(shares) == pytest.approx(0.1)
+
+    def test_pathless_rows_get_zero_not_a_shared_bucket(self):
+        """Grouping every pathless row under "" would make them look
+        co-located, which is a fact the artifact never recorded."""
+        names = features.FAMILY_FEATURES["prefetch"]
+        i = names.index("exec_location_rarity")
+        events = [_event(BASE, leaf="a.exe")]  # no canonical path
+        assert features.build(events, None, "prefetch").rows[0][i] == 0.0
+
+    def test_location_rarity_is_prefetch_only(self):
+        """Rejected for amcache on measurement: 62.6% single-field accuracy
+        against a 56.6% baseline, because Amcache inventories software
+        installed at different times and the directory mix tracks the
+        collection rather than behaviour."""
+        assert "exec_location_rarity" in features.FAMILY_FEATURES["prefetch"]
+        assert "exec_location_rarity" not in features.FAMILY_FEATURES["amcache"]
+        assert "exec_location_rarity" not in features.FAMILY_FEATURES["browser"]
+
+    def test_publisher_is_amcache_only(self):
+        """It is the only family whose artifact records one."""
+        for family, names in features.FAMILY_FEATURES.items():
+            if family != "amcache":
+                assert "has_publisher" not in names

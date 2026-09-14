@@ -114,6 +114,23 @@ FEATURE_NAMES: tuple[str, ...] = (
     "script_entropy",
     "script_has_encoded_marker",
     "script_is_truncated",
+    # Appended 2026-09-14. Both describe how a binary sits among the others on
+    # the host, not what it is called.
+    #
+    # `has_publisher` is the discriminator the Discord/GIMP case asked for and
+    # the only one the evidence supports: Amcache records a publisher on 91-92%
+    # of rows, and `invoice_scan.exe` carries None. It is a boolean -- no vendor
+    # name enters the model, only whether the binary declared one. It measured
+    # 56.6% against a 56.6% baseline: no collection identity at all.
+    #
+    # `exec_location_rarity` is the share of a collection's executions that came
+    # from the same directory. It is PREFETCH-ONLY by measurement: on amcache it
+    # scored 62.6% against a 56.6% baseline and was rejected, because Amcache
+    # inventories software installed at different times and the directory mix
+    # tracks which collection a row came from. On prefetch it measured 57.6%
+    # against 57.6%.
+    "has_publisher",
+    "exec_location_rarity",
 )
 
 
@@ -154,7 +171,9 @@ _PATH_AND_INTERVAL = (
 FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
     # The only family with a run count, and the only one for which the
     # download columns are undefined.
-    "prefetch": _SHARED + ("run_count", "run_count_is_known") + _PATH_AND_INTERVAL,
+    "prefetch": _SHARED
+    + ("run_count", "run_count_is_known", "exec_location_rarity")
+    + _PATH_AND_INTERVAL,
     # Downloads: size and content type are defined; execution is not, and
     # path_depth is constant because everything lands in Downloads\.
     "browser": _SHARED
@@ -166,7 +185,10 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
         "filename_entropy",
     ),
     # Inventory and log records: a path and a time, no run count, no bytes.
-    "amcache": _SHARED + _PATH_AND_INTERVAL,
+    # Amcache is the only family that records a publisher. exec_location_rarity
+    # is deliberately NOT here: it failed the leakage test at 62.6% against a
+    # 56.6% baseline (see FEATURE_NAMES).
+    "amcache": _SHARED + ("has_publisher",) + _PATH_AND_INTERVAL,
     "registry": _SHARED + _PATH_AND_INTERVAL,
     "evtx.security": _SHARED + _PATH_AND_INTERVAL,
     "evtx.system": _SHARED + _PATH_AND_INTERVAL,
@@ -344,6 +366,31 @@ _ENCODED_MARKERS = (
 _ENTROPY_SAMPLE = 2000
 
 
+def _directory_of(event: Event) -> str:
+    """Containing directory of the canonical path, or "" when there is none."""
+    path = event.details.get("path_canonical") or ""
+    return path.rsplit("\\", 1)[0] if "\\" in path else ""
+
+
+def _has_publisher(event: Event) -> float:
+    """Whether the artifact recorded a publisher for this binary.
+
+    A boolean, never the vendor string. "Signed by Igor Pavlov" is a name tied
+    to what happens to be installed here; "declared a publisher at all" is a
+    property that transfers to an estate this corpus has never seen -- the same
+    distinction `path_is_user_writable` makes about location.
+
+    Amcache carries it on 91-92% of rows. `invoice_scan.exe` carries None, which
+    is what makes this the discriminator the Discord/GIMP case asked for.
+
+    **What it does not do.** It says nothing about signed malware: a stolen
+    certificate, an abused signing service, or a Microsoft-signed LOLBin used to
+    stage a payload all declare a publisher. The feature separates ad-hoc
+    binaries from products, not benign from malicious.
+    """
+    return 1.0 if (event.details.get("publisher") or "").strip() else 0.0
+
+
 def _script_shape(event: Event) -> tuple[float, float, float, float]:
     """Four shape features for a PowerShell script block.
 
@@ -432,12 +479,22 @@ def build(
     # the hour itself is never a feature, because it leaks (see EXCLUDED_FIELDS).
     per_hour: Counter = Counter()
     execs_per_hour: defaultdict[object, set[str]] = defaultdict(set)
+    # Executions per directory, for exec_location_rarity. Counted over the
+    # events being built rather than over a training profile: the claim is
+    # "uncommon a location on this host", which is what a single collection can
+    # support. `executable_rarity` uses the training profile and can therefore
+    # say "unseen"; this one cannot and does not.
+    per_directory: Counter = Counter()
     for event in ordered:
         bucket = event.timestamp.replace(minute=0, second=0, microsecond=0)
         per_hour[bucket] += 1
         name = _executable(event)
         if name:
             execs_per_hour[bucket].add(name)
+        directory = _directory_of(event)
+        if directory:
+            per_directory[directory] += 1
+    directory_total = sum(per_directory.values()) or 1
 
     last_seen: dict[str, object] = {}
     rows: list[tuple[float, ...]] = []
@@ -450,6 +507,11 @@ def build(
         size_log10, size_known = _download_size(event)
         name_len, name_entropy = _filename_shape(event)
         s_len, s_ent, s_enc, s_trunc = _script_shape(event)
+        directory = _directory_of(event)
+        # A row with no path contributes no location evidence, so it gets 0.0
+        # rather than a share computed from an empty key -- which would group
+        # every pathless row into one bucket and make them look co-located.
+        loc_share = per_directory.get(directory, 0) / directory_total if directory else 0.0
 
         raw_count = event.details.get("run_count")
         run_count = float(raw_count) if raw_count is not None else 0.0
@@ -493,6 +555,8 @@ def build(
                 s_ent,
                 s_enc,
                 s_trunc,
+                _has_publisher(event),
+                loc_share,
             )
         )
 
