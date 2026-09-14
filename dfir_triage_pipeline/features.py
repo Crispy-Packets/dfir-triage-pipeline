@@ -104,6 +104,16 @@ FEATURE_NAMES: tuple[str, ...] = (
     # baseline separating clean_c from s1_v3.
     "filename_length",
     "filename_entropy",
+    # Appended 2026-09-14. A PowerShell 4104 record has no executable and no
+    # path, so seven of the eight features it previously received were constant
+    # and the family scored 0.009 distinct vectors per row -- fitted, and
+    # ranking nothing (D-041). These describe what the artifact DOES record.
+    # All four measured 57.8-58.7% single-field accuracy against a 57.8%
+    # baseline separating clean_c from s1_v3.
+    "script_length_log10",
+    "script_entropy",
+    "script_has_encoded_marker",
+    "script_is_truncated",
 )
 
 
@@ -160,7 +170,17 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
     "registry": _SHARED + _PATH_AND_INTERVAL,
     "evtx.security": _SHARED + _PATH_AND_INTERVAL,
     "evtx.system": _SHARED + _PATH_AND_INTERVAL,
-    "evtx.powershell": _SHARED + _PATH_AND_INTERVAL,
+    # Script blocks carry no executable and no path, so the interval and path
+    # columns are undefined for them. What a 4104 record does carry is text,
+    # and these four describe its shape. Measured: 0.009 distinct vectors per
+    # row before, 0.823 after.
+    "evtx.powershell": _SHARED
+    + (
+        "script_length_log10",
+        "script_entropy",
+        "script_has_encoded_marker",
+        "script_is_truncated",
+    ),
 }
 
 
@@ -295,6 +315,70 @@ def _filename_shape(event: Event) -> tuple[float, float]:
     return float(n), entropy
 
 
+#: Markers of an encoded, obfuscated or in-memory-download command. A closed
+#: set matched as substrings, so the SCRIPT TEXT ITSELF never enters the model
+#: -- only the fact that one of these forms is present. That is the same shape
+#: principle as `path_is_user_writable` and `mime_type_is_executable`: no
+#: corpus-specific string, so the feature transfers to another estate.
+#:
+#: Deliberately overlapping with R-ATOMIC-0003's patterns. The rule DETECTS
+#: these deterministically and names its evidence; this feature only lets the
+#: model treat such a block as structurally unlike an ordinary one. The two
+#: layers may agree without either being derived from the other.
+_ENCODED_MARKERS = (
+    "-enc",
+    "-encodedcommand",
+    "frombase64string",
+    "-w hidden",
+    "-windowstyle hidden",
+    "downloadstring",
+    "downloadfile",
+    "iex",
+    "invoke-expression",
+)
+
+#: Entropy is computed over at most this many characters. `script_block_text`
+#: is capped at 4096 bytes (D-031) but the cap is about storage; this one is
+#: about cost, and 2000 characters is far past the point where the estimate
+#: stabilises for the 112-byte blocks that matter.
+_ENTROPY_SAMPLE = 2000
+
+
+def _script_shape(event: Event) -> tuple[float, float, float, float]:
+    """Four shape features for a PowerShell script block.
+
+    A 4104 record carries script TEXT and nothing else -- no executable, no
+    path, no run count. Seven of the eight features this family previously
+    received were therefore constant across every row, and it scored 0.009
+    distinct vectors per row: fitted, and ranking nothing (D-041). Ten times
+    the data would have given the same ratio, because the problem was the
+    feature set rather than the volume.
+
+    Returns (length_log10, entropy, has_encoded_marker, is_truncated).
+
+    None of the four carries the script's text. Length and entropy are
+    properties of the string, the marker flag is membership of a closed set,
+    and truncation is already recorded by the parser. All four transfer to a
+    different estate for the same reason `executable_rarity` does.
+    """
+    text = event.details.get("script_block_text") or ""
+    if not text:
+        return 0.0, 0.0, 0.0, 0.0
+
+    length = math.log10(len(text) + 1)
+
+    sample = text[:_ENTROPY_SAMPLE]
+    counts = Counter(sample)
+    n = len(sample)
+    entropy = -sum((c / n) * math.log2(c / n) for c in counts.values())
+
+    lowered = text.lower()
+    encoded = 1.0 if any(m in lowered for m in _ENCODED_MARKERS) else 0.0
+
+    truncated = 1.0 if event.details.get("script_block_truncated") else 0.0
+    return length, entropy, encoded, truncated
+
+
 def _executable(event: Event) -> str | None:
     """The binary this row is about, as a comparison key.
 
@@ -365,6 +449,7 @@ def build(
 
         size_log10, size_known = _download_size(event)
         name_len, name_entropy = _filename_shape(event)
+        s_len, s_ent, s_enc, s_trunc = _script_shape(event)
 
         raw_count = event.details.get("run_count")
         run_count = float(raw_count) if raw_count is not None else 0.0
@@ -404,6 +489,10 @@ def build(
                 _mime_is_executable(event),
                 name_len,
                 name_entropy,
+                s_len,
+                s_ent,
+                s_enc,
+                s_trunc,
             )
         )
 

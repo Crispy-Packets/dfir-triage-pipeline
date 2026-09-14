@@ -298,3 +298,86 @@ class TestPerFamilyFeatureSets:
             keep = [full.names.index(n) for n in reduced.names]
             for full_row, reduced_row in zip(full.rows, reduced.rows, strict=True):
                 assert reduced_row == tuple(full_row[i] for i in keep)
+
+
+class TestScriptShapeFeatures:
+    """PowerShell script-block features (2026-09-14, D-041).
+
+    A 4104 record carries script TEXT and nothing else -- no executable, no
+    path -- so seven of the eight features the family previously received were
+    constant and it scored 0.009 distinct vectors per row. Ten times the data
+    would have given the same ratio: the problem was the feature set.
+    """
+
+    def _ps(self, text, truncated=False):
+        details = {"script_block_text": text} if text is not None else {}
+        if truncated:
+            details["script_block_truncated"] = "true"
+        return Event(
+            timestamp=BASE,
+            source_artifact="evtx.powershell",
+            event_type="script_block",
+            action="logged",
+            source_file="f",
+            source_locator="l",
+            timestamp_type="recorded",
+            details=details,
+        )
+
+    def test_absent_text_is_all_zero_not_an_error(self):
+        table = features.build([self._ps(None)], None, "evtx.powershell")
+        row = dict(zip(table.names, table.rows[0], strict=True))
+        assert row["script_length_log10"] == 0.0
+        assert row["script_entropy"] == 0.0
+
+    def test_length_is_log_scaled(self):
+        short = features.build([self._ps("a" * 100)], None, "evtx.powershell")
+        long_ = features.build([self._ps("a" * 100_000)], None, "evtx.powershell")
+        i = short.names.index("script_length_log10")
+        # Three orders of magnitude apart become 3 apart, not 99,900.
+        assert long_.rows[0][i] - short.rows[0][i] == pytest.approx(3.0, abs=0.01)
+
+    def test_entropy_separates_random_from_repetitive(self):
+        i = features.FEATURE_NAMES.index("script_entropy")
+        names = features.FAMILY_FEATURES["evtx.powershell"]
+        i = names.index("script_entropy")
+        flat = features.build([self._ps("aaaaaaaaaaaaaaaa")], None, "evtx.powershell")
+        varied = features.build(
+            [self._ps("aB3$xY9!qW2@zL7#")], None, "evtx.powershell"
+        )
+        assert varied.rows[0][i] > flat.rows[0][i]
+
+    def test_encoded_marker_is_a_flag_not_the_text(self):
+        """The script text itself never enters the model -- only membership of
+        a closed marker set, so no corpus-specific string is carried."""
+        names = features.FAMILY_FEATURES["evtx.powershell"]
+        i = names.index("script_has_encoded_marker")
+        encoded = features.build(
+            [self._ps("powershell -EncodedCommand SQBFAFgA")], None, "evtx.powershell"
+        )
+        plain = features.build([self._ps("Get-Process | Sort-Object CPU")], None, "evtx.powershell")
+        assert encoded.rows[0][i] == 1.0
+        assert plain.rows[0][i] == 0.0
+
+    def test_marker_matching_is_case_insensitive(self):
+        names = features.FAMILY_FEATURES["evtx.powershell"]
+        i = names.index("script_has_encoded_marker")
+        for text in ("-ENC x", "-enc x", "FromBase64String(", "IEX (New-Object Net.WebClient)"):
+            table = features.build([self._ps(text)], None, "evtx.powershell")
+            assert table.rows[0][i] == 1.0, text
+
+    def test_truncation_flag_is_read_from_details(self):
+        names = features.FAMILY_FEATURES["evtx.powershell"]
+        i = names.index("script_is_truncated")
+        cut = features.build([self._ps("x", truncated=True)], None, "evtx.powershell")
+        whole = features.build([self._ps("x")], None, "evtx.powershell")
+        assert cut.rows[0][i] == 1.0
+        assert whole.rows[0][i] == 0.0
+
+    def test_powershell_family_omits_path_and_interval_features(self):
+        """They are undefined for a script block, which is why the family was
+        degenerate before."""
+        names = features.FAMILY_FEATURES["evtx.powershell"]
+        for absent in ("path_depth", "path_is_user_writable", "run_count",
+                       "seconds_since_previous_run_of_same_executable"):
+            assert absent not in names
