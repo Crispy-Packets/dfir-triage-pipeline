@@ -121,6 +121,62 @@ def _fold(value: Any, ci: bool) -> Any:
     return value
 
 
+#: Directories an unprivileged user can write to, as a path SHAPE rather than
+#: as a list of names. Deliberately the same markers `features._USER_WRITABLE`
+#: uses, so the rule layer and the anomaly layer cannot disagree about what
+#: "user-writable" means for the same path.
+_USER_WRITABLE_MARKERS = (
+    r"\users" + "\\",
+    r"\appdata" + "\\",
+    r"\temp" + "\\",
+    r"\programdata" + "\\",
+    r"\downloads" + "\\",
+    r"\public" + "\\",
+)
+
+#: Environment variables that expand into a user-writable location. An autorun
+#: value often stores the unexpanded form, and %APPDATA% is as user-writable as
+#: the path it expands to.
+_USER_WRITABLE_VARS = ("%appdata%", "%localappdata%", "%temp%", "%tmp%", "%userprofile%")
+
+#: Locations only an administrator can write to. Checked FIRST, because
+#: `C:\Program Files\Common Files\...\Users Guide\` would otherwise
+#: match on the substring and a system path would be called user-writable.
+_SYSTEM_MARKERS = (
+    r"\program files" + "\\",
+    r"\program files (x86)" + "\\",
+    r"\windows" + "\\",
+    r"\programw6432" + "\\",
+    "%programfiles%",
+    "%systemroot%",
+    "%windir%",
+)
+
+
+def _is_user_writable(raw: str) -> bool:
+    """Whether a path sits somewhere an unprivileged user can write.
+
+    A SHAPE predicate, not a name list. `docs/per-family-features.md` and the
+    `expected:` notes on R-ATOMIC-0006 and R-CORR-0003 both record why this
+    distinction matters: suppressing `onedrive.exe` or `msedge.exe` by name
+    would improve the base rates on this corpus and would not survive contact
+    with a different estate. Asking where the binary lives is a property of the
+    finding rather than of this lab.
+
+    System locations are tested first and win. A path under Program Files that
+    happens to contain the substring "users" is not user-writable, and the
+    ordering is what makes that true rather than a longer regex.
+    """
+    text = raw.replace("/", "\\").lower()
+    if not text:
+        return False
+    if any(m in text for m in _SYSTEM_MARKERS):
+        return False
+    if any(v in text for v in _USER_WRITABLE_VARS):
+        return True
+    return any(m in text for m in _USER_WRITABLE_MARKERS)
+
+
 def evaluate_condition(event: Any, cond: Condition, stats: EngineStats | None = None) -> bool:
     """One condition against one event.
 
@@ -164,6 +220,8 @@ def evaluate_condition(event: Any, cond: Condition, stats: EngineStats | None = 
         return isinstance(left, str) and left.endswith(str(right))
     if cond.op == "matches":
         return bool(re.search(str(cond.value), str(value)))
+    if cond.op == "is_user_writable":
+        return _is_user_writable(str(value)) is bool(cond.value)
     if cond.op in ("gt", "gte", "lt", "lte"):
         return _compare(value, cond.value, cond.op)
     raise KeyError(f"unknown operator {cond.op!r}; the set is closed (schema section 3.3)")

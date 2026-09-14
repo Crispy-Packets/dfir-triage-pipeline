@@ -58,6 +58,8 @@ expected:
   clean_a: 42
   clean_b: 48
   s1_v2: 1
+  clean_c: 0
+  s1_v3: 0
   note: >
     Measured 2026-08-30 across all three collections (A-4, and A-10 brought
     forward). The baseline counts are almost entirely Defender signature

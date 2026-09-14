@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     raise SystemExit(2) from None
 
 SCHEMA_MAJOR = "1"
-SCHEMA_VERSION = "1.4.1"
+SCHEMA_VERSION = "1.5.0"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_DOC = REPO_ROOT / "docs" / "contract-decisions.md"
@@ -73,15 +73,33 @@ LIST_OPS = frozenset({"in", "not_in"})
 CI_OPS = frozenset(
     {"equals", "not_equals", "in", "not_in", "contains", "not_contains", "starts_with", "ends_with"}
 )
+# Shape predicates: a boolean question about a value's form rather than a
+# comparison against a literal. `value` is true or false, and the operator is
+# not case-insensitive because it folds internally.
+#
+# `is_user_writable` exists because a rule could otherwise only ask whether a
+# path matches a regex, which forced R-CORR-0003 to treat
+# `C:\Users\...\Downloads\invoice_scan.exe` and
+# `C:\Program Files (x86)\...\msedge.exe` identically. Suppressing the latter by
+# NAME was rejected in that rule's own notes as corpus-fitting; asking where a
+# binary lives is a property of the finding rather than of this lab.
+SHAPE_OPS = frozenset({"is_user_writable"})
+
 OPERATORS = (
     NO_VALUE_OPS
     | LIST_OPS
     | CI_OPS
+    | SHAPE_OPS
     | frozenset({"matches", "gt", "gte", "lt", "lte"})
 )
 
 SEVERITIES = frozenset({"informational", "low", "medium", "high", "critical"})
-COLLECTIONS = ("clean_a", "clean_b", "s1_v2")
+
+# Every collection an `expected:` block may declare a base rate for. clean_c and
+# s1_v3 are the host-2 pair added 2026-09-13; the first three are host 1. A rule
+# need not carry all five, but a key outside this tuple is a typo rather than a
+# new collection.
+COLLECTIONS = ("clean_a", "clean_b", "s1_v2", "clean_c", "s1_v3")
 
 JOINABLE = frozenset({"entity.exe_name", "entity.user"})
 FORBIDDEN_JOIN = frozenset({"path", "source_file", "source_locator", "action", "entity.host"})
@@ -260,6 +278,10 @@ def check_condition(
         report.error(where, f"{op} requires a value")
     if op in LIST_OPS and not isinstance(node.get("value"), list):
         report.error(where, f"{op} requires a list value")
+    if op in SHAPE_OPS and not isinstance(node.get("value"), bool):
+        # `value: "true"` would be a non-empty string and therefore truthy under
+        # any looser check, silently inverting nothing but reading as a boolean.
+        report.error(where, f"{op} requires a boolean value (true or false), not a string")
     if "ci" in node:
         if not isinstance(node["ci"], bool):
             report.error(where, "ci must be a boolean")

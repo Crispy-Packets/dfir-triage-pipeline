@@ -55,6 +55,8 @@ expected:
   clean_a: 3
   clean_b: 3
   s1_v2: 8
+  clean_c: 0
+  s1_v3: 0
   note: >
     Measured 2026-08-30 across all three collections, with the conditions as
     written above.

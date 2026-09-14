@@ -56,6 +56,19 @@ steps:
           op: present
         - field: details.key_last_write
           op: present
+        # Added 2026-09-13. Without this the rule fires on every application
+        # that runs and is also registered at logon -- msedge.exe,
+        # onedrive.exe, securityhealthsystray.exe -- which is an inventory of
+        # autostart software rather than a detection, at critical severity.
+        #
+        # A SHAPE predicate, not a name list. The rule's own notes rejected
+        # suppressing those binaries by name as corpus-fitting that would not
+        # survive a different estate; asking where the target lives is a
+        # property of the finding. `invoice_scan.exe` sits in Downloads\ and
+        # matches; msedge.exe sits in Program Files and does not.
+        - field: path
+          op: is_user_writable
+          value: true
     in_window: false
     optional: false
 
@@ -89,31 +102,49 @@ window:
     interval. details.value_count_in_key says how many siblings share it.
 
 expected:
-  clean_a: 5
-  clean_b: 5
-  s1_v2: 5
+  clean_a: 1
+  clean_b: 1
+  s1_v2: 2
+  clean_c: 1
+  s1_v3: 2
   note: >
-    Measured 2026-08-30, and this is the number that most needs stating next to
-    the rule rather than discovered in Week 4.
+    **Remeasured 2026-09-13, after the is_user_writable condition was added to
+    the persistence step.** All five figures above are post-change. The
+    pre-change measurement is retained below because the change is only
+    defensible against it.
 
-    **This rule fires five times on a collection containing no attack**, at
-    critical severity and weight 85. In clean_a: onedrive.exe, msedge.exe,
+    AS ORIGINALLY MEASURED 2026-08-30: clean_a 5, clean_b 5, s1_v2 5.
+
+    The rule fired five times on a collection containing NO attack, at critical
+    severity and weight 85. In clean_a: onedrive.exe, msedge.exe,
     onedrivesetup.exe, securityhealthsystray.exe and a cmd.exe RunOnce
-    uninstaller. clean_b is the same five. On s1_v2 it also fires five times --
+    uninstaller. clean_b was the same five. On s1_v2 it also fired five times --
     onedrive.exe, msedge.exe, securityhealthsystray.exe, vboxtray.exe, and
-    invoice_scan.exe.
+    invoice_scan.exe. The identical count across all three collections was the
+    clearest statement of the problem available: the scenario added one true
+    positive and removed one benign one, and the total did not move. The rule
+    was an inventory of autostart software with one real detection inside it.
 
-    So on this corpus the rule is an inventory of autostart software with one
-    real detection inside it, not a detector. The identical count across all
-    three collections is the clearest statement of that available: the scenario
-    adds one true positive and removes one benign one, and the total does not
-    move. Its weight of 85 is a claim about how much a single finding is worth,
-    and this base rate says that claim needs qualifying by what the entity is,
-    not by the fact that the chain matched.
+    WHAT CHANGED. The persistence step now requires its target to be
+    user-writable. That is a SHAPE predicate, not a name list -- this note
+    previously rejected suppressing onedrive.exe and msedge.exe by name as
+    corpus-fitting that would not survive a different estate, and that rejection
+    still stands. Asking where a binary lives is a property of the finding:
+    invoice_scan.exe sits in Downloads\ and matches, msedge.exe sits in
+    Program Files and does not. The engine's `_is_user_writable` checks system
+    locations first, so a Program Files path containing the substring "users"
+    is correctly excluded.
 
-    Nothing here is a fault in the rule. Software that runs and is also
-    registered to run at logon is exactly what the rule describes, and most such
-    software is legitimate. The failure would be reporting the s1_v2 five as
-    five detections.
+    EFFECT. clean_a 5 -> 1, clean_b 5 -> 1, s1_v2 5 -> 2, and the surviving
+    hits are the ones that matter: s1_v2 keeps invoice_scan.exe, s1_v3 keeps
+    invoice_scan.exe. The remaining benign hit on each clean collection is
+    per-user OneDrive under AppData\Local, which genuinely is a user-writable
+    autorun and is the honest limit of this indicator -- identical in structure
+    to the attack.
+
+    WHAT THE BASE RATE STILL SAYS. One finding per clean host at critical
+    severity is a substantially better claim than five, but it is not zero, and
+    a critical finding still needs qualifying by what the entity is. The failure
+    would be reporting the s1_v3 two as two detections.
 
 order: any

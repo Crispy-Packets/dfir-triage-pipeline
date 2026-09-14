@@ -43,6 +43,8 @@ expected:
   clean_a: 0
   clean_b: 0
   s1_v2: 1
+  clean_c: 0
+  s1_v3: 1
   note: >
     Exactly one EID 1102 exists in the whole corpus, in collection_s1_v2. This
     rule therefore has one positive case across all three collections, so its

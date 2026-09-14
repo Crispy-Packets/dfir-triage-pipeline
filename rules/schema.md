@@ -1,12 +1,13 @@
 # Rule schema
 
-    schema_version: 1.4.1
+    schema_version: 1.5.0
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
     1.3.0:          2026-08-30, when the correlation engine was written
     1.4.0:          2026-08-30, after the first real run over all three collections
     1.4.1:          2026-08-30, after probing the engine for misses
+    1.5.0:          2026-09-13, shape predicates and the host-2 base rates
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -222,10 +223,47 @@ Closed set. An unknown operator is a load-time error.
 | `matches` | regex | Python `re`; must compile at load or the rule is rejected |
 | `present`, `absent` | any | takes no `value` |
 | `gt`, `gte`, `lt`, `lte` | number or timestamp | both sides must be the same kind |
+| `is_user_writable` | path-like string | **shape predicate**; `value` must be `true` or `false`; no `ci` |
 
 `ci: true` case-folds both sides before comparing. It exists because `CD-010`
 forbids the parser from case-folding anything, so folding belongs in the rule,
 where it is visible, and not in the parser, where it would destroy provenance.
+
+#### Shape predicates — added 1.5.0
+
+A shape predicate asks a boolean question about a value's *form* rather than
+comparing it to a literal. `value` is `true` or `false`; a string is a load-time
+error, because `value: "false"` is a non-empty string and would read as a
+boolean while behaving as `true`.
+
+`is_user_writable` answers whether a path sits somewhere an unprivileged user
+can write: under `\Users\`, `\AppData\`, `\Temp\`, `\ProgramData\`,
+`\Downloads\` or `\Public\`, or behind `%APPDATA%`, `%LOCALAPPDATA%`, `%TEMP%`
+or `%USERPROFILE%`. **System locations are tested first and win**, so a path
+under `Program Files` containing the substring `Users` — as
+`C:\Program Files\Common Files\Users Guide\` does — is correctly not
+user-writable. Forward slashes are normalised and case is folded, so `ci` would
+be meaningless and is rejected.
+
+**Why it exists.** Without it a rule can only regex a path against literals,
+which forced `R-CORR-0003` to treat
+`C:\Users\...\Downloads\invoice_scan.exe` and
+`C:\Program Files (x86)\...\msedge.exe` identically — five findings at
+`critical` on a collection containing no attack, three of them Edge, OneDrive
+and SecurityHealthSystray.
+
+That rule's own `expected` note had already rejected the alternative fix:
+suppressing those binaries **by name** is corpus-fitting that would not survive
+a different estate. Asking *where* a binary lives is a property of the finding
+rather than of this lab, which is the same reasoning `features.py` uses for
+`path_is_user_writable`. The two layers share the marker list deliberately, so
+the rule engine and the anomaly layer cannot disagree about what user-writable
+means for the same path.
+
+Measured effect: `clean_a` 5 → 1, `clean_b` 5 → 1, `s1_v2` 5 → 2, with
+`invoice_scan.exe` retained in both scenario collections. The surviving benign
+hit is per-user OneDrive under `AppData\Local`, which genuinely is a
+user-writable autorun and is the honest limit of the indicator.
 
 Structure:
 
@@ -905,6 +943,7 @@ a change to either one is raised before it is made.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5.0 | 2026-09-13 | Adds **shape predicates** (section 3.3) and the first of them, `is_user_writable`. A rule could previously only regex a path against literals, so `R-CORR-0003` could not distinguish a payload in `Downloads\` from `msedge.exe` in `Program Files` and fired five times at `critical` on a collection with no attack. That rule's own note had already rejected the by-name alternative as corpus-fitting; a shape predicate asks where a binary lives, which is a property of the finding rather than of this lab. Measured: clean_a 5 -> 1, clean_b 5 -> 1, s1_v2 5 -> 2, with `invoice_scan.exe` retained in both scenario collections. Also extends `expected` to the host-2 collections `clean_c` and `s1_v3`, and every rule's block is repopulated from a 2026-09-13 run over all five. Minor version: every 1.4.1 file still loads. |
 | 1.0.0 | 2026-08-29 | First frozen version. Field addressing, join fields, missing-field behaviour, and the `timestamp_type` rule (A-1, A-2). |
 | 1.4.1 | 2026-08-30 | Documents how a windowed combination is chosen, after probing the engine found a real miss: it took the first candidate satisfying ordering, tested the window once, and abandoned the anchor if it failed — so with a `window.min` above zero a candidate violating the minimum hid a valid one behind it. No current rule is affected (all use `min: PT0S` with `order: strict`), and it is fixed and pinned regardless. Also records that a truncated search is reported rather than silent, and that `rules/blocked/` is now empty. |
 | 1.4.0 | 2026-08-30 | `expected` is required on **every** rule, not only atomic ones (section 8.1). The first run of the engine over all three collections showed every correlation rule carrying a clean-host base rate and none of them recording it — `R-CORR-0003` fires five times on a collection with no attack, at critical severity. The four rules most likely to be read as detections were the four with no measurement beside them. All four `expected` blocks are populated from that run. |
