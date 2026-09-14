@@ -82,6 +82,8 @@ expected:
   clean_a: 0
   clean_b: 0
   s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
   note: >
     Measured 2026-08-30. Zero on all three, which is the correct result and not
     a failure to detect: no service creation in this corpus is followed by a log

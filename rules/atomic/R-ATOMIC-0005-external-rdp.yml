@@ -45,6 +45,8 @@ expected:
   clean_a: 0
   clean_b: 0
   s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
   note: >
     Measured 2026-08-30 across all three collections (A-4/A-10). Zero
     everywhere. The s1_v2 zero was already measured when the rule was written;

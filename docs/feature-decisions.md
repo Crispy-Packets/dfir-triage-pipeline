@@ -60,11 +60,46 @@ Each describes behaviour that would still mean something on a different machine.
 | `events_in_same_hour`, `distinct_executables_in_same_hour` | Activity density. The hour groups nearby events; the hour *itself* is never a feature. |
 | `seconds_since_previous_run_of_same_executable`, `previous_run_is_known` | Execution rhythm. A gap of zero and a gap that does not exist are different claims. |
 | `path_depth`, `path_is_user_writable` | Shape, not identity. Carries no collection-specific string. |
+| `download_size_log10`, `download_size_is_known` | Added 2026-09-13. Log-scaled because the measured range is 153 B to 1.07 GB; on a linear scale one 1 GB download dominates every split. Missing is flagged, never imputed. |
+| `mime_type_is_executable` | Added 2026-09-13. Membership of a closed MIME set -- shape, not the string. |
+| `filename_length`, `filename_entropy` | Added 2026-09-13. How long the basename is and how evenly its characters are distributed. The characters themselves never enter the model. |
 
 Rarity is computed on the **training** collection and applied unchanged to
 whatever is scored. Recomputing per collection would make every binary
 averagely rare within its own collection, hiding precisely the binary that
 appears nowhere else.
+
+### Per-family feature sets (2026-09-13)
+
+The fifteen names above are the full vocabulary; **no family receives all of
+them.** `features.FAMILY_FEATURES` restricts each artifact family to the columns
+its records can populate: a download has never run, so `run_count` and the
+interval columns are undefined for `browser`; a Prefetch record carries no byte
+count or MIME type.
+
+A constant column is not merely ignored. Isolation Forest selects a feature
+uniformly at random and then a split point within its observed range, so a
+column identical across every row in a family spends a node and partitions
+nothing. The argument is made in full in `docs/per-family-features.md`, which
+was committed **before** the implementation and before any rank was remeasured.
+
+### The five new features were leakage-tested before implementation
+
+Each measured single-field accuracy separating `clean_c` from `s1_v3`, against a
+**58.1%** majority-class baseline:
+
+| feature | accuracy | verdict |
+|---|---|---|
+| `download_size_log10` | 58.1% | accept |
+| `mime_type_is_executable` | 58.1% | accept |
+| `filename_length` | 58.1% | accept |
+| `filename_entropy` | 58.1% | accept |
+
+All four sit exactly on the baseline -- they carry no collection identity at
+all, the cleanest result any feature has returned on this project. Two further
+candidates, `filename_digit_ratio` and `url_path_depth`, also passed and were
+**not** implemented: both are closer to the excluded `path` field than to a
+shape, and four accepted features were enough to test the idea.
 
 ---
 
@@ -115,14 +150,35 @@ asserted in `tests/test_features.py`, not eyeballed once and forgotten.
 
 ## 6. What the model actually detects — stated plainly
 
-It ranks the Scenario 1 rows as follows, per-family, `clean_b` as training:
+**Superseded 2026-09-13 by the host-2 measurement. Both results are kept: the
+host-1 figures are what this corpus supports, and the change between them is
+the finding.**
+
+### Host 2 — current (`clean_c` training, `s1_v3` scored)
+
+| step | artifact | percentile | flagged? |
+|---|---|---|---|
+| download | `browser` | 3.49 | no |
+| amcache | `amcache` | 11.49 | no |
+| execution | `prefetch` | 36.59 | no |
+
+Entity rank **40 of 525 — top 7.6%**. Three of the four attack events are
+scored, against 1 of 11 on host 1.
+
+### Host 1 — as originally measured (`clean_b` training, `s1_v2` scored)
 
 | step | artifact | rank | flagged? |
 |---|---|---|---|
 | log clear | `evtx.security` | 86 / 359 (top 24%) | no |
 | execution | `prefetch` | 448 / 868 (top 52%) | no |
 
-**Neither is flagged.** The unsupervised layer does not detect Scenario 1.
+Entity rank 351 of 616 — top 57%.
+
+**Nothing is flagged as an outlier in either case.** The layer ranks; it does
+not detect. What changed between the two is coverage and feature fit, not the
+model: host 1's `browser` family held 11 training rows and could not be modelled
+at all, so the download and the persistence were never scored. See
+`docs/evidence/ml-stage-record-2026-09-13.md` for the full progression.
 
 This is a real result and it is not a bug. `invoice_scan.exe` is **1 of 30**
 Prefetch binaries in `s1_v2` unseen in training, sitting alongside `drvinst.exe`,

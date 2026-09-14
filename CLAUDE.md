@@ -3,8 +3,8 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  287 passed, 20 skipped
-    python rules\validate_rules.py    ->  schema 1.4.1  rules 10  errors 0  warnings 0
+    python -m pytest -q               ->  358 passed, 20 skipped
+    python rules\validate_rules.py    ->  schema 2.0.0  rules 10  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
@@ -36,9 +36,19 @@ Evidence lives **outside this repository** at `%USERPROFILE%\dfir-evidence`
 operation -- `git clean -xdf` removes ignored files, so an ignore rule would
 protect the repo from the evidence, not the evidence from the repo.
 
+    HOST 1 -- a collaborator's machine, collected August 2026
     collection_clean_a   892 files   ambient-noise control
     collection_clean_b   916 files   reference baseline (CD-014)
     collection_s1_v2     817 files   scenario: HTTP delivery, exec, persist, log clear
+
+    HOST 2 -- collected September 2026 because host 1's browser family held 11
+    rows and could not be modelled, so the download was never scored
+    collection_clean_c   736 files   training baseline; 62 downloads, 470 4104 rows
+    collection_s1_v3     799 files   scenario, same four steps
+
+**Train and score within one host.** A model fitted on host 1 and scored against
+host 2 flags nearly every row, because two machines differ in software, users
+and hostname -- the same failure as the 27.4% artifact-mix result below.
 
 ## Anomaly layer
 
@@ -57,11 +67,26 @@ The B-12 acceptance test is asserted in `tests/test_features.py`: a model fitted
 on `clean_b` must not flag `clean_a` as broadly anomalous. If that fails, no
 `s1_v2` result means anything.
 
-**The anomaly layer does not detect Scenario 1**, and that is the recorded
-result, not a defect. The execution ranks 52nd percentile among Prefetch rows
-and the log clear 24th among Security rows. Detection comes from the
-deterministic rules; the anomaly layer contributes triage ranking and a measured
-~5% false-positive floor on clean hosts.
+- **`features.FAMILY_FEATURES` restricts each family to the columns its records
+  can populate.** A download has never run; a Prefetch record has no MIME type.
+  A constant column is not ignored -- the forest picks features at random, so it
+  spends splits partitioning nothing. Argued in `docs/per-family-features.md`,
+  committed before the implementation.
+
+**The anomaly layer ranks; it does not detect.** Nothing is flagged as an
+outlier in either host's scenario. On host 2 the attack entity ranks **40 of 525
+(top 7.6%)**, improved from 351 of 616 on host 1 -- the change came from
+collecting a corpus the model could see and from five leakage-tested features,
+not from tuning. Detection comes from the deterministic rules; the anomaly layer
+contributes triage ranking and a measured ~5% false-positive floor on clean
+hosts.
+
+**There is no accuracy figure and none can be computed** -- 4 attack events in
+2,304 is not a labelled test set, and labelling by collection would measure
+collection identity (`hour_of_day` scores 86.0% that way). With one ground-truth
+entity every ranking metric reduces to its position, so the rank is reported
+rather than lift. Full progression in
+`docs/evidence/ml-stage-record-2026-09-13.md`.
 
 ## Contracts
 

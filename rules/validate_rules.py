@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     raise SystemExit(2) from None
 
 SCHEMA_MAJOR = "1"
-SCHEMA_VERSION = "1.4.1"
+SCHEMA_VERSION = "2.0.0"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_DOC = REPO_ROOT / "docs" / "contract-decisions.md"
@@ -73,15 +73,45 @@ LIST_OPS = frozenset({"in", "not_in"})
 CI_OPS = frozenset(
     {"equals", "not_equals", "in", "not_in", "contains", "not_contains", "starts_with", "ends_with"}
 )
+# Shape predicates: a boolean question about a value's form rather than a
+# comparison against a literal. `value` is true or false, and the operator is
+# not case-insensitive because it folds internally.
+#
+# `is_user_writable` exists because a rule could otherwise only ask whether a
+# path matches a regex, which forced R-CORR-0003 to treat
+# `C:\Users\...\Downloads\invoice_scan.exe` and
+# `C:\Program Files (x86)\...\msedge.exe` identically. Suppressing the latter by
+# NAME was rejected in that rule's own notes as corpus-fitting; asking where a
+# binary lives is a property of the finding rather than of this lab.
+SHAPE_OPS = frozenset({"is_user_writable"})
+
+# Corpus operators: they ask about the whole run rather than about one event,
+# and take an integer threshold. The claim they permit is deliberately narrower
+# than the anomaly layer's -- the engine receives no training collection, so a
+# rule may say "rare within this collection" but never "unseen in a baseline".
+RARITY_OPS = frozenset({"entity_count_lte", "entity_count_gte"})
+
 OPERATORS = (
     NO_VALUE_OPS
     | LIST_OPS
     | CI_OPS
+    | SHAPE_OPS
+    | RARITY_OPS
     | frozenset({"matches", "gt", "gte", "lt", "lte"})
 )
 
+# Entity keys an aggregate may group on, and a step may override its join with.
+# Same set section 4.3 permits for a join: grouping on `path` or `source_file`
+# would correlate events that share only a filename.
+GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
+
 SEVERITIES = frozenset({"informational", "low", "medium", "high", "critical"})
-COLLECTIONS = ("clean_a", "clean_b", "s1_v2")
+
+# Every collection an `expected:` block may declare a base rate for. clean_c and
+# s1_v3 are the host-2 pair added 2026-09-13; the first three are host 1. A rule
+# need not carry all five, but a key outside this tuple is a typo rather than a
+# new collection.
+COLLECTIONS = ("clean_a", "clean_b", "s1_v2", "clean_c", "s1_v3")
 
 JOINABLE = frozenset({"entity.exe_name", "entity.user"})
 FORBIDDEN_JOIN = frozenset({"path", "source_file", "source_locator", "action", "entity.host"})
@@ -253,13 +283,44 @@ def check_condition(
             f"{field!r} is not an Event attribute and has no details. prefix "
             "(schema section 3.2)",
         )
-    has_value = "value" in node
+    if "value_field" in node:
+        target = node["value_field"]
+        if not isinstance(target, str):
+            report.error(where, "value_field must be a string")
+        elif "value" in node:
+            report.error(
+                where,
+                "value and value_field are mutually exclusive -- a condition has one "
+                "right-hand side, and either precedence would make half of all such "
+                "rules silently mean the other thing",
+            )
+        elif not target.startswith("details.") and target not in EVENT_ATTRS:
+            report.error(
+                where,
+                f"value_field {target!r} is not an Event attribute and has no details. "
+                "prefix (schema section 3.2)",
+            )
+
+    has_value = "value" in node or "value_field" in node
     if op in NO_VALUE_OPS and has_value:
         report.error(where, f"{op} takes no value")
     if op not in NO_VALUE_OPS and not has_value:
         report.error(where, f"{op} requires a value")
     if op in LIST_OPS and not isinstance(node.get("value"), list):
         report.error(where, f"{op} requires a list value")
+    if op in RARITY_OPS:
+        threshold = node.get("value")
+        if not isinstance(threshold, int) or isinstance(threshold, bool):
+            report.error(where, f"{op} requires an integer value")
+        elif threshold < 1:
+            # A threshold of 0 matches nothing (a count is never below 1) or
+            # everything, depending on the direction -- either way it is a rule
+            # that looks like a threshold and does not act as one.
+            report.error(where, f"{op} requires a value of 1 or more")
+    if op in SHAPE_OPS and not isinstance(node.get("value"), bool):
+        # `value: "true"` would be a non-empty string and therefore truthy under
+        # any looser check, silently inverting nothing but reading as a boolean.
+        report.error(where, f"{op} requires a boolean value (true or false), not a string")
     if "ci" in node:
         if not isinstance(node["ci"], bool):
             report.error(where, "ci must be a boolean")
@@ -363,6 +424,8 @@ def check_correlation(data: dict, where: str, report: Report, details_refs: set[
             continue
         unknown = set(step) - {
             "name", "select", "conditions", "in_window", "optional", "ambiguity_ack",
+            # schema 2.0.0
+            "absent", "min_count", "max_count", "join_override",
         }
         if unknown:
             report.error(at, f"unknown step key(s): {sorted(unknown)}")
@@ -397,6 +460,54 @@ def check_correlation(data: dict, where: str, report: Report, details_refs: set[
         in_window = step.get("in_window")
         if not isinstance(in_window, bool):
             report.error(at, "in_window is required and must be a boolean")
+
+        # --- schema 2.0.0 step fields ---
+        absent = step.get("absent", False)
+        if not isinstance(absent, bool):
+            report.error(at, "absent must be a boolean")
+            absent = False
+        if absent:
+            if in_window:
+                report.error(
+                    at,
+                    "absent and in_window are mutually exclusive -- a step that matches "
+                    "nothing has no time to place in a window",
+                )
+            if optional:
+                # Satisfied by everything: it passes when the event is missing
+                # AND when it is present.
+                report.error(at, "absent and optional are mutually exclusive")
+            for key in ("min_count", "max_count", "join_override"):
+                if key in step:
+                    report.error(at, f"absent takes no {key}")
+
+        min_count = step.get("min_count", 1)
+        if not isinstance(min_count, int) or isinstance(min_count, bool) or min_count < 1:
+            report.error(at, "min_count must be an integer of 1 or more")
+            min_count = 1
+        max_count = step.get("max_count")
+        if max_count is not None:
+            if not isinstance(max_count, int) or isinstance(max_count, bool):
+                report.error(at, "max_count must be an integer or omitted")
+            elif max_count < min_count:
+                report.error(
+                    at,
+                    f"max_count {max_count} is below min_count {min_count}, so the step "
+                    "can never be satisfied -- a rule that cannot fire looks like coverage",
+                )
+
+        override = step.get("join_override")
+        if override is not None:
+            if not isinstance(override, list) or not override:
+                report.error(at, "join_override must be a non-empty list")
+            else:
+                bad = [k for k in override if k not in GROUPABLE]
+                if bad:
+                    report.error(
+                        at,
+                        f"join_override {sorted(bad)} is not joinable; one of "
+                        f"{sorted(GROUPABLE)} (schema section 4.3)",
+                    )
             continue
         if not artifacts:
             report.error(
@@ -435,9 +546,63 @@ def check_correlation(data: dict, where: str, report: Report, details_refs: set[
                     f"{where}.join",
                     f"{value!r} is not a defined entity key (schema section 4.1)",
                 )
+
+        # A step overriding the join must still share ground with the rule.
+        # Without an overlap the steps correlate on nothing in common, and the
+        # "chain" would be two unrelated events reported as one.
+        join_set = set(join["on"])
+        for index, step in enumerate(steps if isinstance(steps, list) else []):
+            if not isinstance(step, dict):
+                continue
+            override = step.get("join_override")
+            if isinstance(override, list) and override and not (set(override) & join_set):
+                report.error(
+                    f"{where}.steps[{index}].join_override",
+                    f"shares no key with join.on {sorted(join_set)} -- a step joining on "
+                    "unrelated keys correlates unrelated events (schema section 4.3)",
+                )
     check_window(data.get("window"), f"{where}.window", names, report)
     if data.get("order") not in ("strict", "any"):
         report.error(where, "order must be 'strict' or 'any'")
+
+
+def check_aggregate(node: Any, where: str, report: Report) -> None:
+    """A burst condition on an atomic rule (schema 2.0.0, gap 1).
+
+    Optional: a rule without one is an ordinary atomic rule.
+    """
+    if node is None:
+        return
+    if not isinstance(node, dict):
+        report.error(where, "aggregate must be a mapping")
+        return
+
+    unknown = set(node) - {"count", "within", "group_by"}
+    if unknown:
+        report.error(where, f"unknown aggregate key(s): {sorted(unknown)}")
+
+    count = node.get("count")
+    if not isinstance(count, int) or isinstance(count, bool) or count < 2:
+        # Below 2 there is no burst. `count: 1` is the rule without the
+        # aggregate, written so it implies a threshold it does not enforce.
+        report.error(where, "aggregate.count must be an integer of 2 or more")
+
+    within = node.get("within")
+    if not isinstance(within, str) or not DURATION_RE.match(within):
+        report.error(where, "aggregate.within must be an ISO-8601 duration, e.g. PT10M")
+    elif within in ("PT0S", "P0D"):
+        report.error(where, "aggregate.within must be a positive duration")
+
+    group_by = node.get("group_by")
+    if group_by not in GROUPABLE:
+        # A burst against one ACCOUNT is a spray; a burst across every account
+        # on a domain controller at 09:00 is Monday morning. Grouping on `path`
+        # would burst on events sharing only a filename.
+        report.error(
+            where,
+            f"aggregate.group_by {group_by!r} is not groupable; one of "
+            f"{sorted(GROUPABLE)} (schema section 4.3)",
+        )
 
 
 def check_expected(node: Any, where: str, report: Report) -> None:
@@ -533,7 +698,13 @@ def validate_file(path: Path, report: Report, details_refs: set[str],
         for key in ("steps", "join", "window", "order"):
             if key in data:
                 report.error(where, f"{key} is a correlation field and has no meaning here")
+        check_aggregate(data.get("aggregate"), f"{where}.aggregate", report)
     elif rule_type == "correlation":
+        if "aggregate" in data:
+            # A correlation rule already spans several events; a burst condition
+            # on top of it has no defined meaning -- is the count per step, per
+            # chain, or per entity? Rejected rather than given one silently.
+            report.error(where, "aggregate is an atomic field and has no meaning here")
         check_correlation(data, where, report, details_refs, vocabulary)
 
 

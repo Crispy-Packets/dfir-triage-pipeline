@@ -224,3 +224,77 @@ def test_b12_acceptance_two_baselines_must_score_alike():
         f"clean_a flagged at {test_rate:.1%} against clean_b's {train_rate:.1%} "
         "despite carrying no attack"
     )
+
+
+class TestPerFamilyFeatureSets:
+    """`FAMILY_FEATURES` restricts each family to columns its records populate.
+
+    Argued in docs/per-family-features.md. The failure this class exists to
+    prevent is silent: a name that does not appear in FEATURE_NAMES would be
+    looked up by index at build time, and the forest scores by position, so a
+    stale or misspelled entry reinterprets every column after it without
+    anything raising.
+    """
+
+    def test_every_family_name_exists_in_the_global_list(self):
+        known = set(features.FEATURE_NAMES)
+        for family, names in features.FAMILY_FEATURES.items():
+            unknown = set(names) - known
+            assert not unknown, f"{family} names features that do not exist: {unknown}"
+
+    def test_no_family_repeats_a_feature(self):
+        for family, names in features.FAMILY_FEATURES.items():
+            assert len(names) == len(set(names)), f"{family} repeats a feature"
+
+    def test_no_excluded_field_leaks_into_a_family_set(self):
+        for family, names in features.FAMILY_FEATURES.items():
+            for field in features.EXCLUDED_FIELDS:
+                assert field not in names, f"{family} carries excluded {field}"
+
+    def test_browser_omits_the_execution_features(self):
+        """A download has never run, so these are undefined rather than zero."""
+        browser = features.FAMILY_FEATURES["browser"]
+        for name in (
+            "run_count",
+            "run_count_is_known",
+            "seconds_since_previous_run_of_same_executable",
+            "previous_run_is_known",
+        ):
+            assert name not in browser
+
+    def test_prefetch_omits_the_download_features(self):
+        """A Prefetch record carries no byte count and no MIME type."""
+        prefetch = features.FAMILY_FEATURES["prefetch"]
+        for name in (
+            "download_size_log10",
+            "download_size_is_known",
+            "mime_type_is_executable",
+            "filename_length",
+            "filename_entropy",
+        ):
+            assert name not in prefetch
+
+    def test_unknown_family_falls_back_to_everything(self):
+        """A new parser scores with redundant columns -- measurably worse --
+        rather than silently dropping one its artifact does populate."""
+        assert features.features_for("not.a.family") == features.FEATURE_NAMES
+        assert features.features_for(None) == features.FEATURE_NAMES
+
+    def test_build_emits_exactly_the_family_columns(self):
+        events = [_event(BASE + timedelta(minutes=i), leaf=f"b{i}.exe") for i in range(5)]
+        for family in ("browser", "prefetch", "amcache"):
+            table = features.build(events, None, family)
+            assert table.names == features.FAMILY_FEATURES[family]
+            assert all(len(r) == len(table.names) for r in table.rows)
+
+    def test_column_values_are_selected_by_name_not_position(self):
+        """The values a family receives must equal the full row filtered by
+        name. Selecting by a stale index would produce plausible numbers in the
+        wrong columns."""
+        events = [_event(BASE + timedelta(minutes=i), leaf=f"b{i}.exe") for i in range(5)]
+        full = features.build(events, None)
+        for family in features.FAMILY_FEATURES:
+            reduced = features.build(events, None, family)
+            keep = [full.names.index(n) for n in reduced.names]
+            for full_row, reduced_row in zip(full.rows, reduced.rows, strict=True):
+                assert reduced_row == tuple(full_row[i] for i in keep)

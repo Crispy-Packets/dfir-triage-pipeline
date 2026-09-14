@@ -658,3 +658,90 @@ guarantee**, and a family whose rows are largely identical will report fewer
 outliers than configured. Not something to tune away -- the alternative would be
 flagging arbitrary members of a tied group.
 
+## D-039  A family's feature vector collapsed to a handful of distinct rows
+
+**Status:** found and fixed 2026-09-13.
+
+`features.build` emitted one fixed column layout for every event whatever
+artifact produced it. For `browser` rows that meant **86 downloads in `s1_v3`
+produced 8 distinct feature vectors**, and 62 downloads in `clean_c` produced 4.
+
+Six of the ten columns were execution-specific -- `run_count`,
+`run_count_is_known`, `seconds_since_previous_run_of_same_executable`,
+`previous_run_is_known` -- and a download has never run, so all four were 0.0 on
+every row. `path_depth` was 4.0 and `path_is_user_writable` 1.0 on every row,
+because every download lands in `Downloads\`. Only the hourly-density pair
+varied, so the model's entire view of a download was *how many other downloads
+happened that hour*.
+
+Nothing failed. The model fitted, scored, and returned percentiles that looked
+like a ranking. A split-half check on `clean_c` measured overlap **0.378**
+between the two halves of one clean collection, against the >0.80 the B-12
+acceptance test requires of two different collections -- the clearest sign that
+the family was not being modelled at all.
+
+**This is D-038 seen from the other side.** Isolation Forest cannot isolate
+identical rows; D-038 recorded that as an outlier rate below the configured
+contamination, and this is the same cause producing a meaningless ranking.
+
+Two fixes, both measured before implementation:
+
+1. The parser already recorded `bytes` and `mime_type` into `details` and
+   neither reached the feature table. `download_size_log10`,
+   `download_size_is_known` and `mime_type_is_executable` were added, then
+   `filename_length` and `filename_entropy`.
+2. `FAMILY_FEATURES` restricts each family to the columns its records can
+   populate (`docs/per-family-features.md`, argued and committed before the
+   implementation).
+
+Browser went from 8 distinct vectors to **84 of 86 rows**. The attack entity's
+rank went 116/525 to 40/525.
+
+**What to watch for elsewhere.** Any new artifact family will inherit the same
+problem unless its feature set is considered when the parser lands. The
+diagnostic is cheap: build the table for one family and count
+`len(set(table.rows))` against `len(table.rows)`. A ratio far below 1.0 means
+the family is not being modelled, whatever the scores look like.
+
+---
+
+## D-040  A rule could not distinguish a payload from a system binary
+
+**Status:** found and fixed 2026-09-13. Schema 1.5.0.
+
+`R-CORR-0003` joins an execution to a Run key naming the same executable and
+reports it at `critical`, weight 85. Its conditions could only compare a field
+to a literal or a regex, so it had no way to tell
+`C:\Users\...\Downloads\invoice_scan.exe` from
+`C:\Program Files (x86)\...\msedge.exe`.
+
+Measured: **five findings at `critical` on collections containing no attack** --
+`msedge.exe`, `onedrive.exe`, `securityhealthsystray.exe`, `onedrivesetup.exe`
+and a `cmd.exe` RunOnce uninstaller. The count was identical across `clean_a`,
+`clean_b` and `s1_v2`: the scenario added one true positive and removed one
+benign one, and the total did not move.
+
+The rule's own `expected:` note had already identified this on 2026-08-30 and
+had explicitly rejected the obvious fix -- suppressing those binaries by name --
+as corpus-fitting that would not survive a different estate. That rejection was
+correct and is not overturned.
+
+**The fix is a shape predicate.** `is_user_writable` names no binary; it asks
+where one lives, which is a property of the finding rather than of this lab, and
+would behave identically on an estate this corpus has never seen. It is the same
+reasoning `features.py` uses for `path_is_user_writable`, and the two layers
+share the marker list so the rule engine and the anomaly layer cannot disagree
+about the same path.
+
+**The subtle part is the ordering.** System locations are tested first.
+`C:\Program Files\Common Files\Users Guide\` contains the substring `users`,
+and checking the writable markers first would call a Program Files path
+user-writable. `tests/test_shape_operators.py` pins it.
+
+Effect: `clean_a` 5 -> 1, `clean_b` 5 -> 1, `s1_v2` 5 -> 2, with
+`invoice_scan.exe` retained in both scenario collections. The survivor on each
+clean host is per-user OneDrive under `AppData\Local` -- a genuine
+user-writable autorun, structurally identical to the attack, and the honest
+limit of the indicator. **Better, not fixed.**
+
+---

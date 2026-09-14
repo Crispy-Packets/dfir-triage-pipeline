@@ -76,6 +76,8 @@ expected:
   clean_a: 2
   clean_b: 2
   s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
   note: >
     Measured 2026-08-30. Both baseline hits are the same two events in each
     collection: youssef with 54.065624s between failure and success, and
