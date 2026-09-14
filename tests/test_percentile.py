@@ -125,3 +125,73 @@ class TestPerFamilyIntegration:
             clean = [s.percentile_in_family for s in rows if not s.is_outlier]
             if flagged and clean:
                 assert max(flagged) <= min(clean), f"{family}: flag and rank disagree"
+
+
+class TestModellabilityGuards:
+    """Two guards added 2026-09-14 after stress-testing worst cases (D-041).
+
+    Both exist because the layer was reporting numbers it should have refused
+    to report: a family with 470 rows and 4 distinct vectors produced
+    percentiles that looked like a ranking, and scoring a different host's
+    collection flagged half its rows with no indication the run was
+    uninterpretable.
+    """
+
+    def test_degenerate_family_is_not_fitted(self):
+        """Enough rows, no variety. MIN_TRAINING_ROWS measures quantity; this
+        measures whether the quantity carries information."""
+        from datetime import UTC, datetime, timedelta
+
+        from dfir_triage_pipeline import features
+        from dfir_triage_pipeline.model import Event
+
+        base = datetime(2026, 9, 14, tzinfo=UTC)
+        # 200 rows, all identical in feature space: same binary, same hour.
+        events = [
+            Event(
+                timestamp=base + timedelta(seconds=i),
+                source_artifact="evtx.security",
+                event_type="logon_success",
+                action="a",
+                source_file="f",
+                source_locator=f"L{i}",
+                timestamp_type="recorded",
+                user="u",
+                details={"path_basename_canonical": "same.exe"},
+            )
+            for i in range(200)
+        ]
+        model = anomaly.PerFamilyModel().fit(events, features.build_rarity_index(events))
+        assert "evtx.security" not in model.models
+        assert "evtx.security" in model.unscored_families
+        assert "distinct feature vectors" in model.unscored_families.reason("evtx.security")
+
+    def test_unscored_families_records_which_reason(self):
+        """A bare set could not distinguish 'too few rows' from 'no variety' --
+        two different findings with two different fixes."""
+        families = anomaly.UnscoredFamilies()
+        families.add("a", "below MIN_TRAINING_ROWS", 10)
+        families.add("b", "only 4 distinct feature vectors in 470 rows", 470)
+        assert "a" in families and "b" in families
+        assert families == {"a", "b"}  # set-like, so existing callers are unchanged
+        # Worst first: many rows and no variety is the more surprising case.
+        assert families.lines()[0].startswith("  b:")
+
+    def test_baseline_warning_is_silent_when_the_rate_is_normal(self):
+        assert anomaly.baseline_warning(anomaly.CONTAMINATION) == ""
+        assert anomaly.baseline_warning(0.078) == ""
+
+    def test_baseline_warning_fires_on_a_mismatched_collection(self):
+        """Measured: fitting on host 2 and scoring host 1 flags 50.3% of rows
+        against a 5% setting. Nothing errors, and every row being unusual means
+        the ordering among them carries no information."""
+        warning = anomaly.baseline_warning(0.503)
+        assert "BASELINE MISMATCH" in warning
+        assert "different" in warning
+
+    def test_warning_threshold_is_a_multiple_of_contamination(self):
+        """Tied to CONTAMINATION rather than hardcoded, so changing one does not
+        silently invalidate the other."""
+        just_under = anomaly.CONTAMINATION * anomaly.BASELINE_MISMATCH_FACTOR
+        assert anomaly.baseline_warning(just_under) == ""
+        assert anomaly.baseline_warning(just_under * 1.01) != ""

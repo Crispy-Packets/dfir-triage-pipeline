@@ -157,6 +157,88 @@ class AnomalyModel:
 # model, because folding them back is exactly the mixing this class avoids.
 MIN_TRAINING_ROWS = 50
 
+# A family may clear MIN_TRAINING_ROWS and still be unmodellable. Isolation
+# Forest isolates a point by how few splits separate it from the rest, and
+# identical points cannot be separated from one another at all -- so a family
+# whose feature vectors collapse to a handful of distinct values produces
+# scores that look like a ranking and rank nothing.
+#
+# Measured on clean_c: `evtx.powershell` carries 470 rows and FOUR distinct
+# vectors, a ratio of 0.01. It cleared the row floor by nine times over. That
+# is why a row count is not a sufficient guard -- it measures quantity, and
+# this measures whether the quantity carries information.
+#
+# The floor is set at 0.25 rather than tuned: a family in which three rows in
+# four are duplicates of another row cannot support a meaningful ordering, and
+# no value between 0.10 and 0.40 changes which families pass on this corpus
+# (browser 1.00, prefetch 0.97, amcache 0.38 pass; evtx.security 0.16 and
+# evtx.powershell 0.01 do not). A threshold chosen where the data is sparse
+# would be a threshold chosen to produce a result.
+MIN_DISTINCT_RATIO = 0.25
+
+# An outlier rate far above the configured contamination means the model is
+# being asked about data unlike anything it was fitted on -- most often a
+# DIFFERENT MACHINE. Measured: fitting on host 2 and scoring host 1 flags
+# 50.3% of rows against a 5% setting.
+#
+# Nothing about that run errors. The forest correctly reports that the two
+# collections differ; what would be wrong is presenting the result as a triage
+# ranking, because every row is unusual and the ordering among them is noise.
+# `summarise` carries the warning so a caller cannot miss it.
+BASELINE_MISMATCH_FACTOR = 3.0
+
+
+class UnscoredFamilies:
+    """Families that were not modelled, each with the reason.
+
+    A bare `set[str]` said which families were skipped and never why, so a
+    caller could not distinguish "too few rows to fit" from "enough rows, no
+    variety" -- two different findings with two different fixes. It behaves like
+    a set for every existing caller and carries the reasons alongside.
+    """
+
+    def __init__(self) -> None:
+        self._reasons: dict[str, str] = {}
+        self._rows: dict[str, int] = {}
+
+    def add(self, family: str, reason: str = "", rows: int = 0) -> None:
+        self._reasons[family] = reason
+        self._rows[family] = rows
+
+    def reason(self, family: str) -> str:
+        return self._reasons.get(family, "")
+
+    def rows(self, family: str) -> int:
+        return self._rows.get(family, 0)
+
+    def lines(self) -> list[str]:
+        """Reportable, worst first by row count -- a family with many rows and
+        no variety is the more surprising of the two cases."""
+        return [
+            f"  {family}: {self._reasons[family]}"
+            for family in sorted(self._reasons, key=lambda f: -self._rows.get(f, 0))
+        ]
+
+    # -- set-like surface, so existing callers are unchanged --
+    def __contains__(self, family: object) -> bool:
+        return family in self._reasons
+
+    def __iter__(self):
+        return iter(self._reasons)
+
+    def __len__(self) -> int:
+        return len(self._reasons)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, UnscoredFamilies):
+            return self._reasons == other._reasons
+        if isinstance(other, set | frozenset):
+            return set(self._reasons) == other
+        return NotImplemented
+
+    def __repr__(self) -> str:
+        return f"UnscoredFamilies({sorted(self._reasons)})"
+
 
 class PerFamilyModel:
     """One Isolation Forest per source_artifact.
@@ -187,7 +269,10 @@ class PerFamilyModel:
     def __init__(self, n_estimators: int = 200) -> None:
         self._n_estimators = n_estimators
         self.models: dict[str, AnomalyModel] = {}
-        self.unscored_families: set[str] = set()
+        self.unscored_families = UnscoredFamilies()
+        #: Families present at SCORE time with no fitted model, and how many
+        #: events each held. Populated by `score`, empty until then.
+        self.skipped_at_score: dict[str, int] = {}
 
     def fit(self, events, rarity) -> PerFamilyModel:
         from . import features
@@ -198,9 +283,32 @@ class PerFamilyModel:
 
         for family, rows in grouped.items():
             if len(rows) < MIN_TRAINING_ROWS:
-                self.unscored_families.add(family)
+                self.unscored_families.add(family, "below MIN_TRAINING_ROWS", len(rows))
                 continue
+
             table = features.build(rows, rarity, family)
+            distinct = len(set(table.rows))
+            ratio = distinct / len(table.rows) if table.rows else 0.0
+            if ratio < MIN_DISTINCT_RATIO:
+                # Enough rows, not enough variety. Isolation Forest isolates a
+                # point by how few splits separate it from the others, and
+                # identical points cannot be separated at all -- so a family
+                # whose rows collapse to a handful of vectors produces
+                # percentiles that look like a ranking and rank nothing.
+                #
+                # Measured on clean_c: evtx.powershell has 470 rows and FOUR
+                # distinct vectors (D-039, D-041). It cleared MIN_TRAINING_ROWS
+                # comfortably, which is why a row count alone is not a
+                # sufficient guard: it measures quantity, this measures whether
+                # the quantity carries any information.
+                self.unscored_families.add(
+                    family,
+                    f"only {distinct} distinct feature vectors in {len(table.rows)} rows "
+                    f"(ratio {ratio:.3f}, floor {MIN_DISTINCT_RATIO})",
+                    len(rows),
+                )
+                continue
+
             self.models[family] = AnomalyModel(self._n_estimators).fit(table)
         return self
 
@@ -218,15 +326,51 @@ class PerFamilyModel:
             grouped.setdefault(event.source_artifact, []).append(event)
 
         out: list[Scored] = []
+        self.skipped_at_score = {}
         for family, rows in grouped.items():
             model = self.models.get(family)
             if model is None:
+                # Recorded rather than silently dropped. Measured: scoring a
+                # collection containing `browser` against a model fitted only on
+                # `prefetch` dropped 86 of 1,100 events with no indication at
+                # all. Omitting them is right -- a score of "not anomalous" for
+                # a row that was never modelled is a claim the model did not
+                # make -- but a caller must be able to tell how much of the
+                # collection went unexamined.
+                self.skipped_at_score[family] = len(rows)
                 continue
             # Percentiles are assigned within the family population being
             # scored, which is what makes them comparable across families.
             table = features.build(rows, rarity, family)
             out.extend(assign_percentiles(model.score(table), family))
         return out
+
+
+def baseline_warning(outlier_rate: float) -> str:
+    """A warning when the outlier rate says the baseline does not apply.
+
+    Returns "" when the rate is consistent with the contamination setting.
+
+    **This is the failure most likely to happen in real use.** Measured: a model
+    fitted on host 2 and scored against host 1 flags **50.3%** of rows against a
+    5% setting. Nothing errors -- the forest correctly reports that two machines
+    differ in their software, accounts and hostname -- but every row is unusual,
+    so the ordering among them carries no information and presenting it as a
+    triage ranking would be wrong.
+
+    An analyst who points the tool at a machine the baseline did not come from
+    gets thousands of "anomalies" and no indication that the run is
+    uninterpretable. This is that indication.
+    """
+    if outlier_rate <= CONTAMINATION * BASELINE_MISMATCH_FACTOR:
+        return ""
+    return (
+        f"BASELINE MISMATCH: {outlier_rate:.1%} of rows flagged against a "
+        f"{CONTAMINATION:.0%} contamination setting. The scored collection is "
+        "unlike the one the model was fitted on -- most often a different "
+        "machine. The ranking is not interpretable; refit on a baseline from "
+        "this host."
+    )
 
 
 def summarise(scores: list[Scored]) -> dict[str, float]:
