@@ -1,6 +1,6 @@
 # Rule schema
 
-    schema_version: 1.5.0
+    schema_version: 2.0.0
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
@@ -8,6 +8,7 @@
     1.4.0:          2026-08-30, after the first real run over all three collections
     1.4.1:          2026-08-30, after probing the engine for misses
     1.5.0:          2026-09-13, shape predicates and the host-2 base rates
+    2.0.0:          2026-09-14, the seven grammar gaps closed
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -224,6 +225,7 @@ Closed set. An unknown operator is a load-time error.
 | `present`, `absent` | any | takes no `value` |
 | `gt`, `gte`, `lt`, `lte` | number or timestamp | both sides must be the same kind |
 | `is_user_writable` | path-like string | **shape predicate**; `value` must be `true` or `false`; no `ci` |
+| `entity_count_lte`, `entity_count_gte` | any | **corpus predicate**; integer `value`; asks how many events in the run name the same executable |
 
 `ci: true` case-folds both sides before comparing. It exists because `CD-010`
 forbids the parser from case-folding anything, so folding belongs in the rule,
@@ -274,6 +276,41 @@ Structure:
 
 At least one of the three must be present and non-empty. `all` and `none` on the
 same rule is allowed; `none` is not a synonym for negated operators (see 3.4).
+
+#### Corpus predicates — added 2.0.0
+
+`entity_count_lte` and `entity_count_gte` ask how many events in **this run**
+resolve to the same `entity.exe_name`. `value` is an integer of 1 or more.
+
+    - field: path
+      op: entity_count_lte
+      value: 1          # named by exactly one event in the collection
+
+**The claim is deliberately narrower than the anomaly layer's.**
+`features.build_rarity_index` fits a profile on a *training* collection and
+applies it unchanged, so it can say "unseen in the baseline". The engine
+receives no training set, so a rule may say **rare within this collection** and
+nothing stronger. A rule's `description` must not imply otherwise.
+
+An event with no derivable executable evaluates **false**, not zero. Zero would
+read as maximally rare and would make every EVTX log-on record match.
+
+#### Cross-field comparison — `value_field`, added 2.0.0
+
+A condition may take its right-hand side from another field instead of a
+literal:
+
+    - field: details.bytes
+      op: lt
+      value_field: details.expected_bytes
+
+`value` and `value_field` are **mutually exclusive**. A condition carrying both
+has two right-hand sides and no defined precedence, and either resolution would
+make half of all such rules silently mean the other thing.
+
+An absent right-hand side is false, for the same reason an absent left-hand side
+is: a comparison against nothing is not a match, and treating it as one would
+make a missing field into evidence.
 
 ### 3.4 Missing fields: fail or skip
 
@@ -730,6 +767,100 @@ never later mistaken for a parser regression.
 
 ---
 
+### 6.3 Step modifiers — added 2.0.0
+
+Four optional step fields. All default to the 1.x behaviour, so every 1.x rule
+file still loads.
+
+| field | default | meaning |
+|---|---|---|
+| `absent` | `false` | the chain matches only when **no** event satisfies this step for the joined entity |
+| `min_count` | `1` | how many events must satisfy the step |
+| `max_count` | unbounded | upper bound on the same |
+| `join_override` | rule's `join.on` | join this step on different keys |
+
+#### `absent` — negative correlation
+
+"Executed with no arrival record" is the shape: how a binary that did not come
+through the download path surfaces.
+
+    - name: arrival
+      select:
+        event_type: [file_download]
+      conditions:
+        all: [{field: event_type, op: equals, value: file_download}]
+      in_window: false
+      optional: false
+      absent: true
+
+Two combinations are **load-time errors**, not silently ignored flags:
+
+- `absent` with `in_window` — there is no event to measure an interval to, and
+  accepting it would leave the rule file asserting a window it does not have.
+- `absent` with `optional` — an optional absence is satisfied by everything: it
+  passes when the event is missing *and* when it is present.
+
+`absent` also takes no `min_count`, `max_count` or `join_override`.
+
+#### `min_count` / `max_count` — repetition
+
+"One execution, then five or more registry writes." `max_count` below
+`min_count` is rejected: the step could never be satisfied, and a rule that
+cannot fire looks like coverage.
+
+#### `join_override` — multi-entity chains
+
+Lateral movement is definitionally multi-entity: user A's credentials, host B's
+execution, one binary as the constant. A step may join on
+`entity.exe_name`, `entity.user` or `entity.host`.
+
+**The override must share at least one key with `join.on`**, checked at load
+time. Without that overlap the steps have no common ground and the "chain" would
+be two unrelated events reported as one — the fabricated join this engine exists
+to prevent (section 4.3).
+
+---
+
+## 6A. `aggregate` — bursts on atomic rules, added 2.0.0
+
+An atomic rule may carry an `aggregate` block. It is **atomic-only**: a
+correlation rule already spans several events, and a count on top of it has no
+defined meaning — per step, per chain, or per entity? — so it is rejected rather
+than given one silently.
+
+    aggregate:
+      count: 5
+      within: PT10M
+      group_by: entity.user
+
+**Semantics.** A sliding window over each group's events in time order. The
+first window reaching `count` emits **one** finding and the group is then
+skipped: fifty failed logons in a minute is one spray observed once, and
+emitting at every window position would report it forty-six times.
+
+**`group_by` must be an entity key** — `entity.exe_name`, `entity.user` or
+`entity.host`. A burst against one *account* is a spray; a burst across every
+account on a domain controller at 09:00 is Monday morning. Grouping on `path`
+would burst on events sharing only a filename, which is why section 4.3 forbids
+joining on it.
+
+**`count` below 2 is rejected.** `count: 1` is the rule without the aggregate,
+written so it implies a threshold it does not enforce.
+
+**A burst finding claims `observed_interval`.** Unlike a `presence` event it
+spans real recorded times, so `window_observed_seconds` carries the measured
+span.
+
+**Why this exists.** The plan's second chain is "failed-logon **burst** →
+success". Section 11 recorded that it could not be written and that
+`R-CORR-0002` says *one* failure followed by a success instead — a weaker claim
+its description states rather than implies. That gap is now closed, though
+`R-CORR-0002` has not been rewritten to use it: there is exactly one EID 4625 in
+`collection_s1_v2` and none in `s1_v3`, so no burst exists in this corpus to
+detect. See `docs/schema-v2-gaps.md`.
+
+---
+
 ## 7. What a finding must carry
 
 Fixed here so Day 3 implements to it rather than around it. A finding is
@@ -943,6 +1074,7 @@ a change to either one is raised before it is made.
 
 | Version | Date | Change |
 |---|---|---|
+| 2.0.0 | 2026-09-14 | Seven grammar gaps closed, each found by trying to write a rule 1.x could not express: `aggregate` bursts on atomic rules (section 6A), `absent` negative steps, `min_count`/`max_count` repetition and `join_override` multi-entity chains (6.3), `value_field` cross-field comparison and `entity_count_lte`/`entity_count_gte` corpus predicates (3.3). **Major version because the grammar gained meaning, not because any 1.x file breaks** -- every new field is optional and defaults to the 1.x behaviour, and all ten current rules load unchanged. Four of the seven have no evidence in this corpus to exercise them and are pinned by synthetic fixtures; `docs/schema-v2-gaps.md` says which and why they were built anyway. |
 | 1.5.0 | 2026-09-13 | Adds **shape predicates** (section 3.3) and the first of them, `is_user_writable`. A rule could previously only regex a path against literals, so `R-CORR-0003` could not distinguish a payload in `Downloads\` from `msedge.exe` in `Program Files` and fired five times at `critical` on a collection with no attack. That rule's own note had already rejected the by-name alternative as corpus-fitting; a shape predicate asks where a binary lives, which is a property of the finding rather than of this lab. Measured: clean_a 5 -> 1, clean_b 5 -> 1, s1_v2 5 -> 2, with `invoice_scan.exe` retained in both scenario collections. Also extends `expected` to the host-2 collections `clean_c` and `s1_v3`, and every rule's block is repopulated from a 2026-09-13 run over all five. Minor version: every 1.4.1 file still loads. |
 | 1.0.0 | 2026-08-29 | First frozen version. Field addressing, join fields, missing-field behaviour, and the `timestamp_type` rule (A-1, A-2). |
 | 1.4.1 | 2026-08-30 | Documents how a windowed combination is chosen, after probing the engine found a real miss: it took the first candidate satisfying ordering, tested the window once, and abandoned the anchor if it failed — so with a `window.min` above zero a candidate violating the minimum hid a valid one behind it. No current rule is affected (all use `min: PT0S` with `order: strict`), and it is fixed and pinned regardless. Also records that a truncated search is reported rather than silent, and that `rules/blocked/` is now empty. |

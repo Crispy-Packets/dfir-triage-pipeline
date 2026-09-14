@@ -491,3 +491,47 @@ class TestNegativeAndRepeatedSteps:
             _ev(7, "persistence_autorun", artifact="registry", leaf="tool.exe"),
         ]
         assert len(engine.evaluate_correlation(rule, many, engine.EngineStats())) == 1
+
+
+class TestValidatorAgreesWithEngine:
+    """The validator and the loader are deliberately separate implementations,
+    so a bug in one does not pass both. That only helps if they agree about
+    which grammar is legal -- a capability the engine supports and the
+    validator rejects is unreachable from a rule file.
+    """
+
+    def _validator(self):
+        import importlib.util
+        from pathlib import Path
+
+        spec = importlib.util.spec_from_file_location(
+            "validate_rules",
+            Path(__file__).resolve().parent.parent / "rules" / "validate_rules.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_rarity_operators_are_declared(self):
+        mod = self._validator()
+        assert engine._RARITY_OPS <= mod.OPERATORS
+        assert engine._RARITY_OPS == mod.RARITY_OPS
+
+    def test_groupable_keys_agree(self):
+        """The engine and the validator must permit the same group_by set, or a
+        rule passes one and fails the other."""
+        from dfir_triage_pipeline.core import ruleset
+
+        assert ruleset._GROUPABLE == self._validator().GROUPABLE
+
+    def test_validator_accepts_every_new_step_key(self):
+        mod = self._validator()
+        source = (
+            __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
+        )
+        for key in ("absent", "min_count", "max_count", "join_override"):
+            assert f'"{key}"' in source, f"{key} is not in the validator's allowed step keys"
+
+    def test_validator_has_an_aggregate_check(self):
+        assert hasattr(self._validator(), "check_aggregate")
