@@ -8,6 +8,7 @@ from pathlib import Path
 from . import anomaly as anomaly_layer
 from . import features as feature_layer
 from .core import manifest as manifest_mod
+from .core import report_html as report_html_mod
 from .core import run_json as run_json_mod
 from .core.engine import run as run_rules
 from .core.entity_score import aggregate as aggregate_entities
@@ -36,6 +37,15 @@ def build_parser() -> argparse.ArgumentParser:
             "write the canonical run.json here, plus findings.csv, anomalies.csv "
             "and a SHA-256 manifest beside it. The CSVs are DERIVED from run.json "
             "so they cannot disagree with it."
+        ),
+    )
+    p.add_argument(
+        "--report",
+        action="store_true",
+        help=(
+            "also render report.html beside run.json. Reference renderer: "
+            "Person A owns the report template, and this proves run.json carries "
+            "everything a report needs."
         ),
     )
     p.add_argument(
@@ -162,12 +172,24 @@ def _write_run_artifacts(args, ordered, findings, stats, engine_stats) -> None:
     hashes[findings_csv.name] = manifest_mod.write_findings_csv(doc, findings_csv)
     hashes[anomalies_csv.name] = manifest_mod.write_anomalies_csv(doc, anomalies_csv)
 
+    if args.report:
+        # Rendered BEFORE the manifest is written, so the report is inside its
+        # hash coverage. A generated artifact outside the manifest is a
+        # generated artifact with no recorded provenance -- the thing the
+        # manifest exists to prevent, and the same reason the LLM narration is
+        # written back into run.json before hashing.
+        report_path = out.with_name("report.html")
+        hashes[report_path.name] = report_html_mod.write(out, report_path)
+
     manifest_path = out.with_name("manifest.sha256")
     manifest_mod.write_manifest(hashes, manifest_path)
 
     print()
     print(f"Run JSON   : {out}")
-    print(f"  derived  : {findings_csv.name}, {anomalies_csv.name}")
+    derived = [findings_csv.name, anomalies_csv.name]
+    if args.report:
+        derived.append("report.html")
+    print(f"  derived  : {', '.join(derived)}")
     print(f"  manifest : {manifest_path.name}")
     for name in sorted(hashes):
         print(f"    {hashes[name][:16]}...  {name}")
