@@ -5,6 +5,10 @@ import logging
 import sys
 from pathlib import Path
 
+from . import anomaly as anomaly_layer
+from . import features as feature_layer
+from .core import manifest as manifest_mod
+from .core import run_json as run_json_mod
 from .core.engine import run as run_rules
 from .core.entity_score import aggregate as aggregate_entities
 from .core.entity_score import summary_lines as entity_summary_lines
@@ -25,6 +29,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--findings", type=Path, help="findings CSV path (optional)")
     p.add_argument("--rules", type=Path, default=DEFAULT_RULES, help="rule directory")
     p.add_argument("--no-rules", action="store_true", help="produce the timeline only")
+    p.add_argument(
+        "--run-json",
+        type=Path,
+        help=(
+            "write the canonical run.json here, plus findings.csv, anomalies.csv "
+            "and a SHA-256 manifest beside it. The CSVs are DERIVED from run.json "
+            "so they cannot disagree with it."
+        ),
+    )
+    p.add_argument(
+        "--baseline",
+        type=Path,
+        help=(
+            "a clean collection from the SAME HOST to fit the anomaly model on. "
+            "Without it no percentiles are produced. Fitting on one machine and "
+            "scoring another flags most rows and the ranking is uninterpretable "
+            "-- the run reports that rather than hiding it."
+        ),
+    )
     p.add_argument("--log-level", default="WARNING")
     return p
 
@@ -82,7 +105,72 @@ def main(argv: list[str] | None = None) -> int:
         write_findings_csv(findings, args.findings)
         print()
         print(f"Findings   : {args.findings}")
+
+    if args.run_json:
+        _write_run_artifacts(args, ordered, findings, stats, engine_stats)
     return 0
+
+
+def _score_anomalies(baseline: Path, events):
+    """Fit on the baseline collection and score `events`.
+
+    Returns (scores, unscored_families, warning). The warning is non-empty when
+    the outlier rate says the baseline does not apply to this collection --
+    most often because the two came from different machines.
+    """
+    baseline_events, _ = collect_events(baseline)
+    if not baseline_events:
+        return [], None, "baseline collection produced no events"
+
+    rarity = feature_layer.build_rarity_index(baseline_events)
+    model = anomaly_layer.PerFamilyModel().fit(baseline_events, rarity)
+    scores = model.score(events, rarity)
+    summary = anomaly_layer.summarise(scores)
+    warning = anomaly_layer.baseline_warning(summary.get("outlier_rate", 0.0))
+    return scores, model.unscored_families, warning
+
+
+def _write_run_artifacts(args, ordered, findings, stats, engine_stats) -> None:
+    """Build run.json, derive the exports, and hash all four."""
+    scores: list = []
+    unscored = None
+    if args.baseline:
+        scores, unscored, warning = _score_anomalies(args.baseline, ordered)
+        print()
+        print(f"Anomalies  : {len(scores)} rows scored against {args.baseline.name}")
+        if warning:
+            # Printed rather than logged: a mismatched baseline makes every
+            # number below it uninterpretable, and a WARNING-level log line is
+            # exactly what a hurried reader skips.
+            print(f"  !! {warning}")
+
+    doc = run_json_mod.build(
+        collection=args.collection,
+        events=ordered,
+        findings=findings,
+        entities=aggregate_entities(findings),
+        scores=scores,
+        ingest_stats=stats,
+        engine_stats=engine_stats,
+        unscored_families=unscored,
+    )
+
+    out = args.run_json
+    hashes = {out.name: run_json_mod.write(doc, out)}
+    findings_csv = out.with_name("findings.csv")
+    anomalies_csv = out.with_name("anomalies.csv")
+    hashes[findings_csv.name] = manifest_mod.write_findings_csv(doc, findings_csv)
+    hashes[anomalies_csv.name] = manifest_mod.write_anomalies_csv(doc, anomalies_csv)
+
+    manifest_path = out.with_name("manifest.sha256")
+    manifest_mod.write_manifest(hashes, manifest_path)
+
+    print()
+    print(f"Run JSON   : {out}")
+    print(f"  derived  : {findings_csv.name}, {anomalies_csv.name}")
+    print(f"  manifest : {manifest_path.name}")
+    for name in sorted(hashes):
+        print(f"    {hashes[name][:16]}...  {name}")
 
 
 if __name__ == "__main__":
