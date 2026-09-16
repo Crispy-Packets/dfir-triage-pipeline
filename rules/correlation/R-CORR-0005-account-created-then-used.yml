@@ -1,0 +1,168 @@
+# Correlation chain 5. Added 2026-09-17.
+#
+# Written against the worst case rather than against this corpus. Account
+# creation alone is routine -- R-ATOMIC-0009 measures 4, 5, 0, 2, 0 across the
+# five collections, every hit legitimate provisioning. What is NOT routine is
+# an account created and then used within minutes: a provisioned account is
+# created by an administrator and issued to someone who signs in later, often
+# days later. An account that authenticates almost immediately after being
+# created was created BY the person about to use it.
+
+schema_version: "2.0.0"
+id: R-CORR-0005
+type: correlation
+title: An account was created and then authenticated within the hour
+enabled: true
+
+description: >
+  Joins a Security 4720 account creation to a subsequent 4624 logon for the
+  SAME account, within one hour. Claims both records exist for one principal
+  and reports the interval between them. Claims nothing about who created the
+  account or from where the logon came - the finding names both records and an
+  analyst reads the rest.
+
+severity: high
+weight: 65
+
+attack:
+  technique: T1136.001
+  name: Create Account - Local Account
+
+select:
+  event_type: [account_created]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: account_created
+    # D-029 as a condition: a 4720 without a target names the creator and not
+    # the created account, and the join below would then be on the wrong
+    # principal entirely.
+    - field: details.TargetUserName
+      op: present
+
+steps:
+  - name: creation
+    select:
+      event_type: [account_created]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: account_created
+        - field: details.TargetUserName
+          op: present
+    in_window: true
+    optional: false
+
+  - name: first_use
+    select:
+      event_type: [logon]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: logon
+    in_window: true
+    optional: false
+
+join:
+  # entity.user resolves to the CREATED account on a 4720 -- the parser sets
+  # Event.user from TargetUserName (D-029) -- and to the authenticating account
+  # on a 4624. So the join is "this account was made, then this account signed
+  # in", which is the claim. Joining on the creator instead would correlate an
+  # administrator's own logon with every account they provisioned.
+  on: [entity.user]
+
+window:
+  from: creation
+  to: first_use
+  min: PT0S
+  max: PT1H
+  justification: >
+    One hour, and the bound is doing real work in both directions.
+
+    Too narrow and the rule misses the case it exists for: an attacker who
+    creates an account, finishes what they were doing, and signs in twenty
+    minutes later. Too wide and it stops being a claim -- a provisioned account
+    used the next morning is normal administration, and a window of a day would
+    fire on every help-desk ticket ever raised.
+
+    The corpus supports the choice rather than motivating it, and the support
+    is in what does NOT fire. `janed` and `admin_local` were created in clean_b
+    at 11:41 and 11:42 on 2026-08-12 by an operator who later signed in as
+    both -- outside an hour, so no finding. `testuser` was created 2026-08-24
+    18:44 and never authenticated at all. Neither fires.
+
+    What does fire is OS setup: the machine's primary account created and used
+    35 to 92 seconds later. A bound of one hour separates those two situations
+    on this evidence, which is the property being chosen, not the number.
+
+order: strict
+
+expected:
+  clean_a: 1
+  clean_b: 1
+  s1_v2: 0
+  clean_c: 1
+  s1_v3: 0
+  note: >
+    Measured 2026-09-17 across all five collections. One hit per clean host,
+    zero on both scenario collections.
+
+    Every hit is the SAME situation - the machine's primary account created and
+    signed into during Windows setup:
+
+      clean_a/b  youssef   created 2026-06-20 13:43:25, logon 13:44:56  (92s)
+      clean_c    vboxuser  created 2026-09-09 01:07:08, logon 01:07:43  (35s)
+
+    **The rate is inverted: one per clean host, zero on both scenario hosts.**
+    Scenario 1 creates no account, so there is nothing for this rule to find
+    there. On this corpus it detects nothing and fires only on OS provisioning.
+
+    That is the honest result and it is not a reason to widen the window or
+    suppress the creator. The rule is measuring what it claims to measure - an
+    account created and used within the hour - and on these five machines the
+    only thing matching that description is Windows setting itself up. A
+    corpus containing an attacker-created account would produce a hit that
+    looks identical in structure and different in its matched records, which is
+    exactly why the finding carries both and judges neither.
+
+    Two negative results worth recording, both showing the discrimination
+    working rather than the rule being idle:
+
+    - `testuser` (clean_b, created 2026-08-24 18:44 by admin_local) never
+      authenticates and does NOT fire. Created-and-unused is a different
+      situation from created-and-used.
+    - `janed` and `admin_local` (clean_a/b, created 2026-08-12 11:41 and 11:42)
+      do not fire either: both were created by an operator who signed in as
+      them well outside the one-hour window. The bound is doing work.
+
+notes: >
+  Severity high and weight 65, above R-ATOMIC-0009's 40, because the chain is a
+  much stronger claim than either half. Account creation is routine; account
+  creation followed immediately by use is the shape of an attacker establishing
+  a foothold, and it is also the shape of an administrator setting up a machine
+  -- which is why it is high rather than critical.
+
+  The rule cannot tell those two apart and does not try. What separates them is
+  WHO created the account and from where the logon came, both of which are in
+  the finding's matched records for an analyst to read.
+
+false_positive_notes: >
+  Machine provisioning is the expected false positive and it is not suppressed.
+  A new workstation creates accounts and signs into them within the hour, every
+  time. On a domain-joined estate this would fire on staff onboarding.
+
+  Suppressing by creator (MINWINPC$, WINDOWS10$ and similar machine accounts)
+  would cut the provisioning case and was considered. It is not done: a machine
+  account is exactly what an attacker with SYSTEM would create an account as,
+  so the suppression would blind the rule to the case it exists for.
+
+references:
+  - "docs/contract-decisions.md CD-007"
+  - "docs/defect-log.md D-029"

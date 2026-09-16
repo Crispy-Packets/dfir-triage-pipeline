@@ -1,0 +1,99 @@
+# Atomic rule 9. Added 2026-09-17, closing the last event type with no rule.
+#
+# `account_created` was one of two event types nothing read. The other,
+# `program_inventoried`, is deliberately left: Amcache inventories every
+# program on the machine, so a rule on it alone fires 3,464 times across the
+# corpus. It is used as a correlation STEP in R-CORR-0003, which is the right
+# way to read an inventory.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0009
+type: atomic
+title: Local user account created
+enabled: true
+
+description: >
+  Fires on a Security 4720 record: a local user account was created. Claims the
+  account exists and names both principals - the account created and the one
+  that created it. Does not claim the creation was unauthorised. Account
+  creation is routine on a machine being set up, and the base rate below is
+  the measurement of that.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1136.001
+  name: Create Account - Local Account
+
+select:
+  event_type: [account_created]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: account_created
+    # Required, and this is D-029 made into a condition. 4720 originally kept
+    # only SubjectUserName -- the account that DID the creating -- so every row
+    # named the operator and never the new account. A base rate could be
+    # counted but its members could not be told apart. A record without a
+    # target names no account and cannot support this rule's claim.
+    - field: details.TargetUserName
+      op: present
+
+expected:
+  clean_a: 4
+  clean_b: 5
+  s1_v2: 0
+  clean_c: 2
+  s1_v3: 0
+  note: >
+    Measured 2026-09-17 across all five collections. Every hit is legitimate
+    provisioning, and the rows are worth listing because they show what this
+    rule is and is not:
+
+      clean_a/b  WDAGUtilityAccount  created by MINWINPC$   (Windows built-in)
+      clean_a/b  Youssef             created by WINDOWS10$  (OS setup)
+      clean_a/b  janed               created by Youssef     (lab account)
+      clean_a/b  admin_local         created by Youssef     (lab account)
+      clean_b    testuser            created by admin_local (staged 2026-08-24)
+      clean_c    WDAGUtilityAccount  created by MINWINPC$   (Windows built-in)
+      clean_c    vboxuser            created by WINVM$      (OS setup)
+
+    **Zero in both scenario collections and non-zero in three clean ones.** The
+    rate is inverted from what a detection rule wants, and the reason is that
+    Scenario 1 creates no account - it persists through a Run key. A rule whose
+    clean-host rate exceeds its scenario-host rate detects nothing on this
+    corpus, and that is stated here rather than left for a reader to work out.
+
+    The rule is included because account creation is a real persistence
+    technique the pipeline could not see at all, and because it supplies the
+    first step of R-CORR-0005, which is the claim worth making.
+
+notes: >
+  Severity is medium and the weight 40, below every persistence rule in the
+  set. On a workstation being provisioned this fires several times with no
+  attack present, which is exactly what the base rate above shows. What raises
+  an account creation to something worth acting on is what happens NEXT -
+  see R-CORR-0005.
+
+  Two structural discriminators are visible in the corpus and deliberately NOT
+  encoded as conditions here, because neither is reliable enough alone:
+
+  - A machine account creating a user (MINWINPC$, WINDOWS10$) is OS
+    provisioning; a user creating a user is administration. Both appear here,
+    both benign.
+  - `testuser` was created and never logged on. The absence of a follow-on
+    logon is interesting, but "created and unused" is also what a
+    provisioned-but-not-yet-issued account looks like.
+
+false_positive_notes: >
+  Every hit in this corpus is benign, and on a domain-joined estate the rate
+  would be higher still - help desks create accounts daily. This rule is a
+  building block rather than a detection, and its weight says so.
+
+references:
+  - "docs/contract-decisions.md CD-007"
+  - "docs/defect-log.md D-029"
