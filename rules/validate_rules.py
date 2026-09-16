@@ -27,7 +27,12 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     )
     raise SystemExit(2) from None
 
-SCHEMA_MAJOR = "1"
+# Bumped to 2 on 2026-09-15 with schema 2.0.0. Every 1.x rule file
+# still loads: the check below accepts the current major and the one
+# before it, because a major bump that invalidated ten working rule
+# files would be a breaking change and this one is not.
+SCHEMA_MAJOR = "2"
+SCHEMA_MAJOR_COMPATIBLE = frozenset({"1", "2"})
 SCHEMA_VERSION = "2.0.0"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -127,6 +132,10 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     "prefetch": "last_run",          # prefetch.py:175
     "registry": "presence",          # registry.py:138
     "amcache": "presence",           # amcache.py:126
+    # Added 2026-09-15. Both are written by the log at the moment the event
+    # occurs, like the other EVTX channels.
+    "evtx.wmi": "recorded",          # evtx_windows.py record_to_event
+    "evtx.rdp": "recorded",          # evtx_windows.py record_to_event
 }
 
 # schema.md 4.7 (D-027): ten downloads share the name invoice_scan.exe; only size
@@ -644,8 +653,11 @@ def validate_file(path: Path, report: Report, details_refs: set[str],
             report.error(where, f"required field {key!r} is missing")
 
     version = str(data.get("schema_version", ""))
-    if version.split(".")[0] != SCHEMA_MAJOR:
-        report.error(where, f"schema_version {version!r} is not major {SCHEMA_MAJOR}")
+    if version.split(".")[0] not in SCHEMA_MAJOR_COMPATIBLE:
+        report.error(
+            where,
+            f"schema_version {version!r} is not one of {sorted(SCHEMA_MAJOR_COMPATIBLE)}",
+        )
 
     rule_id = data.get("id")
     if not isinstance(rule_id, str) or not ID_RE.match(rule_id):

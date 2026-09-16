@@ -1,0 +1,124 @@
+# Atomic rule 7. Added 2026-09-15, after measuring that KAPE collects 105 EVTX
+# channels and this pipeline parsed three.
+#
+# Written against the ARTIFACT rather than against this corpus. The first draft
+# fired on every WMI subscription and measured 12/12/20/10/19 -- a clean-host
+# rate equal to its scenario-host rate, which is an inventory of what Windows
+# registers for itself, at a severity implying otherwise. This version asks what
+# a subscription would look like if someone were hiding in it.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0007
+type: atomic
+title: WMI subscription bound to a consumer that executes
+enabled: true
+
+description: >
+  Fires on a WMI-Activity 5861 permanent event subscription whose consumer is
+  one that RUNS something - CommandLineEventConsumer, ActiveScriptEventConsumer
+  or ScriptingStandardConsumerSetting - rather than one that merely records.
+  Claims the binding exists in the collected log and names the record, the
+  filter and the consumer class. Does not claim what the command is: 5861
+  carries the filter's WQL query, not the consumer's payload.
+
+severity: critical
+weight: 80
+
+attack:
+  technique: T1546.003
+  name: Event Triggered Execution - Windows Management Instrumentation Event Subscription
+
+select:
+  event_type: [wmi_subscription]
+  source_artifact: [evtx.wmi]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: wmi_subscription
+    - field: source_artifact
+      op: equals
+      value: evtx.wmi
+    # Required rather than assumed. This channel carries its payload under
+    # UserData, and a record read with the wrong extractor parses without
+    # raising and yields an event with no fields at all -- requiring CONSUMER
+    # means such a record cannot match.
+    - field: details.CONSUMER
+      op: present
+  any:
+    # The three consumer classes that EXECUTE. A subscription is persistence
+    # only when something runs as the filter fires; a consumer that writes an
+    # event-log entry or sends mail is a notification.
+    #
+    # Matched on the CLASS name, which appears in CONSUMER as
+    # `ClassName="instance name"`. The instance name is attacker-chosen and is
+    # deliberately not matched -- naming instances would be a name list.
+    - field: details.CONSUMER
+      op: contains
+      value: CommandLineEventConsumer
+      ci: true
+    - field: details.CONSUMER
+      op: contains
+      value: ActiveScriptEventConsumer
+      ci: true
+    - field: details.CONSUMER
+      op: contains
+      value: ScriptingStandardConsumerSetting
+      ci: true
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-15 across all five collections. **Zero everywhere, and
+    this zero is the rule working rather than the rule being untested.**
+
+    All 73 WMI subscriptions in the entire corpus - 12, 12, 20, 10 and 19 - are
+    the SAME binding: `NTEventLogEventConsumer="SCM Event Log Consumer"` bound
+    to `SCM Event Log Filter`, which Windows registers for its own
+    service-control logging. Not one binds a consumer that executes.
+
+    An earlier draft matched every subscription and therefore carried those
+    same 12/12/20/10/19 as its base rate. That version was an inventory of
+    normal Windows at critical severity, and the corpus is what exposed it: a
+    rule whose clean-host rate equals its scenario-host rate is not detecting
+    anything.
+
+    **The discrimination is structural rather than corpus-derived.** The three
+    consumer classes named above execute by definition -
+    CommandLineEventConsumer starts a process, ActiveScriptEventConsumer runs
+    VBScript or JScript in-process. That is true on any Windows host, so the
+    rule transfers to an estate this corpus has never seen. What the corpus
+    contributes is the measured base rate of the benign case: zero.
+
+notes: >
+  5861 records the BINDING, not the consumer's payload. The record carries the
+  filter's WQL query in `details.PossibleCause` but not the command line the
+  consumer would run. A finding says "something is registered to execute when a
+  WMI event fires" and names the consumer class; recovering WHAT it executes
+  means reading the consumer instance from the WMI repository
+  (`OBJECTS.DATA`), which this pipeline does not parse.
+
+  That is a real limitation, stated rather than worked around. The finding is
+  still actionable - a CommandLineEventConsumer on a workstation is worth
+  opening the repository for - but the rule cannot name the command and does
+  not pretend to.
+
+false_positive_notes: >
+  Some monitoring agents and management suites do register executing consumers
+  for scheduled health actions, so this is not zero on every real estate. On
+  this corpus it is zero, and on a managed estate it would be low and
+  enumerable - which is what makes a finding here worth critical severity where
+  the unfiltered version was not.
+
+  The rule deliberately does NOT suppress by consumer instance name. Naming
+  known-good instances is corpus-fitting that does not survive contact with a
+  different estate, and the instance name is attacker-chosen in any case.
+
+references:
+  - "docs/contract-decisions.md CD-007"
+  - "docs/details-schema.md, WMI-Activity section"

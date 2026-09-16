@@ -215,3 +215,102 @@ def test_clean_b_contains_service_install():
     installs = [e for e in events if e.event_type == "service_install"]
     assert len(installs) >= 1
     _assert_contract_shape(installs[0])
+
+
+class TestUserDataChannels:
+    """WMI-Activity and TerminalServices (2026-09-15).
+
+    Both carry their payload under `UserData` rather than `EventData`. Reading
+    only `EventData` returns an empty dict for these records, and they then
+    parse WITHOUT RAISING and produce an event with no fields -- the silent
+    failure this project keeps meeting rather than an error anyone would see.
+    """
+
+    def _parse(self, xml, artifact, rel):
+        from dfir_triage_pipeline.parsers import evtx_windows
+
+        return evtx_windows.record_to_event(xml, artifact, rel)
+
+    def test_wmi_subscription_fields_are_extracted(self):
+        xml = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+            "<System><EventID>5861</EventID>"
+            '<TimeCreated SystemTime="2026-09-09T11:03:59.225087Z"/>'
+            "<EventRecordID>1</EventRecordID><Computer>WINVM</Computer></System>"
+            "<UserData>"
+            '<Operation_ESStoConsumerBinding xmlns="http://manifests.microsoft.com/win/2006/windows/WMI">'
+            "<Namespace>//./root/subscription</Namespace>"
+            "<ESS>SCM Event Log Filter</ESS>"
+            '<CONSUMER>NTEventLogEventConsumer="SCM Event Log Consumer"</CONSUMER>'
+            "<PossibleCause>Query = &quot;select * from MSFT_SCMEventLogEvent&quot;</PossibleCause>"
+            "</Operation_ESStoConsumerBinding></UserData></Event>"
+        )
+        event = self._parse(xml, "evtx.wmi", "C/Windows/x/wmi.evtx")
+        assert event is not None
+        assert event.event_type == "wmi_subscription"
+        assert event.details["Namespace"] == "//./root/subscription"
+        assert event.details["ESS"] == "SCM Event Log Filter"
+        assert "NTEventLogEventConsumer" in event.details["CONSUMER"]
+        # The query is the discriminating field: Namespace and ESS name the
+        # subscription, only the query says what triggers it.
+        assert "MSFT_SCMEventLogEvent" in event.details["PossibleCause"]
+
+    def test_rdp_session_carries_the_address(self):
+        """`Address` is what separates a remote session from a console one.
+        Without it every local sign-in would read as remote access."""
+        xml = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+            "<System><EventID>21</EventID>"
+            '<TimeCreated SystemTime="2026-09-09T01:07:45.016888Z"/>'
+            "<EventRecordID>31</EventRecordID><Computer>WINVM</Computer></System>"
+            '<UserData><EventXML xmlns="Event_NS">'
+            "<User>WINVM" + chr(92) + "vboxuser</User><SessionID>1</SessionID>"
+            "<Address>LOCAL</Address>"
+            "</EventXML></UserData></Event>"
+        )
+        event = self._parse(xml, "evtx.rdp", "C/Windows/x/rdp.evtx")
+        assert event is not None
+        assert event.event_type == "rdp_session"
+        assert event.details["Address"] == "LOCAL"
+        assert event.user == "WINVM" + chr(92) + "vboxuser"
+
+    def test_remote_address_is_preserved_verbatim(self):
+        xml = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+            "<System><EventID>25</EventID>"
+            '<TimeCreated SystemTime="2026-09-09T01:07:45.016888Z"/>'
+            "<EventRecordID>32</EventRecordID></System>"
+            '<UserData><EventXML xmlns="Event_NS">'
+            "<User>CORP" + chr(92) + "admin</User><SessionID>2</SessionID>"
+            "<Address>10.0.0.5</Address>"
+            "</EventXML></UserData></Event>"
+        )
+        event = self._parse(xml, "evtx.rdp", "C/Windows/x/rdp.evtx")
+        assert event.details["Address"] == "10.0.0.5"
+
+    def test_unlisted_eid_on_a_new_channel_is_dropped(self):
+        """5857-5860 are WMI provider lifecycle, written constantly by normal
+        operation. Only 5861 is in the vocabulary."""
+        xml = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">'
+            "<System><EventID>5857</EventID>"
+            '<TimeCreated SystemTime="2026-09-09T11:03:59.225087Z"/>'
+            "<EventRecordID>2</EventRecordID></System>"
+            "<UserData></UserData></Event>"
+        )
+        assert self._parse(xml, "evtx.wmi", "C/Windows/x/wmi.evtx") is None
+
+    def test_both_channels_are_registered(self):
+        from dfir_triage_pipeline.parsers.evtx_windows import _artifact_for
+
+        assert _artifact_for(
+            "c/windows/system32/winevt/logs/microsoft-windows-wmi-activity%4operational.evtx"
+        ) == "evtx.wmi"
+        assert _artifact_for(
+            "c/windows/system32/winevt/logs/"
+            "microsoft-windows-terminalservices-localsessionmanager%4operational.evtx"
+        ) == "evtx.rdp"

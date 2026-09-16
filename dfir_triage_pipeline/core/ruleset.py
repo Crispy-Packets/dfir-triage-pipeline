@@ -18,7 +18,12 @@ from typing import Any
 
 import yaml
 
-SCHEMA_MAJOR = "1"
+# Bumped to 2 on 2026-09-15 with schema 2.0.0. Every 1.x rule file
+# still loads: the check below accepts the current major and the one
+# before it, because a major bump that invalidated ten working rule
+# files would be a breaking change and this one is not.
+SCHEMA_MAJOR = "2"
+SCHEMA_MAJOR_COMPATIBLE = frozenset({"1", "2"})
 
 _DURATION = re.compile(
     r"^P(?!$)(?:(?P<days>\d+)D)?"
@@ -293,8 +298,11 @@ def load_rule(path: Path) -> Rule:
         raise RuleError(f"{path.name}: the rule must be a mapping at the top level")
 
     version = str(data.get("schema_version", ""))
-    if version.split(".")[0] != SCHEMA_MAJOR:
-        raise RuleError(f"{path.name}: schema_version {version!r} is not major {SCHEMA_MAJOR}")
+    if version.split(".")[0] not in SCHEMA_MAJOR_COMPATIBLE:
+        raise RuleError(
+            f"{path.name}: schema_version {version!r} is not one of "
+            f"{sorted(SCHEMA_MAJOR_COMPATIBLE)}"
+        )
 
     kind = data.get("type")
     if kind not in ("atomic", "correlation"):

@@ -1,0 +1,97 @@
+# Atomic rule 8. Added 2026-09-15.
+#
+# R-ATOMIC-0005 already claims "external RDP", reading Security 4624 with a
+# network logon type. It fires on nothing in any of the five collections. This
+# rule reads the channel that actually records Terminal Services sessions, and
+# the two are kept separate rather than merged: 4624 records an authentication,
+# 21/25 record a SESSION, and a host can have one without the other.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0008
+type: atomic
+title: Terminal Services session opened from a remote address
+enabled: true
+
+description: >
+  Fires on a TerminalServices-LocalSessionManager 21 or 25 record whose
+  `Address` field is not the literal LOCAL - that is, a Remote Desktop session
+  rather than a console logon. Claims the session was opened and names the
+  record, the user and the address it came from. Does not claim the session was
+  unauthorised.
+
+severity: medium
+weight: 45
+
+attack:
+  technique: T1021.001
+  name: Remote Services - Remote Desktop Protocol
+
+select:
+  event_type: [rdp_session]
+  source_artifact: [evtx.rdp]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: rdp_session
+    - field: details.Address
+      op: present
+    # The whole rule turns on this. `Address` is the literal string LOCAL for a
+    # console logon and an IP for a remote desktop session; without the
+    # exclusion every local sign-in on the machine reads as remote access.
+    #
+    # not_equals rather than a regex for an IP: a hostname, an IPv6 address and
+    # an IPv4 address are all legitimate values, and enumerating the shapes a
+    # remote address may take is a longer list than enumerating the one shape a
+    # local one takes.
+    - field: details.Address
+      op: not_equals
+      value: LOCAL
+      ci: true
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-15 across all five collections. **Zero everywhere, and for
+    two different reasons that must not be conflated.**
+
+    On host 1 (clean_a, clean_b, s1_v2) no session carries a remote address
+    either: those machines were also used through a console. The channel is
+    present in all five collections - an earlier draft of this note claimed it
+    was absent from host 1, which measuring disproved.
+
+    On host 2 (clean_c 9 rows, s1_v3 15 rows) the channel IS present and the
+    rule correctly declines: every session carries Address=LOCAL, because the
+    machine was used through the VirtualBox console and never over RDP. The
+    rule is reading real evidence and refusing to call a console logon a remote
+    one.
+
+    The second case is the useful one to report. A rule that fires on nothing
+    because the artifact is absent proves nothing; a rule that fires on nothing
+    because it correctly distinguished 24 local sessions from zero remote ones
+    has been exercised.
+
+notes: >
+  Kept separate from R-ATOMIC-0005 deliberately. That rule reads Security 4624
+  with LogonType 10, which records an AUTHENTICATION; this reads the session
+  manager, which records a SESSION. A host can produce one without the other -
+  4624 type 10 appears for RDP authentication that never reaches a session, and
+  a reconnection (EID 25) to an existing session produces no new 4624 at all.
+  Merging them would lose whichever half the merged rule did not read.
+
+false_positive_notes: >
+  Legitimate remote administration is indistinguishable from unauthorised RDP
+  at this level of evidence, which is why the severity is medium and the weight
+  45 rather than higher. What raises it to a finding worth acting on is the
+  address: an internal jump host is expected, an external address on a
+  workstation is not. The rule reports the address rather than judging it.
+
+references:
+  - "docs/contract-decisions.md CD-007"
+  - "docs/details-schema.md, TerminalServices section"
+

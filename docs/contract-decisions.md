@@ -83,6 +83,25 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         PowerShell/Operational 4104  ->  evtx.powershell  script_block
         Amcache.hve InventoryApplicationFile -> amcache  program_inventoried
 
+        Added 2026-09-15, after measuring that KAPE collects 105 EVTX channels
+        and this pipeline parsed three. Both carry their payload under UserData
+        rather than EventData, which is why _user_data had to be generalised
+        first: a record read with the wrong extractor parses without raising and
+        yields an event with no fields.
+
+        WMI-Activity/Operational  5861  ->  evtx.wmi  wmi_subscription
+        TerminalServices-LSM      21,25 ->  evtx.rdp  rdp_session
+
+        5861 is the only WMI EID taken. 5857-5860 are provider lifecycle and
+        query telemetry written constantly by normal Windows operation; 5861
+        records a PERMANENT event subscription, which is the artifact fileless
+        WMI persistence leaves (T1546.003).
+
+        21 and 25 are the only TerminalServices EIDs taken. Both carry the
+        `Address` field, which separates a remote session from a local console
+        one; 22/23/24/39/40 describe the end of a session rather than its
+        origin.
+
         Prefetch also emits process_exec. This sharing is deliberate: Week 3's
         correlation rules join on event_type plus entity, so a second spelling
         for the same concept would silently break the download-to-execution

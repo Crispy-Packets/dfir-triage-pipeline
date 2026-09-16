@@ -55,6 +55,28 @@ here before emission, same rule.
 | `script_block_text_bytes` | str(int) | `evtx.powershell` | Full byte length of the ORIGINAL script text, always the untruncated figure. Lets a consumer measure how much was not recorded instead of inferring it. |
 | `script_block_truncated` | str | `evtx.powershell` | Literal `true`, present only when the cap was hit. Absent means the text is complete. |
 
+### WMI-Activity 5861 (`evtx.wmi`), added 2026-09-15
+
+A permanent event subscription: a filter bound to a consumer, which fires
+whenever the filter's query matches. This is what fileless WMI persistence
+leaves behind (T1546.003) -- it survives a reboot and touches no file on disk.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `Namespace` | str | `evtx.wmi` | WMI namespace the binding was registered in, e.g. `//./root/subscription`. |
+| `ESS` | str | `evtx.wmi` | Name of the event filter half of the binding. |
+| `CONSUMER` | str | `evtx.wmi` | The consumer half, including its class -- `CommandLineEventConsumer` is the one that runs a command, `NTEventLogEventConsumer` writes a log entry. |
+| `PossibleCause` | str | `evtx.wmi` | The channel's own diagnostic text, which carries the full `__EventFilter` instance **including its WQL Query**. The query is the discriminating field: `Namespace` and `ESS` name the subscription, the query says what triggers it. Carried verbatim and uncapped -- unlike `script_block_text` it is not truncated, so negative operators are permitted against it. |
+
+### TerminalServices-LocalSessionManager 21/25 (`evtx.rdp`), added 2026-09-15
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `User` | str | `evtx.rdp` | `DOMAIN\\user` as the channel recorded it. Not split -- CD-010's principle is that a parser records what the artifact wrote, and principal normalisation happens in `core/entity.py` where it is visible. Also emitted as `Event.user`. |
+| `SessionID` | str(int) | `evtx.rdp` | Terminal Services session number. Session 1 is typically the console. |
+| `Address` | str | `evtx.rdp` | **The discriminating field.** Literal `LOCAL` for a console logon, an IP address for a remote desktop session. Without it a rule cannot tell the two apart and every console logon reads as remote access. |
+
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never
