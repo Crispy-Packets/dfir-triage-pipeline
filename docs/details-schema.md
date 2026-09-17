@@ -216,6 +216,66 @@ Task Scheduler's own log and in `SOFTWARE\...\Schedule\TaskCache`, neither of
 which is read here. Tasks with no `<Date>` carry the 1601 sentinel, as the other
 presence-typed families do.
 
+### NTUSER Explorer keys, added 2026-09-17
+
+Four families out of one hive, all **per-user by construction**: the keys sit
+inside one profile, so the principal is the hive's owner and needs no inference.
+`Event.user` is the account name taken from the hive's own path under `Users\`.
+
+#### UserAssist (`userassist`)
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `run_count` | str(int) | `userassist` | GUI launches, counted by Explorer itself. Offset 4 of the 72-byte record. Measured max 48 on `s1_v2`; the scenario payload shows **28**. |
+| `focus_count` | str(int) | `userassist` | Times the window took focus. Offset 8. |
+| `focus_seconds` | str(int) | `userassist` | Focus time, converted from the millisecond value at offset 12. Seconds because the sub-second precision is not meaningful for a focus duration. |
+| `userassist_guid` | str | `userassist` | The containing GUID subkey. `{CEBFF5CD-…}` is shortcut launches, `{F4E57C4B-…}` is executables; the id is recorded rather than translated, because the translation is a convention this parser has not verified. |
+
+**Value names are ROT13.** `HRZR_PGYFRFFVBA` is `UEME_CTLSESSION`. A parser that
+skips the decode emits garbage paths that look like real data.
+
+**The record is 72 bytes with the FILETIME at offset 60** — not at the front. A
+shorter blob is rejected rather than partially decoded: the time is the last
+field, so a truncated record yields a run count with a time read from the wrong
+bytes. Measured on `clean_b`: 57 records of 72 bytes, 2 of 1612.
+
+The 1612-byte `UEME_CTLSESSION` values are **session aggregates, not programs**,
+and are skipped. Emitting one would invent a binary of that name with a run
+count of several hundred.
+
+`timestamp_type` is `last_run` when the record carries a real FILETIME
+(measured 85 of 124 on `s1_v2`) and `presence` otherwise — a zero there means
+Explorer recorded no time, not 1601.
+
+#### RecentDocs (`recentdocs`), TypedPaths (`typedpaths`), RunMRU (`runmru`)
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `value_name` | str | all three | The MRU slot name (`0`, `1`, `a`). Position in the list, which is the only ordering the artefact offers. |
+| `value_count_in_key` | str(int) | all three | How many sibling values share this key's last-write time. **D-027 applies exactly**: the timestamp belongs to the key, not the value. |
+| `recentdocs_extension` | str | `recentdocs` | The extension subkey (`.txt`, `.pdf`, `Folder`), when the entry came from one rather than from the root. |
+
+**RecentDocs values are UTF-16LE up to a null CODE UNIT, then a shell-link
+tail.** Splitting on a single null *byte* truncates mid-character — `test_doc`
+came back as `test_doc�`. The tail is a binary structure this parser does
+not decode.
+
+**`MRUList` and `MRUListEx` are ordering bookkeeping**, not entries, and are
+skipped in all three families.
+
+**RunMRU values carry a literal `\1` suffix** (`VBoxTray.exe\1`) which is the
+MRU ordering marker, stripped before the command is reported.
+
+All three are `timestamp_type=presence`: the containing key's last write, shared
+by every sibling value.
+
+**What these keys do not attest.** UserAssist counts **GUI launches only** — a
+program started from a command line, a script, or a service leaves no entry, so
+a zero count is not evidence of no execution. RecentDocs records that a name was
+opened through the shell, not that a file exists: entry 15 on `clean_b` decodes
+to a URL query string rather than a filename, which is why the recorded string
+is reported without asserting it is a path.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

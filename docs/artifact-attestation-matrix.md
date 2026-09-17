@@ -67,6 +67,12 @@ defect number that established it.
 | | | **when it was registered** for most tasks. Measured: only 26 of 222 on `s1_v3` carry a `<Date>` at all | measured 2026-09-17 | `$MFT` on the definition file ⛔ |
 | | | **what a COM action executes.** The CLSID is recorded; resolving it to a DLL needs the SOFTWARE hive | parser source; 115 of 222 actions are `ComHandler` | SOFTWARE hive CLSID registration ⛔ |
 | | | that `<Author>` names who really created it — it is self-declared and trivially forged | Windows design | Security 4698 (off by default; **measured 0 across five collections**) |
+| **userassist** | a program was **launched through the GUI**, **by a named account**, with a run count and a last-run time | **anything not started from the shell.** A program run from a command line, a script, or a service leaves no entry, so a zero count is not evidence it did not run | Windows design; the key is written by Explorer | prefetch, bam, Security 4688 |
+| | | **what the program did**, or where it was launched from | — | prefetch's loaded-file list, srum |
+| **recentdocs** | a name was **opened through the shell**, per extension, by a named account | **that the file exists or ever did.** Measured: entry 15 on `clean_b` decodes to a URL query string, not a filename | measured 2026-09-17 | `$MFT` ⛔, LNK ⛔ |
+| | | **when** it was opened. The timestamp is the containing key's last write, shared by every sibling value | **D-027**; `value_count_in_key` says how many share it | LNK ⛔, `$MFT` ⛔ |
+| **typedpaths** | a path was **typed into the Explorer address bar** by a named account | anything, when the key is empty — **measured 0 across all five collections** | measured 2026-09-17 | recentdocs, runmru |
+| **runmru** | a command was **typed into the Run dialog** by a named account | that the command ever executed, or succeeded | Windows design | prefetch, userassist, evtx.powershell |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -93,7 +99,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
 *consistently* for the evidence to lie. Seven families was the minimum for the
-property to hold at all; the pipeline now parses **fifteen**.
+property to hold at all; the pipeline now parses **nineteen**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -105,8 +111,9 @@ this document's thesis demonstrated on real evidence.
 ## 3. Where the map is incomplete, and why
 
 **Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
-62cb065; SAM, SRUM and scheduled tasks landed today, taking the pipeline from
-7 families to **15**.
+62cb065; SAM, SRUM, scheduled tasks and the NTUSER Explorer keys landed today,
+taking the pipeline from 7 families to **19** (18 of which appear in these
+collections -- `typedpaths` parses but the key is empty on both hosts).
 The ⛔ markers those closed have been cleared from the table above rather than
 left standing — a matrix that understates what is parsed is as misleading as
 one that overstates it.
@@ -119,6 +126,7 @@ one that overstates it.
 | **SAM hive** — `sam` | 2 | Accounts and their logon counts after a Security-log clear. `s1_v3` retains **12** Security events and all five accounts |
 | **SRUM** — `srum` | 4 | **Transfer volume**, which no other family carries. 6,179 rows on `clean_a`. Its own limits are now stated above rather than assumed: it did not record the scenario binary on either host, for two different and measured reasons |
 | **Scheduled tasks** — `scheduled_task` | 4 | The **only** record that a task exists: 4698 is off by default and measures 0 across all five collections. Unlike services, there is no enabled-by-default event to fall back on. 222 events on `s1_v3`, of which 115 are COM actions with no command line at all |
+| **NTUSER Explorer keys** — `userassist`, `recentdocs`, `typedpaths`, `runmru` | 6 | **Per-user execution and file access, attributed by construction.** On `s1_v2`, whose Security log was cleared, UserAssist names `janed` as the account that ran the payload 28 times — while Prefetch records the same execution, to the second, with no principal at all |
 
 ### Still collected and not parsed
 
@@ -126,7 +134,6 @@ one that overstates it.
 |---|---|---|
 | **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
 | **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
-| **NTUSER.DAT beyond Run keys** | 1 | UserAssist, RecentDocs, TypedPaths: per-user execution and file access |
 
 **The map is honest about this:** every ⛔ is a stated gap, not a silent one. A
 corroboration marked ⛔ is a corroboration this pipeline cannot currently

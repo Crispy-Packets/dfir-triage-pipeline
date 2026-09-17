@@ -169,3 +169,16 @@ class RegistryParser:
     def parse(self, abs_path: Path, relative_path: str) -> Iterator[Event]:
         for record in _records(abs_path, relative_path):
             yield record_to_event(record)
+
+        # ONE FILE, SEVERAL FAMILIES. `find_parser` returns the FIRST parser
+        # whose can_handle matches, so a second parser registered against
+        # NTUSER.DAT would never run -- this one already claims the file.
+        #
+        # The Explorer keys (UserAssist, RecentDocs, TypedPaths, RunMRU) live in
+        # their own module because they answer a different question: not what
+        # persists, but what this specific person ran and opened. They are
+        # delegated to rather than merged so that neither set of decisions has
+        # to be read to understand the other.
+        from .ntuser_explorer import explorer_events
+
+        yield from explorer_events(abs_path, relative_path)

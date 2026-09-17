@@ -110,6 +110,43 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. The Explorer keys in NTUSER.DAT, which are
+        per-user BY CONSTRUCTION.
+
+        NTUSER UserAssist   ->  userassist  process_exec
+        NTUSER RecentDocs   ->  recentdocs  file_opened
+        NTUSER TypedPaths   ->  typedpaths  path_typed
+        NTUSER RunMRU       ->  runmru      command_typed
+
+        ONE FILE, FIVE FAMILIES: registry.py already reads Run/RunOnce out of
+        this hive, and find_parser returns the FIRST parser whose can_handle
+        matches. A second parser registered against NTUSER.DAT would never run,
+        so registry.RegistryParser.parse DELEGATES to ntuser_explorer.
+        explorer_events rather than the module registering itself. The two stay
+        separate files because they answer different questions and neither set
+        of decisions should have to be read to understand the other.
+
+        `userassist` emits process_exec, sharing the string with Prefetch, BAM
+        and 4688 by the same contract that governs those: a second spelling for
+        one concept breaks every chain joined on event_type.
+
+        THE REASON THIS FAMILY EXISTS: Prefetch and Shimcache are machine-wide
+        and name no principal; BAM supplies a SID. These keys sit inside one
+        user's hive, so the principal is the hive's owner and needs no
+        inference. Measured on s1_v2, whose Security log was cleared:
+
+          userassist  22:57:15  janed              runs=28
+          prefetch    22:57:15  (no user)
+          bam         22:57:36  S-1-5-...-1002
+          sam                   RID 1002 = janed
+
+        Three artefacts, one account, derived three different ways, with the
+        4688 destroyed.
+
+        `file_opened` is NOT `file_download` and NOT process_exec. RecentDocs
+        records that a NAME was opened through the shell -- not that the file
+        still exists, not that it ever did, and not that anything executed.
+
         Added 2026-09-17. Scheduled tasks, where there is no
         enabled-by-default event to fall back on at all.
 

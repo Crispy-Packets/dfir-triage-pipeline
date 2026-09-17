@@ -158,6 +158,15 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # would run; LastRunTime lives elsewhere and is not read. Same limit as the
     # registry Run keys (D-027).
     "scheduled_task": "presence",    # scheduled_tasks.py _task_events
+    # Added 2026-09-17, NTUSER Explorer keys. UserAssist carries a real
+    # last-run FILETIME when Explorer recorded one and falls back to the key's
+    # last write otherwise, so it joins `sam` in MIXED_TIMESTAMP_TYPE below.
+    # The three MRU families carry only the containing key's last write, shared
+    # by every sibling value (D-027).
+    "userassist": "last_run",        # ntuser_explorer.py _userassist_events
+    "recentdocs": "presence",        # ntuser_explorer.py _mru_events
+    "typedpaths": "presence",        # ntuser_explorer.py _mru_events
+    "runmru": "presence",            # ntuser_explorer.py _mru_events
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the
@@ -172,7 +181,7 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
 #: timestamps are key writes clustered at image-build time.
 #:
 #: A rule may still window `sam`, but must say it has dealt with this.
-MIXED_TIMESTAMP_TYPE = frozenset({"sam"})
+MIXED_TIMESTAMP_TYPE = frozenset({"sam", "userassist"})
 
 # schema.md 4.7 (D-027): ten downloads share the name invoice_scan.exe; only size
 # and source host separate the scenario from nine decoys.
@@ -385,16 +394,23 @@ def check_condition(
 def _excludes_never_used(step: Any) -> bool:
     """Does this step exclude records whose timestamp is not an observation?
 
-    For `sam`, that means restricting to accounts that have actually logged on:
-    a never-logged-on account carries the key's last-write time, and those
-    cluster at image-build time rather than at anything the account did. Inside
-    a sliding window they would correlate with whatever else happened during
-    Windows setup.
+    A family in MIXED_TIMESTAMP_TYPE emits some records with a real time and
+    some with a key's last write. The second kind cluster at image-build time,
+    so inside a sliding window they correlate with whatever else happened
+    during Windows setup. A windowed step must rule them out.
 
-    Two spellings are accepted, because both express the same constraint
-    honestly: `last_logon not_equals never` in `all`, or `last_logon equals
-    never` in `none`. Anything else -- including a step that simply does not
-    mention the field -- is not an exclusion, and the caller reports it.
+    Three spellings are accepted, because each states the same constraint
+    honestly and which one fits depends on the family:
+
+    * `timestamp_type equals last_run` in `all` -- the GENERAL form, and the
+      only one available to `userassist`, whose presence-typed records carry no
+      distinguishing detail field at all;
+    * `details.last_logon not_equals never` in `all`, or
+    * `details.last_logon equals never` in `none` -- the `sam` spellings, where
+      the field says directly whether the account ever logged on.
+
+    Anything else -- including a step that simply does not mention the
+    distinction -- is not an exclusion, and the caller reports it.
     """
     if not isinstance(step, dict):
         return False
@@ -402,16 +418,25 @@ def _excludes_never_used(step: Any) -> bool:
     if not isinstance(block, dict):
         return False
 
-    for group, ops in (("all", {"not_equals"}), ("none", {"equals"})):
+    def _items(group: str):
         for item in block.get(group) or []:
-            if not isinstance(item, dict):
-                continue
-            if (
-                item.get("field") == "details.last_logon"
-                and item.get("op") in ops
-                and item.get("value") == "never"
-            ):
-                return True
+            if isinstance(item, dict):
+                yield item
+
+    for item in _items("all"):
+        field, op, value = item.get("field"), item.get("op"), item.get("value")
+        if field == "timestamp_type" and op == "equals" and value != "presence":
+            return True
+        if field == "details.last_logon" and op == "not_equals" and value == "never":
+            return True
+
+    for item in _items("none"):
+        field, op, value = item.get("field"), item.get("op"), item.get("value")
+        if field == "timestamp_type" and op == "equals" and value == "presence":
+            return True
+        if field == "details.last_logon" and op == "equals" and value == "never":
+            return True
+
     return False
 
 

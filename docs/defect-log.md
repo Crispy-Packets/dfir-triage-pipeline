@@ -954,3 +954,79 @@ a file contains.
 
 Guarded by `test_every_file_on_disk_is_handled`, which asserts `can_handle`
 accepts all 220 files actually present and names any it rejects.
+
+---
+
+## D-047  A second parser for NTUSER.DAT would never have run
+
+Found 2026-09-17, before the parser ran -- caught by reading `find_parser`
+rather than by a failure.
+
+`ntuser_explorer.py` was written as a normal parser class with `can_handle`
+matching `*/ntuser.dat` and a `register()` call at the bottom. That is the
+pattern every other parser in this pipeline follows, and here it silently does
+nothing:
+
+    def find_parser(relative_path):
+        for parser in _REGISTRY:
+            if parser.can_handle(relative_path):
+                return parser        # THE FIRST match, and only the first
+        return None
+
+`registry.py` is imported earlier in `parsers/__init__.py` and already claims
+NTUSER.DAT for the Run/RunOnce keys. The new parser would have sat in the
+registry, matched nothing, and produced zero events -- with no error, no
+failure count, and a passing test suite, because every unit test called the
+class directly rather than going through dispatch.
+
+**Fix:** `registry.RegistryParser.parse` delegates to
+`ntuser_explorer.explorer_events`, which is a plain function rather than a
+registered parser. The modules stay separate because they answer different
+questions -- what persists versus what this person did -- and neither set of
+decisions should have to be read to understand the other.
+
+`explorer_events` declines quietly on any path that is not an NTUSER.DAT,
+because `registry` also hands it SOFTWARE hives.
+
+Guarded by `test_the_registry_parser_owns_the_file`, which asserts through
+`find_parser` that `registry` is the parser NTUSER.DAT dispatches to -- the
+property that makes delegation necessary -- and by
+`test_a_non_ntuser_path_yields_nothing`.
+
+**The general hazard:** a registry keyed on first-match makes "one file, several
+families" an ordering problem. The SYSTEM hive (three families) and SRUM (two)
+avoided it by emitting everything from one parser. This is the first case where
+the families genuinely belonged in separate modules.
+
+---
+
+## D-048  A validator guard no rule could ever satisfy
+
+Found 2026-09-17, on adding `userassist` to `MIXED_TIMESTAMP_TYPE`.
+
+D-042 introduced a check: a windowed step selecting a family whose
+`timestamp_type` varies by record must exclude the records that carry a key's
+last-write time rather than an observation. For `sam` that is spelled
+
+    details.last_logon not_equals never
+
+`userassist` has the same mixed shape -- a real FILETIME gives `last_run`, a
+zero falls back to the key write and gives `presence` -- so it was added to the
+same set. But **UserAssist's presence records carry no `last_logon` field at
+all**, and no other detail distinguishes them. The guard was therefore
+unsatisfiable: every windowed `userassist` rule would be rejected, with no
+wording that could make it pass.
+
+An unsatisfiable guard is not a safety property. It is a family that silently
+cannot be used, and the error message would have told the rule author to add a
+condition that does not exist.
+
+**Fix:** `_excludes_never_used` accepts the GENERAL form --
+`timestamp_type equals last_run` in `all`, or `timestamp_type equals presence`
+in `none` -- alongside the two `sam`-specific spellings. The general form works
+for any mixed family, present and future, because `timestamp_type` is the field
+the distinction is actually made on.
+
+**Worth stating as a rule:** when a check is extended to a second family, check
+that the second family can satisfy it. The first family's spelling is not
+evidence that a general property was expressed.
