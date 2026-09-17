@@ -261,7 +261,7 @@ class TestTheAttributionResult:
 
     def test_the_userassist_time_agrees_with_prefetch(self):
         """Two independent artefacts, one clock: both record 22:57:15."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         by_family = {}

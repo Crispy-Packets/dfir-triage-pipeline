@@ -270,14 +270,19 @@ class SrumParser:
     def parse(self, abs_path: Path, relative_path: str) -> Iterator[Event]:
         from dissect.esedb import EseDB
 
-        # The file handle must outlive the generator, so the whole parse runs
-        # inside the with-block rather than returning a lazy iterator over a
-        # closed file.
+        # The file handle must outlive the reading, so the whole parse runs
+        # inside the with-block. Events are collected into a list rather than
+        # yielded from inside it: `yield from` here would hold the descriptor
+        # open for as long as the CALLER takes to consume this generator, and
+        # the caller is itself a generator feeding a whole ingest run. That
+        # shape exhausted the process's descriptor limit in timeline.py, and
+        # the failure surfaced in an unrelated parser (D-050).
         with abs_path.open("rb") as handle:
             db = EseDB(handle)
             applications, sids = _build_id_map(db)
-            yield from _network_events(db, relative_path, applications, sids)
-            yield from _resource_events(db, relative_path, applications, sids)
+            events = list(_network_events(db, relative_path, applications, sids))
+            events += list(_resource_events(db, relative_path, applications, sids))
+        yield from events
 
 
 register(SrumParser)

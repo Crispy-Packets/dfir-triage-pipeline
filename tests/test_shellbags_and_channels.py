@@ -196,7 +196,7 @@ class TestAcrossHosts:
             assert users == {user}
 
     def test_no_collection_raises(self):
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         for collection in ("collection_clean_b", "collection_s1_v2", "collection_s1_v3"):
             root = EVIDENCE / collection
@@ -222,7 +222,7 @@ class TestTheNewChannels:
     def test_each_channel_produces_events(self, family):
         """Measured 2026-09-17 on every collection. A channel that parses to
         zero everywhere would mean the EID selection was wrong."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         root = EVIDENCE / "collection_s1_v3"
         if not root.is_dir():
@@ -234,7 +234,7 @@ class TestTheNewChannels:
         """`evtx.ps_classic` exists because 4104 holds nothing when
         script-block logging is off. They are different families and must not
         be merged."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         root = EVIDENCE / "collection_s1_v3"
         if not root.is_dir():
@@ -250,7 +250,7 @@ class TestTheNewChannels:
         assumption that a firewall deletion is rare. Windows churns rules
         constantly: 2006 carries a real RuleId and is written by S-1-5-19
         during ordinary policy refresh."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         root = EVIDENCE / "collection_clean_c"
         if not root.is_dir():
@@ -263,7 +263,7 @@ class TestTheNewChannels:
 
     def test_all_five_are_recorded_type(self):
         """They are logs: the channel writes the record as the event occurs."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         root = EVIDENCE / "collection_s1_v3"
         if not root.is_dir():

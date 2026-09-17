@@ -11,10 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from conftest import cached_collect_events as collect_events
 
 from dfir_triage_pipeline import anomaly, evaluation, features
 from dfir_triage_pipeline.anomaly import Scored
-from dfir_triage_pipeline.ingest import collect_events
 
 
 class _Event:

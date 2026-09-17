@@ -474,6 +474,57 @@ record for a (name, type, timestamp) wins: 44,854 → 29,655 rows on `s1_v3`.
 **`timestamp_type` is `recorded`** — NTFS appends the record as the change
 happens, which makes it among the strongest observations in the pipeline.
 
+### Defender text logs (`defender_mplog`), added 2026-09-17
+
+All four text logs under `Windows Defender\Support` share one line format, so
+one parser reads them and `log_family` says which. The `MpWpp*.bin` files are
+binary ETW traces and are not read — decoding them needs a TMF schema.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `log_family` | str | `defender_mplog` | `mplog`, `mpdetection`, `mpscanskip` or `mpdevicecontrol`. They share a line format but not a subject. |
+| `mplog_line` | str(int) | `defender_mplog` | 1-based line number, which is also the locator. |
+| `process_name` | str | `defender_mplog` | `process_exec` rows. The image name the engine observed. |
+| `pid` | str(int) | `defender_mplog` | `process_exec` and `scan_skipped` rows. |
+| `scan_time_ms` | str(int) | `defender_mplog` | `process_exec` rows, when present. Accumulated engine time on that process. |
+| `scan_count` | str(int) | `defender_mplog` | `process_exec` rows, when present. |
+| `reported_path` | str | `defender_mplog` | `file_reported` rows. The path `ReportLowfi` named. Also `Event.path`. |
+
+**`file_reported` is not a detection.** `ReportLowfi` is Defender's own wording
+— *low fidelity* — and means the engine wanted a second opinion. Measured: zero
+1116/1117 verdicts in `evtx.defender` across all five collections, while
+`s1_v3`'s MPLog holds a `ReportLowfi` for the payload.
+
+**`scan_skipped` is evidence in the D-028 sense**: the engine declining to scan
+something differs from the engine scanning and finding nothing.
+
+### LSA policy (`lsa_policy`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `sid` | str | `lsa_policy` | A SID granted a privilege beyond its group membership. Also `Event.user`. Measured 13-17 per collection. |
+| `well_known` | str | `lsa_policy` | `Administrators`, `Local Service`, … for unambiguous built-ins. A domain SID is left as recorded. |
+| `privilege_values` | str | `lsa_policy` | Names of the value(s) under the SID's key, when any. **The privilege LUIDs are NOT decoded to names** — the table varies by Windows version, and inventing one is how D-023 and D-045 happened. |
+
+`\Policy\Secrets` and `PolEKList` are **not read**: LSA secrets and boot key
+material, for the same reason `sam_hive.py` does not read the `V` value.
+
+### Registry transaction logs (`registry_txlog`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `hive_name` | str | `registry_txlog` | The hive this log belongs to. |
+| `log_sequence` | str(int) | `registry_txlog` | The log's primary sequence number. |
+| `hive_sequence` | str(int) | `registry_txlog` | The hive's, read from its base block. |
+| `log_ahead_of_hive` | str | `registry_txlog` | `true`/`false`. **The actionable field**: a log ahead of its hive holds changes the hive has never seen, so the hive alone is an incomplete answer. Measured on `clean_b`: 21 of 27 logs are ahead. |
+| `pending_bytes` | str(int) | `registry_txlog` | Size of the dirty-page entry. Up to 933,376 bytes measured. |
+| `entry_sequence` | str(int) | `registry_txlog` | The `HvLE` entry's own sequence, when present. |
+
+**The logs are not replayed.** Applying dirty pages at recorded offsets and
+re-parsing would produce a hive that parses cleanly and contains fabricated keys
+if anything were wrong — the worst failure mode available here. A log with no
+dirty pages yields no event.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

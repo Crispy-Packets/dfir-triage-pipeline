@@ -11,9 +11,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from conftest import cached_collect_events as collect_events
 
 from dfir_triage_pipeline import anomaly, features
-from dfir_triage_pipeline.ingest import collect_events
 from dfir_triage_pipeline.model import Event
 
 

@@ -220,7 +220,7 @@ class TestTheScenarioSideEffect:
         names it at all. They say the binary RAN; only the journal shows what
         it DID.
         """
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v3")
         naming = {
@@ -261,7 +261,7 @@ class TestTheRename:
         assert renames
 
     def test_rename_is_unique_to_this_family(self):
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         renamers = {

@@ -286,7 +286,7 @@ class TestAcrossCollections:
     def test_each_collection_yields_events(self, collection, timeline_min, history_min):
         """Lower bounds: both grow with ordinary use, and an exact count would
         pin the corpus rather than the parser. Measured 2026-09-17."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         root = EVIDENCE / collection
         if not root.is_dir():
@@ -299,7 +299,7 @@ class TestAcrossCollections:
 
     def test_no_collection_produces_a_parser_failure(self):
         """The admin_local empty database raised until the table check landed."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         for collection in ("collection_clean_b", "collection_s1_v3"):
             root = EVIDENCE / collection

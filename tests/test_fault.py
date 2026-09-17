@@ -2,9 +2,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from conftest import cached_collect_events as collect_events
 
 from dfir_triage_pipeline import parsers
-from dfir_triage_pipeline.ingest import collect_events
 from dfir_triage_pipeline.model import Event
 
 

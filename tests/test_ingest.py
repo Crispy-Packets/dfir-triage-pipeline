@@ -1,4 +1,6 @@
-from dfir_triage_pipeline.ingest import collect_events, relative_posix
+from conftest import cached_collect_events as collect_events
+
+from dfir_triage_pipeline.ingest import relative_posix
 
 
 def test_relative_posix_uses_forward_slashes(tmp_path):

@@ -195,6 +195,12 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # Added 2026-09-17. NTFS appends the record as the change happens, so this
     # is among the strongest observations in the pipeline.
     "usn": "recorded",               # usn_journal.py UsnJournalParser.parse
+    # Added 2026-09-17. Defender's engine log writes each line as the event
+    # occurs; the LSA policy and transaction-log families carry a key's or a
+    # base block's last write and claim only that the state exists.
+    "defender_mplog": "recorded",    # defender_mplog.py DefenderMpLogParser.parse
+    "lsa_policy": "presence",        # security_hive.py _privilege_events
+    "registry_txlog": "presence",    # registry_txlog.py RegistryTxLogParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

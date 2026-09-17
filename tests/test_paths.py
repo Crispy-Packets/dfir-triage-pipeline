@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 
 import pytest
+from conftest import cached_collect_events as collect_events
 
-from dfir_triage_pipeline.ingest import collect_events
 from dfir_triage_pipeline.paths import (
     derive,
     looks_like_command_line,

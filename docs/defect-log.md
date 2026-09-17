@@ -1030,3 +1030,57 @@ the distinction is actually made on.
 **Worth stating as a rule:** when a check is extended to a second family, check
 that the second family can satisfy it. The first family's spelling is not
 evidence that a general property was expressed.
+
+---
+
+## D-050  A generator holding a file descriptor exhausted the process limit
+
+Found 2026-09-17, when the full suite began failing with 15 errors after the
+browser-profile parser landed.
+
+    OSError: [Errno 24] Too many open files:
+      '%USERPROFILE%\dfir-evidence\collection_s1_v3\C\$Extend\$J'
+
+**The failure surfaced in the wrong parser.** Every reported failure was in
+`test_usn_journal.py`, which opens one file with `read_bytes()` and holds no
+descriptor at all. It failed because it happened to be the next thing to open a
+file after the limit was reached.
+
+**The cause was two parsers and one test-suite habit, compounding.**
+
+`timeline.py` and `srum.py` both had this shape:
+
+    def _rows(abs_path):
+        connection = sqlite3.connect(...)      # or abs_path.open("rb")
+        try:
+            yield from connection.execute(...)
+        finally:
+            connection.close()
+
+`yield from` inside `try/finally` holds the descriptor open for as long as the
+CALLER takes to consume the generator -- and the caller is itself a generator
+feeding a whole ingest run. The `finally` does not run until the outer
+generator is exhausted or collected.
+
+That alone was survivable. What made it fatal is that the suite called
+`collect_events` **65 times across 22 test bodies**, each walking an entire
+collection and opening every SQLite and ESE file in it. As parsers accumulated,
+the descriptor count per walk grew until the limit was hit mid-run.
+
+**Fixes, all three:**
+
+1. `timeline._rows` fetches eagerly with `.fetchall()` and returns a list; the
+   connection closes before the function returns.
+2. `srum.parse` collects into a list inside the `with` block and yields from
+   the list afterwards, so the handle closes when reading finishes.
+3. `tests/conftest.py` gained `cached_collect_events`, which memoises the
+   ingest per collection for the session. Five walks instead of sixty-five.
+
+**The suite went from 8m13s to 1m46s** as a side effect, which is the clearer
+signal that re-ingesting per test was wrong regardless of descriptors.
+
+**The general hazard:** `yield from` inside a resource-holding `try/finally` is
+not equivalent to reading the resource and yielding afterwards. It looks
+correct, it passes in isolation, and it fails only under concurrency with other
+resource holders -- reported at whichever unlucky caller asks for the next
+descriptor.

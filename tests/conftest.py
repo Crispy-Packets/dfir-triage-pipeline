@@ -177,3 +177,34 @@ def service_install(
         user=user,
         details={"ServiceName": name, "ImagePath": image},
     )
+
+
+# ---------------------------------------------------------------------------
+# Cached collection ingest, added 2026-09-17.
+#
+# The suite calls `collect_events` 65 times across 22 test bodies, each walking
+# a whole collection and opening every SQLite and ESE file in it. That
+# exhausted the process's file-descriptor limit once enough parsers existed:
+# the run died with `OSError: Too many open files`, and it surfaced in the USN
+# journal parser -- which simply happened to be the next thing to open a file
+# and holds no descriptors of its own. See D-050.
+#
+# Caching per collection fixes both the descriptors and the wall clock: five
+# ingests instead of sixty-five.
+
+_INGEST_CACHE: dict[str, Any] = {}
+
+
+def cached_collect_events(root: Any) -> Any:
+    """`collect_events(root)`, computed once per collection per session.
+
+    Returns the SAME (events, stats) objects on every call, so a test must not
+    mutate them. Nothing in the suite does -- every use is a read -- and the
+    alternative is re-walking a collection for each assertion.
+    """
+    from dfir_triage_pipeline.ingest import collect_events
+
+    key = str(root)
+    if key not in _INGEST_CACHE:
+        _INGEST_CACHE[key] = collect_events(root)
+    return _INGEST_CACHE[key]

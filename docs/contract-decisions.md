@@ -110,6 +110,50 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. Defender's text logs, the LSA policy, the SYSTEM
+        profile hive, and registry transaction logs.
+
+        Defender Support/MP*.log  ->  defender_mplog  process_exec /
+                                      file_reported / scan_skipped /
+                                      av_service_started
+        SECURITY Policy\Accounts  ->  lsa_policy      privilege_granted
+        DEFAULT  Run/RunOnce       ->  registry        persistence_autorun
+        *.LOG1 / *.LOG2            ->  registry_txlog  pending_registry_write
+
+        `defender_mplog` emits process_exec, sharing the string with prefetch,
+        bam and 4688: the AV engine observed a running process, and that is
+        execution evidence from a source independent of all of them.
+
+        `file_reported` is deliberately NOT malware_detected. `ReportLowfi` is
+        Defender's own wording -- LOW FIDELITY -- and means the engine wanted a
+        second opinion, not that it reached a verdict. Measured: zero 1116/1117
+        verdicts across all five collections, while s1_v3's MPLog holds a
+        ReportLowfi for the payload. The engine looked and did not conclude.
+
+        The DEFAULT hive reuses `persistence_autorun` because it IS one -- but
+        it runs as SYSTEM at boot rather than per-user, which details.runs_as
+        records. parsers/registry.py cannot reach it: its NTUSER matching is
+        anchored under Users\ and this hive lives in System32\config.
+
+        REGISTRY TRANSACTION LOGS WERE PREVIOUSLY DISMISSED AS HOLDING NO
+        COMMITTED VALUES, AND THAT WAS WRONG. Every one carries a valid regf
+        header and an HvLE entry with real dirty pages. Measured on clean_b:
+        21 of 27 logs are AHEAD of their hive, one by 933 KB of pending writes
+        the hive has never seen.
+
+        The logs are NOT replayed. Replay means applying dirty pages at
+        recorded offsets and re-parsing, and an error there yields a hive that
+        parses cleanly and contains fabricated keys -- the worst failure mode
+        available here. The parser reports THAT pending writes exist, their
+        size, and whether the log is ahead of its hive, which is the actionable
+        part.
+
+        NOT READ, deliberately: \Policy\Secrets (LSA secrets) and PolEKList
+        (boot key material), for the same reason sam_hive.py does not read the
+        V value. Privilege LUIDs are not mapped to names either -- the table
+        varies by Windows version, and inventing one is how D-023 and D-045
+        happened.
+
         Added 2026-09-17. The USN change journal.
 
         C\$Extend\$J  ->  usn  file_created / file_deleted /

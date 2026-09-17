@@ -283,7 +283,7 @@ class TestTheRemovableMediaResult:
         pipeline -- prefetch, amcache, srum, the event logs, the hives -- is
         silent about a device that was attached to this machine.
         """
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         naming = {
@@ -299,7 +299,7 @@ class TestTheRemovableMediaResult:
         `E:\collection_clean_b` and `E:\handoff` appear in no Recent link --
         the removable drive held earlier collection data, and only the
         application's own history records it."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         on_volume = [

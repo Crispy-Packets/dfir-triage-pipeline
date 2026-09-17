@@ -131,12 +131,20 @@ def decode_payload(raw: Any) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _rows(abs_path: Path) -> Iterator[sqlite3.Row]:
+def _rows(abs_path: Path) -> list[sqlite3.Row]:
     """Activity rows, read without modifying the file.
 
     `immutable=1` opens read-only and tells SQLite the file cannot change,
     which also avoids touching the -wal and -shm files sitting beside it. The
     evidence is never written to (CD-016).
+
+    **Rows are fetched EAGERLY and the connection closed before returning.**
+    This was a generator with `yield from` inside `try/finally`, which holds
+    the descriptor open for as long as the caller takes to consume it -- and
+    the caller is itself a generator feeding a whole ingest run. Across a
+    collection that exhausted the process's file-descriptor limit, and the
+    resulting `OSError: Too many open files` surfaced in a DIFFERENT parser
+    (the USN journal, which simply happened to open a file next). See D-050.
     """
     connection = sqlite3.connect(f"file:{abs_path}?immutable=1", uri=True)
     connection.row_factory = sqlite3.Row
@@ -150,11 +158,11 @@ def _rows(abs_path: Path) -> Iterator[sqlite3.Row]:
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='Activity'"
         ).fetchone()
         if not exists:
-            return
-        yield from connection.execute(
+            return []
+        return connection.execute(
             "SELECT Id, AppId, ActivityType, Payload, StartTime, EndTime, "
             "LastModifiedTime FROM Activity"
-        )
+        ).fetchall()
     finally:
         connection.close()
 

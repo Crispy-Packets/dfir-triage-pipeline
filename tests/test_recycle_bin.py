@@ -134,7 +134,7 @@ class TestTheDeletedPayload:
         """The result this family exists for. Prefetch, Amcache, BAM and
         Shimcache all attest that invoice_scan.exe RAN; this is the only
         family that says it was removed afterwards."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v3")
         rows = [e for e in events if e.source_artifact == "recyclebin"]
@@ -146,7 +146,7 @@ class TestTheDeletedPayload:
         assert hits[0].event_type == "file_deleted"
 
     def test_the_sid_comes_from_the_path(self):
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v3")
         rows = [e for e in events if e.source_artifact == "recyclebin"]
@@ -155,7 +155,7 @@ class TestTheDeletedPayload:
     def test_timestamp_type_is_recorded(self):
         """Windows wrote the FILETIME when it moved the file. Unlike `lnk`,
         this is an observation rather than a property copied from a target."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v3")
         rows = [e for e in events if e.source_artifact == "recyclebin"]
@@ -168,7 +168,7 @@ class TestTheIterationHistory:
         """s1_v2 holds nine deletions of the same name across four days at
         three sizes -- the operator iterating on the binary. No other family
         in the pipeline shows any of this."""
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         rows = [
@@ -199,7 +199,7 @@ class TestTheIterationHistory:
         with full paths and three distinct sizes; the journal holds the
         Prefetch file's deletion, which never went to the bin at all.
         """
-        from dfir_triage_pipeline.ingest import collect_events
+        from conftest import cached_collect_events as collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         deleters = {e.source_artifact for e in events if e.event_type == "file_deleted"}
