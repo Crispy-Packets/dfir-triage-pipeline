@@ -525,6 +525,41 @@ re-parsing would produce a hive that parses cleanly and contains fabricated keys
 if anything were wrong — the worst failure mode available here. A log with no
 dirty pages yields no event.
 
+### `$MFT` (`mft`), added 2026-09-17
+
+352,768 records on `s1_v3`, streamed at a fixed 1,024 bytes each.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `mft_record` | str(int) | `mft` | Record number, unique within the table and the only identifier it carries. Also the locator. Records 0-15 are NTFS metafiles and are skipped. |
+| `file_name` | str | `mft` | The name from `$FILE_NAME`, preferring the long entry over the 8.3 one. Also `Event.path`. |
+| `in_use` | str | `mft` | `true`/`false`. **`false` is a DELETED file whose record has not been reused** — measured 1,136 on `s1_v3`, held by no other family. |
+| `is_directory` | str | `mft` | `true`/`false`. |
+| `si_created`, `si_modified`, `si_mft_modified`, `si_accessed` | str | `mft` | The four `$STANDARD_INFORMATION` times, ISO-8601 Z. |
+| `fn_created` | str | `mft` | The `$FILE_NAME` creation time. |
+
+**No timestomping verdict is emitted, and the omission is deliberate.** The
+textbook indicator — `$SI` earlier than `$FN` — was implemented and then
+measured: **94,262 of 351,088 records on `s1_v3` and 99,955 of 287,983 on
+`clean_c`**, 27% of both, led by `$Recycle.Bin`, `PerfLogs` and `Program
+Files`. A file laid down from a Windows install image keeps the image's `$SI`
+and gets a fresh `$FN`; that is every OS file. Both timestamps are emitted so
+an analyst can compare them on a specific file; the pipeline makes no claim.
+See D-051.
+
+**`Event.path` is a NAME, never a path** — resolving a record's parent
+reference needs a full-table index this parser does not build. Same limitation
+as `usn`, for the same reason (CD-010).
+
+**The fixup array is applied.** NTFS overwrites the last two bytes of each
+512-byte sector with an update-sequence number; skipping the restore reads two
+corrupted bytes per sector, inside filenames and timestamps, without raising. A
+**torn** record — one whose sector does not carry the expected USN — is skipped
+rather than repaired. Measured: zero torn in 59,992 scanned.
+
+**Not decoded**: data runs, resident content, `$DATA` streams, attribute lists
+and the directory index.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

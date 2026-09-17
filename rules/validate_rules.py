@@ -201,6 +201,9 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     "defender_mplog": "recorded",    # defender_mplog.py DefenderMpLogParser.parse
     "lsa_policy": "presence",        # security_hive.py _privilege_events
     "registry_txlog": "presence",    # registry_txlog.py RegistryTxLogParser.parse
+    # Added 2026-09-17. An MFT record attests that a file EXISTED with these
+    # times; it is not a log of an event occurring.
+    "mft": "presence",               # mft.py MftParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

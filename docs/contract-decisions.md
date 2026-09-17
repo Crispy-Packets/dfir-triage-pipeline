@@ -110,6 +110,32 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. The $MFT.
+
+        C\$MFT  ->  mft  file_record
+
+        352,768 records on s1_v3, streamed at a fixed 1,024 bytes each -- the
+        361 MB never enters memory. It recovers 1,136 DELETED file records that
+        no other family holds.
+
+        `file_record` is a new event_type. It is not file_created: the record
+        attests that a file EXISTED with these times, and a deleted file's
+        record says it existed and no longer does.
+
+        NO TIMESTOMPING VERDICT IS DERIVED, and that is a measured decision
+        rather than an omission. The $SI-earlier-than-$FN indicator was
+        implemented and measured at 94,262 of 351,088 records on s1_v3 and
+        99,955 of 287,983 on clean_c -- 27% of both, led by $Recycle.Bin,
+        PerfLogs and Program Files. A file laid down from a Windows install
+        image keeps the image's $SI and gets a fresh $FN. An indicator with a
+        27% base rate on a clean host is not an indicator. Both timestamps are
+        emitted; the pipeline makes no claim. See D-051.
+
+        mft is ~90% of all events on s1_v3, and like usn that does not disturb
+        the layer ablation: re-measured after it landed, rules 1/5 and both
+        1/976, unchanged, because MFT records carry a FILE NAME rather than an
+        executable-name entity and so create no entities to rank.
+
         Added 2026-09-17. Defender's text logs, the LSA policy, the SYSTEM
         profile hive, and registry transaction logs.
 

@@ -1084,3 +1084,45 @@ not equivalent to reading the resource and yielding afterwards. It looks
 correct, it passes in isolation, and it fails only under concurrency with other
 resource holders -- reported at whichever unlucky caller asks for the next
 descriptor.
+
+---
+
+## D-051  The textbook timestomping indicator fires on 27% of a clean host
+
+Found 2026-09-17, on the first measurement of the `$MFT` parser.
+
+`$STANDARD_INFORMATION` timestamps are settable through a documented API;
+`$FILE_NAME` timestamps are not. A file whose `$SI` creation PRECEDES its `$FN`
+creation has therefore been backdated -- this is the standard NTFS
+anti-forensics indicator, and it was implemented here as a `si_precedes_fn`
+detail.
+
+Measured before the rule that would have consumed it was written:
+
+    collection_s1_v3    94,262 of 351,088 records    27%
+    collection_clean_c  99,955 of 287,983 records    35%
+
+The same files lead both lists: `$Recycle.Bin`, `PerfLogs`, `Program Files`,
+`Common Files`, `microsoft shared`, `en-US`.
+
+**The cause is ordinary and universal.** A file laid down from a Windows
+install image carries the image's `$SI` and receives a fresh `$FN` when it is
+written to this volume. That describes every OS file on every Windows machine.
+Refining by "unique `$SI` value" did not help either: 96,343 of the 99,955 on
+`clean_c` have a non-shared `$SI`, because the image's files were built at
+many different times.
+
+**An indicator with a 27% base rate on a collection containing no attack is not
+an indicator.** Shipping it would have attached a `timestomped` detail to a
+third of the filesystem, and any rule reading it would have fired constantly.
+
+**Fix:** the flag is not emitted. Both timestamps ARE emitted as details, so an
+analyst can make the comparison against a specific file of interest; the
+pipeline does not make the claim wholesale. The parser carries the measurement
+at the emission site so the next person to reach for the indicator sees why it
+is absent, and `test_no_timestomping_verdict_is_emitted` pins the absence.
+
+**This is the rule the project already had, applied to a derived signal rather
+than to a base rate**: measure before asserting. The difference here is that
+the assertion would have been a per-event detail rather than a rule, which is
+exactly where an unmeasured claim is easiest to ship unnoticed.
