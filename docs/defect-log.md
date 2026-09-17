@@ -1289,7 +1289,7 @@ correct-shaped rule as broken, and the fix a person reaches for first is to
 loosen the regex or hand-add an exception, which is how a vocabulary drifts
 from its source document. Caught here because the coverage inventory for the
 rules phase started by calling the loader and printing its result, rather than
-assuming CD-007's prose was sufecient because the doc read correctly.
+assuming CD-007's prose was sufficient because the doc read correctly.
 
 **Fix:** every multi-value CD-007 line was split into one `-> artifact
 event_type` line per value — the format the first six mappings already used,
@@ -1305,3 +1305,58 @@ in CD-007 were all single-value and the regex was written and tested against
 them; every mapping added after inherited a format the regex was never
 extended to parse, and nothing failed until a rule tried to select on one of
 the missing values.
+
+## D-055  `evtx.ps_classic` was taken for a field it never extracts
+
+Found 2026-09-17, while measuring which families could widen R-ATOMIC-0003's
+`select`.
+
+CD-007 states the reason this channel was added, explicitly:
+
+> `evtx.ps_classic` closes a gap the attestation matrix has carried as stated
+> since it was written: EID 600 holds HostApplication, the full command line
+> of the process that started PowerShell, and it is present when script-block
+> logging is off and 4104 holds nothing.
+
+`_details_for()` in `evtx_windows.py` has branches for 4624/4625, 4688, 4720,
+1102, 7045, 4104, 5861 and 21/25. **There is no branch for 400, 403 or 600**,
+so `keep` falls through to the empty tuple and every `ps_classic` row is
+emitted with `details == {}`. Measured on `s1_v3`: **0 of 203 rows carry any
+details at all.** `HostApplication` appears nowhere in the parser source.
+
+The field is really there. Confirmed by reading a raw record rather than by
+trusting either the doc or the parser:
+
+    <EventID Qualifiers="0">600</EventID>
+    ...
+      HostName=ConsoleHost
+      HostVersion=5.1.19041.2673
+      HostApplication=powershell.exe -ExecutionPolicy Restricted
+                      -Command Write-Host 'Final result: 1';
+
+160 EID 600 records on `s1_v3`, in
+`C/Windows/System32/winevt/logs/Windows PowerShell.evtx`.
+
+**The channel delivers an event_type and a timestamp and nothing else.** It
+attests that PowerShell ran, which `evtx.powershell` and `ps_history` already
+attest; the one thing it was taken to supply — the command line that survives
+when script-block logging is off — is parsed away. A rule written against the
+stated justification would find nothing to read.
+
+Note on the measurement itself: the first scan for these records returned
+**zero on all five collections** and was WRONG. `rglob("Windows PowerShell.evtx")`
+from the collection root found nothing, while the parser reported 160 rows
+from the same collection. Two reading methods disagreeing is the D-053 signal,
+and the reconciliation — walking `*.evtx` and counting EventIDs per file —
+showed the parser right and the scan wrong. **The defect was nearly filed
+against the parser on the strength of a scan that could not see the file.**
+The rule that caught it is the one D-053 established: when a negative result
+contradicts another method, check the reading method before believing the
+negative.
+
+**Not fixed here.** Extracting `HostApplication` is a parser change with a
+`details` key that must be declared in `docs/details-schema.md` first (CD-012),
+and it lands in the parser layer rather than in the rules work this was found
+during. Recorded so the attestation matrix stops crediting `ps_classic` with a
+capability the code does not have: its row in Section 1 and Section 6.3 of
+`docs/artifact-attestation-matrix.md` both now say so.
