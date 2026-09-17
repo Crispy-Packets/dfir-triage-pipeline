@@ -134,6 +134,47 @@ value holds the NT hash and `SupplementalCredentials` holds more; neither is
 touched. A triage pipeline that extracted credential material would be a
 different tool with different handling requirements.
 
+### SRUM (`srum`), added 2026-09-17
+
+Two providers of one ESE database, sharing a clock, an id map and a flush
+cycle. `Event.path` carries the application identity **as SRUM recorded it**
+(CD-010) — a device path, a bare service name, or an AppX package identity.
+Which of the three shapes appears is itself information about how the program
+was launched, so they are not normalised into a common form.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `srum_provider` | str | `srum` | `network_data_usage` or `application_resource_usage`. The provider GUID the row came from, so a consumer can tell the two tables apart after they are merged into one family. |
+| `bytes_sent` | str(int) | `srum` | `network_usage` rows only. Bytes the application sent during the interval. **The value this artefact exists for** — no other family in the pipeline attests to transfer volume. |
+| `bytes_received` | str(int) | `srum` | `network_usage` rows only. |
+| `bytes_read` | str(int) | `srum` | `resource_usage` rows only. Foreground plus background disk reads, summed: the split is a scheduling detail, not a forensic distinction. |
+| `bytes_written` | str(int) | `srum` | `resource_usage` rows only, summed the same way. |
+| `cpu_cycles` | str(int) | `srum` | `resource_usage` rows only. Foreground plus background cycle time. A raw cycle count, not seconds — the conversion needs a clock rate SRUM does not record. |
+
+**`<unattributed>` is a real value in `path`.** `AppId=1` resolves under no
+IdType; it is SRUM's own sentinel for traffic it could not attribute. Measured
+41/41/54/26/31 rows across the five collections. Those rows are emitted with
+the sentinel rather than dropped — the bytes were still moved — and rather than
+given a fabricated `<id 1>` name, which would put an invented identifier into a
+field a rule may join on. **An unresolvable id other than 1 yields no event.**
+
+**Timestamps are OLE automation dates arriving as ints.** `dissect` declares
+the column `JET_coltyp.DateTime` and returns `4676592689485971456`. That is the
+raw float64 *bits*, not a scaled tick count: they must be reinterpreted
+(46274.1875 days from 1899-12-30 = 2026-09-09T04:30Z). Scaling instead places
+the event roughly 148 million years out, and nothing raises. Values outside
+1995–2100 are rejected as decode failures rather than emitted.
+
+**`IdType=3` is the SID; 0, 1 and 2 are all application identities.** This is
+the opposite of the numbering in most format write-ups, and taking it on faith
+attributes every row to the wrong party. Established by reading the blobs:
+`IdType=3` holds `\x01\x01\x00\x00\x00\x00\x00\x05\x14\x00\x00\x00` (`S-1-5-20`),
+`IdType=0` holds `!!WmiPrvSE.exe!2019/10/16:23:45:21!860a3!`.
+
+**`timestamp_type` is `recorded`** for both providers. The row is an observation
+of an interval that the provider flushed, not a presence claim about the program
+— but note the interval's *start* is not recorded, only the flush time.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

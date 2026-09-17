@@ -59,6 +59,10 @@ defect number that established it.
 | | | **who** created it, or from where a logon came | SAM records no principal but the account itself | Security 4720 `SubjectUserName`, 4624 |
 | | | anything about **domain** accounts — SAM is local only | Windows design | domain controller logs ⛔ |
 | | | that an account was **deleted**. Measured: `testuser` was created in `clean_b` on 2026-08-24 and is absent from SAM entirely | measured 2026-09-17 | Security 4726 |
+| **srum** | **how much data an application moved** — bytes sent and received per app per interval; CPU cycles and disk bytes | **that a short-lived process ran at all.** SRUM samples running processes rather than recording starts, so a binary that exits between samples is never observed. Measured: `invoice_scan.exe` is absent from `s1_v2` even though SRUM flushed 325 rows after it ran | measured 2026-09-17, both scenario collections | prefetch, bam, amcache |
+| | | **the endpoints of a transfer.** SRUM names neither a URL nor a remote address — only a byte count per application | parser source; CD-007 `network_usage` is not `file_download` | browser `url`, `Zone.Identifier` ADS ⛔ |
+| | | **when an interval began.** The timestamp is the provider's flush, not the start of the activity it summarises | CD-019 | — |
+| | | anything after its **last flush**. Measured on `s1_v3`: horizon 11:48:00, payload ran 11:50:09, zero rows at or after the execution for any program | measured 2026-09-17 | prefetch, bam |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -85,7 +89,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
 *consistently* for the evidence to lie. Seven families was the minimum for the
-property to hold at all; the pipeline now parses **thirteen**.
+property to hold at all; the pipeline now parses **fourteen**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -97,7 +101,8 @@ this document's thesis demonstrated on real evidence.
 ## 3. Where the map is incomplete, and why
 
 **Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
-62cb065 and SAM landed today, taking the pipeline from 7 families to **13**.
+62cb065; SAM and SRUM landed today, taking the pipeline from 7 families to
+**14**.
 The ⛔ markers those closed have been cleared from the table above rather than
 left standing — a matrix that understates what is parsed is as misleading as
 one that overstates it.
@@ -108,6 +113,7 @@ one that overstates it.
 |---|---|---|
 | **SYSTEM hive** — `shimcache`, `bam`, `services` | 4 | Execution evidence when Prefetch is off; **the principal Prefetch cannot supply**; services when 7045 is gone. Demonstrated on `s1_v3`: BAM attributed `invoice_scan.exe` to `S-1-5-21-…-1000` 31 seconds after Prefetch recorded the same execution with no user at all |
 | **SAM hive** — `sam` | 2 | Accounts and their logon counts after a Security-log clear. `s1_v3` retains **12** Security events and all five accounts |
+| **SRUM** — `srum` | 4 | **Transfer volume**, which no other family carries. 6,179 rows on `clean_a`. Its own limits are now stated above rather than assumed: it did not record the scenario binary on either host, for two different and measured reasons |
 
 ### Still collected and not parsed
 
@@ -115,7 +121,6 @@ one that overstates it.
 |---|---|---|
 | **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
 | **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
-| **SRUM** (`SRUDB.dat`) | 2 | Per-process network bytes and application run duration. `dissect.esedb` reads the ESE database; not yet wired in |
 | **Scheduled Tasks XML** (220 files in `s1_v3`) | 1 | Persistence when 4698 is suppressed, which it is by default — measured 0 across all five collections |
 | **NTUSER.DAT beyond Run keys** | 1 | UserAssist, RecentDocs, TypedPaths: per-user execution and file access |
 

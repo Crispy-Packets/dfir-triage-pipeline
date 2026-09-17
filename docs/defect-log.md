@@ -818,3 +818,69 @@ Without that guard a `sam` step would pass the existing presence check on the
 strength of its dominant mapping, while still admitting records whose timestamps
 cluster at image-build time — producing correlations with whatever else happened
 during Windows setup. CD-019 records the amendment.
+
+---
+
+## D-043  An ESE `DateTime` column arrived as raw float64 bits in an int
+
+Found 2026-09-17, probing `SRUDB.dat` before writing the SRUM parser.
+
+`dissect.esedb` declares SRUM's `TimeStamp` column `JET_coltyp.DateTime` and
+returns `4676592689485971456`. The declared type invites the assumption that the
+value is a converted datetime, or failing that a tick count in some epoch.
+
+It is **neither**. The int is the raw 8 bytes of an OLE automation date — a
+float64 counting days from 1899-12-30 — delivered without reinterpretation.
+The bits must be re-read as a float:
+
+    struct.unpack("<d", struct.pack("<Q", 4676592689485971456))[0]
+      -> 46274.1875 days
+      -> 1899-12-30 + 46274.1875 days = 2026-09-09T04:30:00Z
+
+**Why it would not have been caught.** Dividing by any plausible tick scale
+yields a number, `datetime` accepts it, and every event lands consistently about
+148 million years from now. No exception, no null, no failure count: the CSV
+would be internally consistent and uniformly wrong. Sorting still works. Only
+comparing an event against a known collection window exposes it.
+
+**Fix:** `ole_timestamp` reinterprets the bits, rejects NaN and infinity, and
+rejects any result outside 1995-2100 rather than clamping it — a timestamp the
+parser cannot vouch for is an absence, and a clamped one is invented. A real
+`datetime` is passed through unchanged, so a future `dissect` release that
+converts the column itself does not break the parser.
+
+Guarded by `TestOleTimestamp`, which pins the exact measured int against the
+exact measured time, and by `test_timestamps_land_in_the_collection_window`.
+
+**Third in the family with D-023 and D-041**: a library returned something
+plausible, the parser accepted it, and only measurement against ground truth
+exposed it. The pattern is now explicit in the parser-writing sequence — probe
+the bytes, then write.
+
+---
+
+## D-044  The first explanation for SRUM's missing scenario binary was wrong
+
+Recorded 2026-09-17 because the error is instructive, not because code changed.
+
+`invoice_scan.exe` appears nowhere in SRUM on `s1_v3`. The explanation reached
+for first, and measured: SRUM's last flush was **11:48:00** and the payload ran
+at **11:50:09**, so zero rows exist at or after the execution for any program.
+True, and it looked complete.
+
+`s1_v2` refutes it as a general claim. There SRUM flushed **325 rows after** the
+22:57:15 execution and the binary is *still* absent. Had only `s1_v3` been
+checked, the write-up would have carried a confident single-cause explanation
+that the other scenario collection contradicts.
+
+The measured cause on `s1_v2`: SRUM **samples running processes** rather than
+recording starts. It does name short-lived user binaries elsewhere on that host
+(49 rows under `\Users\`, including installers in `AppData\Local\Temp`), so the
+barrier is not that user programs are ignored — it is that every program SRUM
+names ran long enough to cross a sampling interval, and the payload exits
+immediately.
+
+Both causes are recorded, and the duration limit is now a "cannot attest" clause
+in the attestation matrix rather than a note about one collection. **A limit
+established on one collection is a hypothesis; the second collection is the
+test.**

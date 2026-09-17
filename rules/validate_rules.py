@@ -149,6 +149,11 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # dominant case for load-time rule checking; at run time the Event's own
     # field is authoritative, as the comment above this map already states.
     "sam": "last_run",               # sam_hive.py _account_events
+    # Added 2026-09-17, SRUM. Both providers are observations of an interval
+    # the provider flushed, so `recorded` -- but the interval's START is not
+    # recorded, only the flush time, which is why a window over srum is coarse
+    # rather than wrong. See docs/evidence/srum-parser-2026-09-17.md.
+    "srum": "recorded",              # srum.py _network_events, _resource_events
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

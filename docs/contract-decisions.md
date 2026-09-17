@@ -110,6 +110,30 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. SRUM, the only artefact in this pipeline that
+        attests to HOW MUCH DATA an application moved.
+
+        SRUDB.dat {973F5D5C-...}  ->  srum       network_usage
+        SRUDB.dat {D10CA2FE-...}  ->  srum       resource_usage
+
+        ONE FAMILY, TWO EVENT TYPES, which is the opposite of the SYSTEM hive's
+        choice and for a consistent reason: Shimcache, BAM and Services have
+        different TIMESTAMP SEMANTICS and had to be separated. SRUM's two
+        providers share one clock, one id map and one flush cycle -- they are
+        two measurements of the same sampling run -- so they share a family and
+        differ by event_type.
+
+        `network_usage` is deliberately NOT `file_download`. A download is a
+        transfer with a source URL and a target path, which the browser records;
+        SRUM records an application's byte counters over an interval and names
+        neither endpoint. Spelling them the same would let a rule claim a URL
+        that no artefact holds.
+
+        `resource_usage` carries no execution claim either, and is NOT
+        `process_exec`. SRUM samples running processes; a row means the program
+        was alive during an interval, which is weaker than Prefetch's claim and
+        arrives without a start time.
+
         Added 2026-09-17. The SAM hive, which is not a log and survives a
         Security-log clear intact.
 

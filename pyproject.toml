@@ -9,6 +9,11 @@ dependencies = [
     # missing regipy fails when a hive is parsed rather than at import time.
     # That is precisely why it has to be declared here.
     "regipy==6.3.0",
+    # Pure-Python ESE reader for SRUDB.dat, imported lazily inside
+    # parsers/srum.py for the same reason regipy is. Pure Python matters here:
+    # the alternatives bind to libesedb, which does not build on Windows
+    # without a toolchain the examiner may not have.
+    "dissect.esedb==3.18",
     # Read by rules/validate_rules.py.
     "pyyaml==6.0.3",
     # Isolation Forest for the anomaly layer. Pulls in numpy and scipy.
