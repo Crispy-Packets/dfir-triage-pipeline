@@ -1,0 +1,138 @@
+# Artifact attestation matrix
+
+**What each family can prove, what it cannot, and what corroborates it.**
+
+---
+
+## 0. Why this document exists, and what was wrong before it
+
+Every rule in this pipeline was written the same way: look at what the
+collections contain, write a rule for it, measure the base rate. That is correct
+practice for **calibrating** a rule and wrong for **scoping** a rule set, and the
+difference is the defect this document corrects.
+
+A rule set derived from five collections describes five machines. The question a
+forensic tool must answer is not "what happened here" but **"if X had happened,
+which artefact would carry it, and what would contradict a lie about it?"** That
+question is answerable from the artefact's structure alone, before any
+collection exists.
+
+**This is not detection coverage.** It makes no claim about ATT&CK techniques
+and no claim to catch anything. It is an **evidentiary completeness map**: for
+each family, the scope of what it may be asked to attest, the limits of that
+attestation, and the independent family that corroborates it.
+
+Coverage in this sense is achievable and checkable. "100% detection" is neither
+— `s1_v2`'s 4688 for the payload is gone, and no correlation recovers a record
+that was deleted.
+
+**Every "cannot attest" clause below is measured, not assumed**, and carries the
+defect number that established it.
+
+---
+
+## 1. The attestation table
+
+| Family | Attests to | **Cannot** attest | Evidence for the limit | Corroborated by |
+|---|---|---|---|---|
+| **prefetch** | a binary ran; when it last ran; how many times; which files it touched in its first 10 s | **who** ran it — Prefetch records no principal | parser emits no `user` for prefetch | BAM/DAM (SID) ⛔, Amcache, Security 4688 |
+| | | **that it did not run** — Prefetch is disabled by default on Server and capped at 1024 entries | Windows default | Amcache, Shimcache ⛔ |
+| | | the binary's **content** — the hash is of the path, not the file | Prefetch format | Amcache `sha1` |
+| **amcache** | a binary existed on disk; its SHA-1; its size; its declared publisher | **that it ran.** Measured: Amcache held **no entry** for the executed scenario binary | **D-028** | Prefetch, `$MFT` ⛔ |
+| | | **when** it ran — `timestamp_type=presence`, the value is the key's last write | CD-019 | Prefetch `last_run` |
+| **registry (Run/RunOnce)** | an autorun value exists **now**, with this data | **when the value was written.** The timestamp is the containing KEY's last-write, shared by every sibling value | **D-027**, and `value_count_in_key` exists to say how many share it | `$MFT` on the hive file ⛔, USN ⛔ |
+| | | that the target ever ran | — | Prefetch, Amcache |
+| **evtx.security** | events the log **still contains** | **anything cleared.** `wevtutil cl security` destroyed the 4688 for the payload; `janed` appears in zero 4624 and zero 4688 afterwards | `s1_v2` ground truth; measured | LSM channel, SAM ⛔, Prefetch, Amcache |
+| | | **who was created** on a 4720 without `TargetUserName` — the original parser kept only the creator | **D-029** | SAM ⛔ |
+| | | anything an audit subcategory suppresses — 4697/4698/4702 are **off by default** | measured: 0 across five collections | Task XML ⛔, registry Services ⛔ |
+| **evtx.system** | service installations the log still holds (7045) | services installed **before the log's retention window**, or after a System-log clear (EID 104) | log rollover is size-capped by default | registry `Services` key ⛔ |
+| **evtx.powershell** | script blocks, **capped at 4096 UTF-8 bytes** | the remainder of a longer block. A rule may read it with **positive operators only** — `not_contains` against a capped field asserts an absence the evidence cannot support | **D-031**; enforced by `validate_rules.py` | legacy `Windows PowerShell` EID 800 ⛔ |
+| | | anything at all when **script-block logging is disabled**. Measured: 5 rows against 997 with it on | `clean_c` first collection | — |
+| **evtx.wmi** | that a permanent event subscription was **registered**; its filter, consumer class, and WQL query | **what the consumer executes.** 5861 records the binding, not the payload | parser reads 5861 only | WMI repository `OBJECTS.DATA` ⛔ |
+| **evtx.rdp** | a Terminal Services session; its user, session ID and origin `Address` | that the session was **authorised**; and nothing when the channel is absent | — | Security 4624 type 10 |
+| **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
+| | | that the file was **executed** | — | Prefetch, Amcache |
+
+⛔ = not parsed by this pipeline.
+
+---
+
+## 2. The corroboration graph
+
+Read as: **if the left family is suppressed, the right families still attest.**
+
+| Suppressed | Survives | What is still provable |
+|---|---|---|
+| `Security.evtx` cleared (EID 1102) | prefetch, amcache, registry, browser, **evtx.rdp**, evtx.powershell | execution, presence, persistence, arrival, remote sessions. **Measured on `s1_v2`: every step of the attack remained recoverable** |
+| Prefetch disabled or purged | amcache, Shimcache ⛔, BAM ⛔ | that the binary existed and was inventoried |
+| Amcache stale or missing (D-028) | prefetch, `$MFT` ⛔ | that the binary ran, and when |
+| Script-block logging off | legacy PowerShell EID 800 ⛔, prefetch | that PowerShell ran, and its `HostApplication` command line |
+| Registry value deleted | prefetch, amcache | that the target ran, if it did |
+| Browser history cleared | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ | the source URL, via the ADS `HostUrl` |
+| **A family's file deleted outright** | `$MFT` ⛔ | that the file existed and was deleted — **the only artefact that attests to its own deletion** |
+
+### The structural property
+
+**An adversary suppressing one family leaves the others intact.** That is not a
+detection claim; it is a statement about what would have to be falsified
+*consistently* for the evidence to lie. Seven families is the minimum for the
+property to hold at all.
+
+**Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
+Security-log record of arrival, execution and persistence — and all three
+remained recoverable from browser history, Prefetch and the registry. That is
+this document's thesis demonstrated on real evidence.
+
+---
+
+## 3. Where the map is incomplete, and why
+
+Three of the seven families in the KAPE collection are **collected and not
+parsed**, and they are the ones carrying most of the corroboration above:
+
+| Unparsed family | Rows it would close | Why it matters |
+|---|---|---|
+| **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file |
+| **SYSTEM hive** (Shimcache, BAM, Services) | 4 | Execution evidence when Prefetch is off; the principal Prefetch cannot supply; services when 7045 is gone |
+| **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
+
+**The map is honest about this:** every ⛔ is a stated gap, not a silent one. A
+corroboration marked ⛔ is a corroboration this pipeline cannot currently
+perform, and the write-up says so rather than implying the graph is complete.
+
+---
+
+## 4. What a rule derived this way looks like
+
+The difference from every rule written so far, stated concretely.
+
+**Corpus-derived (what was done):** look at the collections, see 73 WMI
+subscriptions, write a rule matching them, measure 12/12/20/10/19, discover the
+clean-host rate equals the scenario rate, rewrite.
+
+**Attestation-derived (what this document enables):** ask what a WMI
+subscription *structurally is* — a filter bound to a consumer — and what
+distinguishes one that executes from one that records. `CommandLineEventConsumer`
+executes **by definition, on any Windows host**. Write that. Measure 0/0/0/0/0,
+and the zero means "no execution-capable persistence present" rather than "rule
+untested."
+
+**The second derivation transfers to a machine this corpus has never seen. The
+first does not.**
+
+R-ATOMIC-0007 was rewritten on exactly this basis and is the worked example.
+
+---
+
+## 5. What this document does NOT claim
+
+- **Not detection coverage.** No ATT&CK completeness claim; no assertion that a
+  technique is caught.
+- **Not 100% anything.** Three of the four causes of a cross-family
+  inconsistency are benign — parser gap, collection gap, artefact semantics —
+  and only the fourth is adversarial. Distinguishing them requires a collection
+  manifest, which `groundtruth/*-sha256.csv` provides for evidence and nothing
+  yet provides at runtime.
+- **Not a substitute for the base rates.** Attestation scopes a rule; measurement
+  calibrates it. Both are required, and the order matters: scope first, measure
+  second.
