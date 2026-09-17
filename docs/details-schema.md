@@ -175,6 +175,47 @@ attributes every row to the wrong party. Established by reading the blobs:
 of an interval that the provider flushed, not a presence claim about the program
 — but note the interval's *start* is not recorded, only the flush time.
 
+### Scheduled tasks (`scheduled_task`), added 2026-09-17
+
+One file is one task; one task may yield several events, one per declared
+action. `Event.path` carries the command **as recorded** (CD-010), environment
+variables unexpanded — `%windir%\system32\rundll32.exe` is what the file says,
+and expanding it would assert a resolution this parser did not verify.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `task_uri` | str | `scheduled_task` | The task's identity, normalised to a single leading backslash. `<URI>` is inconsistent about that separator even within one collection, so the raw value would split one task into two entities. Falls back to the path under `Tasks\` when the element is absent — the directory tree mirrors the task folder. |
+| `action_type` | str | `scheduled_task` | `exec` or `com_handler`. **Measured 106 exec against 115 com_handler on `s1_v3`**: most tasks run a COM object, not a command line, and a parser reading only `<Exec>` drops over half of them. |
+| `command` | str | `scheduled_task` | `exec` actions only. Also emitted as `Event.path`. |
+| `arguments` | str | `scheduled_task` | `exec` actions only, when present. Frequently carries the real payload: `rundll32.exe` is the command and the DLL plus entry point are here. |
+| `working_directory` | str | `scheduled_task` | `exec` actions only, when present. |
+| `com_class_id` | str | `scheduled_task` | `com_handler` actions only. The CLSID that would be instantiated. **No command line exists for these** — resolving the CLSID to a DLL needs the SOFTWARE hive, which this parser does not read, so the id is reported as the artefact recorded it. |
+| `com_data` | str | `scheduled_task` | `com_handler` actions only, when present. Opaque data passed to the handler. |
+| `task_author` | str | `scheduled_task` | `<Author>`, when present. Self-declared and trivially forged; it is evidence of what the file claims, not of who wrote it. |
+| `run_level` | str | `scheduled_task` | `HighestAvailable` or `LeastPrivilege`. Measured 82 `HighestAvailable` on `s1_v3`. |
+| `triggers` | str | `scheduled_task` | Comma-separated trigger element names in document order — `LogonTrigger`, `BootTrigger`, `TimeTrigger`, `EventTrigger`, `WnfStateChangeTrigger`, and others. A task with no `<Triggers>` block omits the key rather than claiming none. |
+| `task_enabled` | str | `scheduled_task` | `true`/`false`, **only when the XML states it**. Absent means the element was missing, which is not the same as `true` — writing the default would assert a value the file does not carry. |
+| `task_hidden` | str | `scheduled_task` | Same convention. Measured 57 hidden tasks on `s1_v3`; hidden is normal for OS tasks and is not on its own suspicious. |
+| `registered_at` | str | `scheduled_task` | ISO-8601 Z, when `<Date>` is present. **Measured 26 of 222 on `s1_v3`** — most tasks carry no registration date at all, which is why it is a detail rather than the event timestamp. |
+
+**Timestamps: two shapes, handled differently on purpose.** Measured across four
+collections: **86 naive, 4 offset-bearing, none with `Z`**.
+
+- Naive (`2010-09-30T14:53:37.9516706`) → UTC is **attached**, not converted.
+  D-013's decision: the value is the subject machine's wall clock, and
+  converting applies the *analyst's* zone to the *subject's* clock.
+- Offset-bearing (`2005-06-23T13:48:00-08:00`) → **converted** to UTC, which
+  preserves the instant. Attaching UTC would move the event eight hours.
+
+`Event` validation rejects a non-zero offset (CD-019), so the four
+offset-bearing tasks raised until this branch existed — see D-045.
+
+**`timestamp_type` is `presence`.** The definition says a task EXISTS and what
+it would run. It does **not** say the task ever ran: `LastRunTime` lives in the
+Task Scheduler's own log and in `SOFTWARE\...\Schedule\TaskCache`, neither of
+which is read here. Tasks with no `<Date>` carry the 1601 sentinel, as the other
+presence-typed families do.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

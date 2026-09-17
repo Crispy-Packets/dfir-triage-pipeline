@@ -110,6 +110,27 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. Scheduled tasks, where there is no
+        enabled-by-default event to fall back on at all.
+
+        System32\Tasks\<path>  ->  scheduled_task  task_registered
+
+        4698 (task created) is in the Object Access audit subcategory, which is
+        OFF BY DEFAULT: measured zero across all five collections. So unlike
+        services -- where 7045 exists and the registry corroborates it -- the
+        task definition on disk is the ONLY record that a task exists.
+
+        `task_registered` is not `persistence_autorun`, though both describe
+        something that runs without a user starting it. A Run value names a
+        command; a task names a command OR a COM class id, plus the triggers
+        and the principal it runs as, and a rule reasoning about triggers
+        cannot be written against a vocabulary that has flattened the two.
+
+        ONE FILE, ONE OR MORE EVENTS: a task may declare several actions, and
+        each is emitted separately because two actions are two things that
+        would run. Measured: MareBackup declares three. The locator is the URI
+        plus the action index, which CD-004 requires.
+
         Added 2026-09-17. SRUM, the only artefact in this pipeline that
         attests to HOW MUCH DATA an application moved.
 

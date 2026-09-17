@@ -884,3 +884,73 @@ Both causes are recorded, and the duration limit is now a "cannot attest" clause
 in the attestation matrix rather than a note about one collection. **A limit
 established on one collection is a hypothesis; the second collection is the
 test.**
+
+---
+
+## D-045  Four task definitions raised because `<Date>` carried a UTC offset
+
+Found 2026-09-17, on the first ingest run with the scheduled-task parser.
+
+    parser scheduled_tasks failed on
+      C/Windows/System32/Tasks/Microsoft/Windows/Multimedia/SystemSoundsService
+      ValueError: timestamp must be UTC (zero offset), not a local offset
+
+`parse_registration_date` attached UTC to a naive value -- D-013's decision, and
+correct -- and passed an already-aware value straight through. `<Date>` is
+usually naive, so the offset-bearing case was never exercised until real files
+were read.
+
+Measured across four collections: **86 naive, 4 offset-bearing, none with `Z`**.
+The offset ones read `2005-06-23T13:48:00-08:00`.
+
+**The two cases need OPPOSITE handling, which is why this is a decision rather
+than a coercion.** A naive value is the subject machine's wall clock with no
+zone stated, so UTC is attached; converting would apply the analyst's zone to
+the subject's clock. An offset-bearing value DOES state its zone, so it is
+converted, which preserves the instant -- attaching UTC instead would silently
+move the event eight hours and nothing would raise.
+
+**CD-019's validation caught it.** `Event.__post_init__` rejects a non-zero
+offset outright, so the parser failed loudly on one file per collection rather
+than emitting five events an hour off. This is the contract working as intended:
+the failure count named the file, and `RunStats.failures` carried the reason.
+
+Effect: `s1_v3` 221 events with 1 failure -> **222 events, 0 failures**.
+
+Guarded by `TestParseRegistrationDate::test_every_result_is_zero_offset`, which
+asserts the property CD-019 enforces rather than the four values observed, and
+by `TestOffsetRegression`, which pins the literal failing string and checks the
+instant is preserved rather than merely stripped.
+
+---
+
+## D-046  `can_handle` dropped five real tasks by testing for an extension
+
+Found 2026-09-17, before the parser ran -- caught by checking the corpus rather
+than by a failure.
+
+Task definitions carry no file extension, so the first `can_handle` rejected any
+name containing a dot. Measured: **5 of 220 names on `s1_v3` contain one**.
+
+    GoogleUpdaterTaskSystem152.0.7933.0{170F6A46-...}
+    .NET Framework NGEN v4.0.30319
+    .NET Framework NGEN v4.0.30319 64
+    .NET Framework NGEN v4.0.30319 64 Critical
+    .NET Framework NGEN v4.0.30319 Critical
+
+Four of them BEGIN with a dot. All five are ordinary tasks.
+
+**Why it would not have been caught by the run.** A file `can_handle` rejects is
+counted as SKIPPED, not failed. The run summary would have reported 215 handled
+and 5 skipped with no error, and 215 task events is a plausible-looking number
+against a directory nobody counted. The same shape as D-025 in reverse: there
+the filter was too loose and fabricated records, here too tight and silently
+dropped them.
+
+**Fix:** reject by known non-task names (`SA.DAT`, `desktop.ini`, `Thumbs.db`)
+and by the legacy `.job` binary format, rather than by "has a dot". `parse` also
+checks the root element is `Task`, because a name-based filter cannot know what
+a file contains.
+
+Guarded by `test_every_file_on_disk_is_handled`, which asserts `can_handle`
+accepts all 220 files actually present and names any it rejects.

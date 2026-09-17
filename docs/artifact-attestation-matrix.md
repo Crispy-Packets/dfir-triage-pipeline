@@ -44,7 +44,7 @@ defect number that established it.
 | | | that the target ever ran | — | Prefetch, Amcache |
 | **evtx.security** | events the log **still contains** | **anything cleared.** `wevtutil cl security` destroyed the 4688 for the payload; `janed` appears in zero 4624 and zero 4688 afterwards | `s1_v2` ground truth; measured | LSM channel, SAM, Prefetch, Amcache |
 | | | **who was created** on a 4720 without `TargetUserName` — the original parser kept only the creator | **D-029** | SAM |
-| | | anything an audit subcategory suppresses — 4697/4698/4702 are **off by default** | measured: 0 across five collections | Task XML ⛔, registry Services |
+| | | anything an audit subcategory suppresses — 4697/4698/4702 are **off by default** | measured: 0 across five collections | Task XML, registry Services |
 | **evtx.system** | service installations the log still holds (7045) | services installed **before the log's retention window**, or after a System-log clear (EID 104) | log rollover is size-capped by default | registry `Services` key |
 | **evtx.powershell** | script blocks, **capped at 4096 UTF-8 bytes** | the remainder of a longer block. A rule may read it with **positive operators only** — `not_contains` against a capped field asserts an absence the evidence cannot support | **D-031**; enforced by `validate_rules.py` | legacy `Windows PowerShell` EID 800 ⛔ |
 | | | anything at all when **script-block logging is disabled**. Measured: 5 rows against 997 with it on | `clean_c` first collection | — |
@@ -63,6 +63,10 @@ defect number that established it.
 | | | **the endpoints of a transfer.** SRUM names neither a URL nor a remote address — only a byte count per application | parser source; CD-007 `network_usage` is not `file_download` | browser `url`, `Zone.Identifier` ADS ⛔ |
 | | | **when an interval began.** The timestamp is the provider's flush, not the start of the activity it summarises | CD-019 | — |
 | | | anything after its **last flush**. Measured on `s1_v3`: horizon 11:48:00, payload ran 11:50:09, zero rows at or after the execution for any program | measured 2026-09-17 | prefetch, bam |
+| **scheduled_task** | a task **exists**, what it would run (a command line **or** a COM class id), its triggers, and the principal it would run as | **that the task ever ran.** `LastRunTime` lives in the Task Scheduler log and in `SOFTWARE\...\Schedule\TaskCache`, neither read here | CD-019, same limit as registry Run keys (D-027) | prefetch on the command, bam, Task Scheduler `Operational` ⛔ |
+| | | **when it was registered** for most tasks. Measured: only 26 of 222 on `s1_v3` carry a `<Date>` at all | measured 2026-09-17 | `$MFT` on the definition file ⛔ |
+| | | **what a COM action executes.** The CLSID is recorded; resolving it to a DLL needs the SOFTWARE hive | parser source; 115 of 222 actions are `ComHandler` | SOFTWARE hive CLSID registration ⛔ |
+| | | that `<Author>` names who really created it — it is self-declared and trivially forged | Windows design | Security 4698 (off by default; **measured 0 across five collections**) |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -89,7 +93,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
 *consistently* for the evidence to lie. Seven families was the minimum for the
-property to hold at all; the pipeline now parses **fourteen**.
+property to hold at all; the pipeline now parses **fifteen**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -101,8 +105,8 @@ this document's thesis demonstrated on real evidence.
 ## 3. Where the map is incomplete, and why
 
 **Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
-62cb065; SAM and SRUM landed today, taking the pipeline from 7 families to
-**14**.
+62cb065; SAM, SRUM and scheduled tasks landed today, taking the pipeline from
+7 families to **15**.
 The ⛔ markers those closed have been cleared from the table above rather than
 left standing — a matrix that understates what is parsed is as misleading as
 one that overstates it.
@@ -114,6 +118,7 @@ one that overstates it.
 | **SYSTEM hive** — `shimcache`, `bam`, `services` | 4 | Execution evidence when Prefetch is off; **the principal Prefetch cannot supply**; services when 7045 is gone. Demonstrated on `s1_v3`: BAM attributed `invoice_scan.exe` to `S-1-5-21-…-1000` 31 seconds after Prefetch recorded the same execution with no user at all |
 | **SAM hive** — `sam` | 2 | Accounts and their logon counts after a Security-log clear. `s1_v3` retains **12** Security events and all five accounts |
 | **SRUM** — `srum` | 4 | **Transfer volume**, which no other family carries. 6,179 rows on `clean_a`. Its own limits are now stated above rather than assumed: it did not record the scenario binary on either host, for two different and measured reasons |
+| **Scheduled tasks** — `scheduled_task` | 4 | The **only** record that a task exists: 4698 is off by default and measures 0 across all five collections. Unlike services, there is no enabled-by-default event to fall back on. 222 events on `s1_v3`, of which 115 are COM actions with no command line at all |
 
 ### Still collected and not parsed
 
@@ -121,7 +126,6 @@ one that overstates it.
 |---|---|---|
 | **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
 | **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
-| **Scheduled Tasks XML** (220 files in `s1_v3`) | 1 | Persistence when 4698 is suppressed, which it is by default — measured 0 across all five collections |
 | **NTUSER.DAT beyond Run keys** | 1 | UserAssist, RecentDocs, TypedPaths: per-user execution and file access |
 
 **The map is honest about this:** every ⛔ is a stated gap, not a silent one. A

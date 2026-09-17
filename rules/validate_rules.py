@@ -154,6 +154,10 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # recorded, only the flush time, which is why a window over srum is coarse
     # rather than wrong. See docs/evidence/srum-parser-2026-09-17.md.
     "srum": "recorded",              # srum.py _network_events, _resource_events
+    # Added 2026-09-17. The definition attests that a task EXISTS and what it
+    # would run; LastRunTime lives elsewhere and is not read. Same limit as the
+    # registry Run keys (D-027).
+    "scheduled_task": "presence",    # scheduled_tasks.py _task_events
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the
