@@ -52,6 +52,66 @@ RDP_EIDS: dict[int, tuple[str, str]] = {
 }
 
 
+# Added 2026-09-17, after surveying every channel KAPE collected: 100 were
+# unparsed, 93 of them holding records. These five were selected by what they
+# ATTEST, not by volume -- the largest unparsed channel is Store telemetry with
+# 21,068 rows and nothing forensic in any of them.
+
+# The LEGACY PowerShell channel, which docs/artifact-attestation-matrix.md has
+# carried as a stated gap since it was written. 600 is provider lifecycle and
+# carries HostApplication -- the full command line of the process that started
+# PowerShell -- which survives when script-block logging is off and 4104 holds
+# nothing. 400/403 bracket an engine session. 500/501 are pipeline detail and
+# are not taken.
+PS_CLASSIC_EIDS: dict[int, tuple[str, str]] = {
+    400: ("ps_engine_start", "powershell engine started"),
+    403: ("ps_engine_stop", "powershell engine stopped"),
+    600: ("ps_provider_start", "powershell provider lifecycle"),
+}
+
+# Defender. 1116/1117 are a detection and its remediation -- the only family in
+# this pipeline that records an AV verdict at all. 5001 is real-time protection
+# being DISABLED, which is a defence-evasion artifact (T1562.001); 5007 is a
+# configuration change, 334 of them on s1_v3, and is taken because a
+# configuration change is how protection gets turned off quietly.
+DEFENDER_EIDS: dict[int, tuple[str, str]] = {
+    1116: ("malware_detected", "defender detected malware"),
+    1117: ("malware_remediated", "defender acted on malware"),
+    5001: ("defense_disabled", "defender real-time protection disabled"),
+    5007: ("defense_configured", "defender configuration changed"),
+}
+
+# Winlogon. 811/812 are logon-UI notifications that survive a Security-log
+# clear -- 645 rows on s1_v3 against 12 surviving Security records. They do not
+# name a principal, so they corroborate that SOMEONE logged on when 4624 is
+# gone, which is weaker than a logon record and stronger than nothing.
+WINLOGON_EIDS: dict[int, tuple[str, str]] = {
+    811: ("logon_ui", "logon user interface notification"),
+    812: ("logon_ui", "logon user interface notification"),
+}
+
+# Windows Firewall. 2004/2005/2006/2033 are a rule added, changed, deleted, and
+# all rules deleted -- the artifact of an attacker opening a port or clearing a
+# policy. 2097 is a settings-restore notice, 518 rows, and is NOT taken: it
+# fires on ordinary profile switches.
+FIREWALL_EIDS: dict[int, tuple[str, str]] = {
+    2004: ("firewall_rule_added", "firewall rule added"),
+    2005: ("firewall_rule_changed", "firewall rule changed"),
+    2006: ("firewall_rule_deleted", "firewall rule deleted"),
+    2033: ("firewall_rules_deleted", "all firewall rules deleted"),
+}
+
+# BITS. A background transfer is a download that leaves no browser history at
+# all, which is why it is a favoured delivery mechanism. 3 is a job created, 59
+# a transfer started and 60 completed; 4 is a job cancelled.
+BITS_EIDS: dict[int, tuple[str, str]] = {
+    3: ("bits_job_created", "bits transfer job created"),
+    4: ("bits_job_cancelled", "bits transfer job cancelled"),
+    59: ("bits_transfer_started", "bits transfer started"),
+    60: ("bits_transfer_completed", "bits transfer completed"),
+}
+
+
 def _records(abs_path: Path) -> Iterator[str]:
     for record in PyEvtxParser(str(abs_path)).records():
         xml_text = record.get("data") if isinstance(record, dict) else None
@@ -267,6 +327,16 @@ _CHANNELS: tuple[tuple[str, str], ...] = (
         "/microsoft-windows-terminalservices-localsessionmanager%4operational.evtx",
         "evtx.rdp",
     ),
+    # Added 2026-09-17. See the EID maps above for why each was selected.
+    ("/windows powershell.evtx", "evtx.ps_classic"),
+    ("/microsoft-windows-windows defender%4operational.evtx", "evtx.defender"),
+    ("/microsoft-windows-winlogon%4operational.evtx", "evtx.winlogon"),
+    (
+        "/microsoft-windows-windows firewall with advanced security"
+        "%4firewall.evtx",
+        "evtx.firewall",
+    ),
+    ("/microsoft-windows-bits-client%4operational.evtx", "evtx.bits"),
 )
 
 
@@ -294,6 +364,11 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         "evtx.powershell": POWERSHELL_EIDS,
         "evtx.wmi": WMI_EIDS,
         "evtx.rdp": RDP_EIDS,
+        "evtx.ps_classic": PS_CLASSIC_EIDS,
+        "evtx.defender": DEFENDER_EIDS,
+        "evtx.winlogon": WINLOGON_EIDS,
+        "evtx.firewall": FIREWALL_EIDS,
+        "evtx.bits": BITS_EIDS,
     }[artifact]
     if eid not in table:
         return None

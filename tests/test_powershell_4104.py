@@ -117,8 +117,12 @@ def test_other_powershell_eids_are_ignored():
         (PS_REL.lower(), "evtx.powershell"),
         ("C/Windows/System32/winevt/logs/Security.evtx", "evtx.security"),
         ("C/Windows/System32/winevt/logs/System.evtx", "evtx.system"),
-        # The legacy classic log carries no script blocks.
-        ("C/Windows/System32/winevt/logs/Windows PowerShell.evtx", None),
+        # The legacy classic log carries no script blocks, which is why it is
+        # NOT evtx.powershell. It was unmapped entirely until 2026-09-17 and is
+        # now its own family: EID 600 holds HostApplication, the full command
+        # line of the process that started PowerShell, and that is present when
+        # script-block logging is off and 4104 holds nothing at all.
+        ("C/Windows/System32/winevt/logs/Windows PowerShell.evtx", "evtx.ps_classic"),
         # The Admin channel carries engine errors only.
         (
             "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Admin.evtx",

@@ -425,6 +425,27 @@ inventing a version-dependent layout is how D-023 and D-045 happened.
 |---|---|---|---|
 | `browser` | str | `browser` | `edge` or `chrome`. Edge and Chrome ship an identical `downloads` schema -- verified column by column on both collections' files -- so one parser serves both and this records which. **Chrome yields zero rows on this corpus**; the path is handled anyway, because a collection where Chrome was used would otherwise be silently unparsed. |
 
+### Shellbags (`shellbags`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `bag_kind` | str | `shellbags` | `folder` or `file`, from the shell item type byte (0x31 / 0x32). |
+| `short_name` | str | `shellbags` | The 8.3 name in ASCII, at a fixed offset. Always present -- it is what the item is keyed by. |
+| `long_name` | str | `shellbags` | The full name in UTF-16, **anchored at the 0xBEEF extension signature + 40 bytes** -- measured on every item in the corpus regardless of short-name length. NOT computed from the end of the short name and NOT found by scanning; see D-049. Explorer's resource suffix (`Downloads@shell32.dll,-21798`) is stripped. |
+| `bag_depth` | str(int) | `shellbags` | Depth in the BagMRU tree, which is the depth in the filesystem path. |
+| `target_modified` | str | `shellbags` | ISO-8601 Z from the item's embedded DOS date/time. **A property of the target folder, not of when it was browsed.** DOS times are local with no zone and two-second resolution, so UTC is attached rather than converted (D-013). |
+
+`Event.path` is the ancestry joined by backslash, built from the tree position
+rather than from any single item -- `Users\janed\Downloads\Files.zip`.
+
+**Only types 0x31 and 0x32 are decoded into names.** 0x1f (desktop root), 0x2e
+and 0x2f (GUID and volume entries) hold CLSIDs and bare drive letters; decoding
+them would put the UTF-16 misreading of a GUID into a path field. Their tree
+positions are still walked, because ordinary folders sit beneath them.
+
+**`timestamp_type` is `presence`** -- the containing key's last write, shared by
+every sibling bag. D-027 exactly.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

@@ -182,6 +182,16 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # Added 2026-09-17. Same reasoning as `lnk`: the times describe the TARGET
     # file, copied into the embedded link, not an event the OS logged.
     "jumplist": "presence",          # jumplist.py JumpListParser.parse
+    # Added 2026-09-17. All five are EVTX channels: the log writes the record
+    # at the moment the event occurs, like every other channel here.
+    "evtx.ps_classic": "recorded",   # evtx_windows.py record_to_event
+    "evtx.defender": "recorded",     # evtx_windows.py record_to_event
+    "evtx.winlogon": "recorded",     # evtx_windows.py record_to_event
+    "evtx.firewall": "recorded",     # evtx_windows.py record_to_event
+    "evtx.bits": "recorded",         # evtx_windows.py record_to_event
+    # Added 2026-09-17. The containing key's last write, shared by every bag
+    # beneath it -- D-027 exactly, same as the registry Run keys.
+    "shellbags": "presence",         # shellbags.py ShellbagsParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

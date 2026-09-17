@@ -110,6 +110,72 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. Shellbags, from UsrClass.dat.
+
+        UsrClass BagMRU  ->  shellbags  folder_browsed
+
+        Every folder Explorer has displayed, as a tree mirroring the
+        filesystem. It is the corroborator for a directory that was opened and
+        then removed: the folder's metadata is gone, the parent shows nothing,
+        and the bag still names it. It survives a volume being detached too --
+        the same CD-013 property `lnk` has, reached independently.
+
+        `folder_browsed` is a new event_type rather than a reuse of
+        `file_opened`. A shellbag records that a folder was DISPLAYED, which is
+        weaker than opening a file: Explorer writes one for every directory it
+        renders, including ones merely passed through on the way elsewhere.
+
+        Only shell item types 0x31 (folder) and 0x32 (file) are decoded. 0x1f,
+        0x2e and 0x2f hold CLSIDs and bare drive letters; decoding them as
+        names would put the UTF-16 misreading of a GUID into a path field.
+
+        presence, for D-027's reason: the timestamp is the containing key's
+        last write, shared by every bag under it. The DOS timestamps inside
+        each item describe the TARGET folder, not when it was browsed.
+
+        Added 2026-09-17. Five more EVTX channels, selected by surveying
+        every channel KAPE collected rather than by guessing.
+
+        100 channels were unparsed; 93 held records. The largest is
+        Store/Operational with 21,068 rows and nothing forensic in any of them,
+        so SIZE WAS NOT THE CRITERION -- what each channel ATTESTS was.
+
+        Windows PowerShell.evtx       ->  evtx.ps_classic
+              400 ps_engine_start, 403 ps_engine_stop, 600 ps_provider_start
+        Windows Defender/Operational  ->  evtx.defender
+              1116 malware_detected, 1117 malware_remediated,
+              5001 defense_disabled, 5007 defense_configured
+        Winlogon/Operational          ->  evtx.winlogon
+              811, 812 logon_ui
+        Windows Firewall/Firewall     ->  evtx.firewall
+              2004/2005/2006/2033 rule added/changed/deleted/all deleted
+        BITS-Client/Operational       ->  evtx.bits
+              3, 4, 59, 60 job created/cancelled, transfer started/completed
+
+        `evtx.ps_classic` closes a gap the attestation matrix has carried as
+        stated since it was written: EID 600 holds HostApplication, the full
+        command line of the process that started PowerShell, and it is present
+        when script-block logging is off and 4104 holds nothing.
+
+        `evtx.bits` matters because a background transfer is a download that
+        leaves NO BROWSER HISTORY -- the browser family cannot see it at all.
+
+        `evtx.winlogon` does not name a principal. 811/812 corroborate that
+        SOMEONE logged on when 4624 is gone, which is weaker than a logon
+        record and stronger than nothing: measured 615 rows on s1_v3 against 12
+        surviving Security records.
+
+        MEASURED BASE RATES, so no rule is written against an assumption:
+        firewall rule deletions run 200+ per collection on CLEAN hosts. 2006
+        carries a real RuleId and 2033 a Store Type, both written by S-1-5-19
+        during ordinary policy refresh. The events mean what they say; Windows
+        simply churns firewall rules constantly, and a rule firing on a single
+        2006 would fire hundreds of times on an untouched machine.
+
+        Firewall 2097 is NOT taken despite being the channel's most common
+        event (518 rows): it is a settings-restore notice fired by ordinary
+        profile switches.
+
         Added 2026-09-17. JumpLists, and Chrome beside Edge.
 
         *.automaticDestinations-ms  ->  jumplist  file_opened
