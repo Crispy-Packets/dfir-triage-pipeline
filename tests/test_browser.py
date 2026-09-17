@@ -99,12 +99,33 @@ def test_db_sha256_is_carried_so_the_reading_is_auditable():
         (REL + "-wal", False),
         (REL + "-journal", False),
         ("C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/Cookies", False),
-        ("C/Users/janed/AppData/Local/Google/Chrome/User Data/Default/History", False),
+        # Chrome was NOT handled until 2026-09-17 and now is. Edge and Chrome
+        # ship an identical downloads schema -- verified column by column on
+        # both collections' files -- so one parser serves both and
+        # details["browser"] records which. Chrome yields zero rows on this
+        # corpus; the path is handled anyway, because a collection where Chrome
+        # WAS used would otherwise be silently unparsed.
+        ("C/Users/janed/AppData/Local/Google/Chrome/User Data/Default/History", True),
+        ("C/Users/janed/AppData/Local/Google/Chrome/User Data/Default/History-wal", False),
+        ("C/Users/janed/AppData/Local/Google/Chrome/User Data/Default/Cookies", False),
         ("C/Windows/prefetch/MSEDGE.EXE-1234ABCD.pf", False),
     ],
 )
 def test_can_handle(path, expected):
     assert BrowserParser().can_handle(path) is expected
+
+
+def test_the_browser_is_recorded_not_inferred():
+    """A consumer must not have to parse the path to learn which browser wrote
+    the row -- and after the widening, the path is no longer decisive."""
+    from dfir_triage_pipeline.parsers.browser import browser_of
+
+    edge = "C/Users/x/AppData/Local/Microsoft/Edge/User Data/Default/History"
+    chrome = "C/Users/x/AppData/Local/Google/Chrome/User Data/Default/History"
+    assert browser_of(edge) == "edge"
+    assert browser_of(chrome) == "chrome"
+    assert browser_of(chrome + "-journal") is None
+    assert browser_of("C/Windows/System32/config/SAM") is None
 
 
 def test_database_is_not_modified_by_reading_it(tmp_path):

@@ -41,3 +41,4 @@ from . import lnk  # noqa: E402,F401
 from . import recycle_bin  # noqa: E402,F401
 from . import timeline  # noqa: E402,F401
 from . import ps_history  # noqa: E402,F401
+from . import jumplist  # noqa: E402,F401

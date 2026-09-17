@@ -387,6 +387,44 @@ line even when the channel holds nothing.
 each incomplete line, as typed; splitting on newlines would report fragments
 like `'HKCU:\Software\...\RunOnce',` as if they were commands.
 
+### JumpLists (`jumplist`), added 2026-09-17
+
+Answers what `lnk` and `recentdocs` cannot: **which application opened the
+file**. Details shared with `lnk` (`target_size`, `drive_type`,
+`volume_serial`, `volume_label`, `arguments`, `working_dir`,
+`target_created`/`accessed`/`modified`) carry the same meanings and are not
+repeated here.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `app_id` | str | `jumplist` | The filename stem, which is Windows' per-executable AppID hash. **The container names the program**, which is this family's reason to exist. Measured 5-9 distinct ids per collection. |
+| `jumplist_type` | str | `jumplist` | `automatic` or `custom`. Recorded because the two are **different file formats**, not two flavours of one: automaticDestinations is an OLE compound file, customDestinations is not -- it begins `02 00 00 00` and concatenates shell links with no container at all. |
+
+**`timestamp_type` is `presence`**, for the same reason as `lnk`: the times
+describe the target file, copied into the embedded link.
+
+**Embedded links are located by signature, not by walking the container.** For
+`custom` files that IS the format. For OLE files it is a deliberate
+simplification -- a full compound-file implementation (FAT, miniFAT, directory
+tree, sector chains) is a large amount of code whose only job here is finding
+streams the signature already finds, and a bug in it would produce plausible
+wrong output. A link fragmented across non-contiguous sectors is not recovered;
+measured, every link in these files is contiguous, and one that is not yields no
+event rather than a wrong one, because `parse_lnk` bounds-checks every field.
+
+A four-byte signature match is **not** accepted on its own: each candidate goes
+to `parse_lnk`, which verifies the 16-byte link CLSID immediately after it.
+
+**The DestList stream is not read.** It holds access counts and MRU ordering,
+which would be worth having, but its entry size varies by Windows version and
+inventing a version-dependent layout is how D-023 and D-045 happened.
+
+### Browser (`browser`), amended 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `browser` | str | `browser` | `edge` or `chrome`. Edge and Chrome ship an identical `downloads` schema -- verified column by column on both collections' files -- so one parser serves both and this records which. **Chrome yields zero rows on this corpus**; the path is handled anyway, because a collection where Chrome was used would otherwise be silently unparsed. |
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

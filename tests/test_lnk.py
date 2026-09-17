@@ -269,19 +269,45 @@ class TestTheRemovableMediaResult:
         assert {e.details["volume_serial"] for e in removable} == {"18334A83"}
         assert {e.details.get("volume_label") for e in removable} == {"JOE"}
 
-    def test_no_other_family_names_that_volume(self):
-        """The claim that makes this worth parsing. If another family carried
-        it, the LNK would be corroboration rather than the sole record."""
+    def test_only_the_link_families_name_that_volume(self):
+        """The claim that makes this worth parsing.
+
+        AMENDED 2026-09-17: when this test was written `lnk` was the sole
+        record, and the assertion was that NO other family named the volume.
+        The JumpList parser landed the same day and reads embedded shell links,
+        so it names it too -- and this test caught that, which is why it is
+        corrected rather than deleted.
+
+        The claim that survives is the one that mattered: only artefacts built
+        from shell links carry the volume at all. Every OTHER family in the
+        pipeline -- prefetch, amcache, srum, the event logs, the hives -- is
+        silent about a device that was attached to this machine.
+        """
         from dfir_triage_pipeline.ingest import collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
-        others = [
-            e
+        naming = {
+            e.source_artifact
             for e in events
-            if e.source_artifact != "lnk"
-            and "18334a83" in str(e.details).lower()
+            if "18334a83" in str(e.details).lower()
+        }
+        assert naming == {"lnk", "jumplist"}
+
+    def test_jumplists_reveal_paths_the_recent_links_do_not(self):
+        """Measured: the LNKs record two paths on that volume, the JumpLists
+        six. `E:\collection_s1`, `E:\collection_clean_a`,
+        `E:\collection_clean_b` and `E:\handoff` appear in no Recent link --
+        the removable drive held earlier collection data, and only the
+        application's own history records it."""
+        from dfir_triage_pipeline.ingest import collect_events
+
+        events, _ = collect_events(EVIDENCE / "collection_s1_v2")
+        on_volume = [
+            e for e in events if "18334a83" in str(e.details).lower()
         ]
-        assert others == []
+        lnk_paths = {e.path for e in on_volume if e.source_artifact == "lnk"}
+        jl_paths = {e.path for e in on_volume if e.source_artifact == "jumplist"}
+        assert jl_paths - lnk_paths
 
     @pytest.mark.parametrize(
         "collection",

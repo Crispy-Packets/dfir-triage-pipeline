@@ -25,7 +25,19 @@ _DOWNLOADS_QUERY = """
     ORDER BY id
 """
 
-_EDGE_HISTORY_SUFFIX = "/appdata/local/microsoft/edge/user data/default/history"
+#: Chromium-family history databases. Edge and Chrome ship the IDENTICAL
+#: `downloads` schema -- verified on both collections' files, every column this
+#: parser reads present in each -- so one query serves both and the browser is
+#: recorded as a detail rather than forked into two parsers.
+#:
+#: Chrome yields ZERO downloads on this corpus (both hosts used Edge). The
+#: suffix is carried anyway: a collection where Chrome WAS used would otherwise
+#: be silently unparsed, and an empty family is a measured absence rather than
+#: a gap.
+_HISTORY_SUFFIXES = {
+    "edge": "/appdata/local/microsoft/edge/user data/default/history",
+    "chrome": "/appdata/local/google/chrome/user data/default/history",
+}
 
 
 def webkit_to_utc(value: int) -> datetime:
@@ -141,19 +153,35 @@ def record_to_event(record: dict) -> Event:
     )
 
 
+def browser_of(relative_path: str) -> str | None:
+    """Which Chromium browser this path is the history database of, or None.
+
+    Journal and cache siblings share the stem but are not the database;
+    `endswith` already excludes them, and the explicit check guards the case
+    where a collection carries `History-wal` alongside `History`.
+    """
+    lowered = relative_path.lower().replace("\\", "/")
+    if lowered.endswith(("-wal", "-shm", "-journal")):
+        return None
+    for browser, suffix in _HISTORY_SUFFIXES.items():
+        if lowered.endswith(suffix):
+            return browser
+    return None
+
+
 @register
 class BrowserParser:
     name = "browser"
 
     def can_handle(self, relative_path: str) -> bool:
-        lowered = relative_path.lower()
-        if not lowered.endswith(_EDGE_HISTORY_SUFFIX):
-            return False
-        # History-journal and cache siblings share the stem but are not the
-        # database; endswith already excludes them, and this guards the case
-        # where a collection carries History-wal alongside History.
-        return not lowered.endswith(("-wal", "-shm", "-journal"))
+        return browser_of(relative_path) is not None
 
     def parse(self, abs_path: Path, relative_path: str) -> Iterator[Event]:
+        browser = browser_of(relative_path) or "unknown"
         for record in _records(abs_path, relative_path):
-            yield record_to_event(record)
+            event = record_to_event(record)
+            # Which browser recorded the download, so a consumer is not left
+            # inferring it from the path. Set here rather than in
+            # record_to_event because the record carries no such field.
+            event.details["browser"] = browser
+            yield event

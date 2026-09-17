@@ -110,6 +110,35 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. JumpLists, and Chrome beside Edge.
+
+        *.automaticDestinations-ms  ->  jumplist  file_opened
+        *.customDestinations-ms     ->  jumplist  file_opened
+
+        JumpLists answer the question `lnk` and `recentdocs` cannot: WHICH
+        APPLICATION opened the file. The hex filename stem is the application's
+        AppID, a per-executable hash, so the container itself names the program.
+
+        `file_opened` is shared with lnk and recentdocs, by the same contract
+        that governs every shared string.
+
+        TWO FORMATS SIT IN ONE TREE AND ONLY ONE IS OLE. Measured on s1_v3:
+        automaticDestinations is an OLE compound file; customDestinations is
+        NOT -- it begins 02 00 00 00 and holds shell links concatenated with no
+        container structure. Treating the second as OLE, which its extension
+        and its neighbours both suggest, finds no header and yields a silently
+        empty family rather than an error.
+
+        The embedded records are ordinary shell links, decoded by parsers/lnk.py
+        rather than by a second implementation.
+
+        The browser family was WIDENED rather than forked: Edge and Chrome ship
+        an identical downloads schema, verified column by column on both, so one
+        query serves both and `details.browser` records which. Chrome yields
+        ZERO rows on this corpus -- both hosts used Edge -- and the suffix is
+        carried anyway, because a collection where Chrome WAS used would
+        otherwise be silently unparsed.
+
         Added 2026-09-17. Windows Timeline and PSReadLine history.
 
         ActivitiesCache.db        ->  timeline    app_opened / app_engaged

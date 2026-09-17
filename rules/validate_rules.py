@@ -179,6 +179,9 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # FILE's mtime and say only that the command is present (D-027's shape).
     "timeline": "recorded",          # timeline.py TimelineParser.parse
     "ps_history": "presence",        # ps_history.py PsHistoryParser.parse
+    # Added 2026-09-17. Same reasoning as `lnk`: the times describe the TARGET
+    # file, copied into the embedded link, not an event the OS logged.
+    "jumplist": "presence",          # jumplist.py JumpListParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the
