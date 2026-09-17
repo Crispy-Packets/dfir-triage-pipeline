@@ -745,3 +745,76 @@ user-writable autorun, structurally identical to the attack, and the honest
 limit of the indicator. **Better, not fixed.**
 
 ---
+
+---
+
+## D-041  Every SAM account resolved as `RID-nnnn`, and nothing raised
+
+Found 2026-09-17, during the first measurement of the SAM parser.
+
+`_names_to_rid` reads the `Names` subkey, whose layout is unusual: each account
+is a **subkey named after the account**, and the RID is held in the default
+value's **type field** rather than in its data. The value's data is unrelated
+bytes; reading it resolves nothing.
+
+The parser checked `isinstance(rid, int)`. **regipy returns that field as a
+decimal string** — `'500'`, `'1000'` — because the RID is not one of the `REG_*`
+constants the library can name, so it falls back to `str()`. The check rejected
+every account, the map came out empty, and the parser fell through to its
+`f"RID-{rid}"` branch on all seven accounts of every hive.
+
+**Why it was not caught by the code:** the output was well-formed and true.
+`RID-1000` is a correct identifier for that account. Nothing raised, no field
+was missing, and the event count was right. Only reading the measurement output
+beside the probe output — which had listed `Administrator`, `janed`,
+`admin_local` by name — showed the names had been dropped.
+
+**Effect on rules.** `Event.user` is a join key (`entity.user`, the only
+joinable identity field besides `entity.exe_name`), so a `sam` step would have
+joined on `RID-1000` and a Security 4624 step on `vboxuser`. Every correlation
+across the two would have matched nothing, silently, and the base rate would
+have measured 0 — indistinguishable from "this does not happen".
+
+**Fix:** `_coerce_rid` accepts an int or its decimal text, and rejects `bool`
+explicitly (`bool` subclasses `int`, so `True` would otherwise coerce to RID 1).
+Which form arrives is a library detail that may change; both are handled rather
+than pinned to the one observed.
+
+Guarded by `TestCoerceRid` and by `test_accounts_are_named_not_numbered`, which
+asserts no user string begins with `RID-` and names the offenders when it fails.
+
+**Same class as D-023** (`windowsprefetch` misreading `runCount` at the wrong
+offset on all 835 `.pf` files): a library returned something plausible, the
+parser accepted it, and only a measurement against known ground truth exposed it.
+
+---
+
+## D-042  The SAM event timestamp restated the last-logon time and mislabelled it
+
+Found 2026-09-17, in the same measurement.
+
+The parser first timestamped each account event with the user key's last-write
+time and labelled it `presence`, by analogy with the registry Run keys (D-027).
+
+Measured across all five collections: **the key's last-write time is exactly the
+last-logon FILETIME** on every account with a non-zero logon count, because
+Windows rewrites the user key on each logon. The event was therefore carrying
+one fact twice, and `presence` understated what the artefact actually records —
+SAM knows *when* the account last authenticated, and the event said only that
+the account exists.
+
+**Fix:** an account that has logged on carries the logon time with
+`timestamp_type=last_run`; one that never has falls back to the key write and
+`presence`, which is then the correct label because no logon time exists.
+
+**Consequence for the rule schema.** `sam` is the first family whose
+`timestamp_type` varies by record, so the static `TIMESTAMP_TYPE_BY_ARTIFACT`
+map can state only the dominant case. `MIXED_TIMESTAMP_TYPE` now names such
+families, and `validate_rules.py` rejects a windowed step selecting one unless
+it excludes the never-logged-on records (`details.last_logon not_equals never`,
+or the equivalent in a `none` group).
+
+Without that guard a `sam` step would pass the existing presence check on the
+strength of its dominant mapping, while still admitting records whose timestamps
+cluster at image-build time — producing correlations with whatever else happened
+during Windows setup. CD-019 records the amendment.

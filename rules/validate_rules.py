@@ -141,7 +141,29 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     "shimcache": "presence",         # system_hive.py _shimcache_events
     "bam": "last_run",               # system_hive.py _bam_events
     "services": "presence",          # system_hive.py _service_events
+    # Added 2026-09-17, SAM hive. An account that HAS logged on carries a real
+    # last-logon FILETIME, which is `last_run` by CD-019's shape definition --
+    # one overwritten slot behind a count. An account that never has falls back
+    # to the key's last write and emits `presence`, so this family is the first
+    # whose timestamp_type varies by record. The static map records the
+    # dominant case for load-time rule checking; at run time the Event's own
+    # field is authoritative, as the comment above this map already states.
+    "sam": "last_run",               # sam_hive.py _account_events
 }
+
+#: Families where timestamp_type varies BY RECORD rather than by family, so the
+#: static map above states only the dominant case.
+#:
+#: `sam` is the first: an account that has logged on carries a real FILETIME
+#: (`last_run`); one that never has falls back to the key's last write
+#: (`presence`). The sliding-window check below rejects presence-typed steps
+#: because an event with no real time produces false correlations inside a
+#: window -- and a `sam` step would slip past that check on the strength of the
+#: dominant mapping whilst still admitting never-logged-on accounts, whose
+#: timestamps are key writes clustered at image-build time.
+#:
+#: A rule may still window `sam`, but must say it has dealt with this.
+MIXED_TIMESTAMP_TYPE = frozenset({"sam"})
 
 # schema.md 4.7 (D-027): ten downloads share the name invoice_scan.exe; only size
 # and source host separate the scenario from nine decoys.
@@ -351,6 +373,39 @@ def check_condition(
                 report.error(where, f"regex does not compile: {exc}")
 
 
+def _excludes_never_used(step: Any) -> bool:
+    """Does this step exclude records whose timestamp is not an observation?
+
+    For `sam`, that means restricting to accounts that have actually logged on:
+    a never-logged-on account carries the key's last-write time, and those
+    cluster at image-build time rather than at anything the account did. Inside
+    a sliding window they would correlate with whatever else happened during
+    Windows setup.
+
+    Two spellings are accepted, because both express the same constraint
+    honestly: `last_logon not_equals never` in `all`, or `last_logon equals
+    never` in `none`. Anything else -- including a step that simply does not
+    mention the field -- is not an exclusion, and the caller reports it.
+    """
+    if not isinstance(step, dict):
+        return False
+    block = step.get("conditions")
+    if not isinstance(block, dict):
+        return False
+
+    for group, ops in (("all", {"not_equals"}), ("none", {"equals"})):
+        for item in block.get(group) or []:
+            if not isinstance(item, dict):
+                continue
+            if (
+                item.get("field") == "details.last_logon"
+                and item.get("op") in ops
+                and item.get("value") == "never"
+            ):
+                return True
+    return False
+
+
 def check_conditions_block(block: Any, where: str, report: Report, details_refs: set[str]) -> None:
     if not isinstance(block, dict):
         report.error(where, "conditions must be a mapping of all/any/none")
@@ -543,6 +598,15 @@ def check_correlation(data: dict, where: str, report: Report, details_refs: set[
                 at,
                 f"steps selecting {presence} are presence-typed and may not enter a "
                 "sliding window (schema section 5.2); set in_window: false",
+            )
+        mixed = sorted(set(artifacts) & MIXED_TIMESTAMP_TYPE)
+        if mixed and in_window and not _excludes_never_used(step):
+            report.error(
+                at,
+                f"steps selecting {mixed} carry a timestamp_type that varies by record, "
+                "so a sliding window would admit records whose timestamp is a key write "
+                "rather than an observation; constrain the step (for sam: require "
+                "last_logon != 'never') or set in_window: false",
             )
 
     join = data.get("join")

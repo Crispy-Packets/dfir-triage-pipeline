@@ -35,21 +35,30 @@ defect number that established it.
 
 | Family | Attests to | **Cannot** attest | Evidence for the limit | Corroborated by |
 |---|---|---|---|---|
-| **prefetch** | a binary ran; when it last ran; how many times; which files it touched in its first 10 s | **who** ran it — Prefetch records no principal | parser emits no `user` for prefetch | BAM/DAM (SID) ⛔, Amcache, Security 4688 |
-| | | **that it did not run** — Prefetch is disabled by default on Server and capped at 1024 entries | Windows default | Amcache, Shimcache ⛔ |
+| **prefetch** | a binary ran; when it last ran; how many times; which files it touched in its first 10 s | **who** ran it — Prefetch records no principal | parser emits no `user` for prefetch | BAM/DAM (SID), Amcache, Security 4688 |
+| | | **that it did not run** — Prefetch is disabled by default on Server and capped at 1024 entries | Windows default | Amcache, Shimcache |
 | | | the binary's **content** — the hash is of the path, not the file | Prefetch format | Amcache `sha1` |
 | **amcache** | a binary existed on disk; its SHA-1; its size; its declared publisher | **that it ran.** Measured: Amcache held **no entry** for the executed scenario binary | **D-028** | Prefetch, `$MFT` ⛔ |
 | | | **when** it ran — `timestamp_type=presence`, the value is the key's last write | CD-019 | Prefetch `last_run` |
 | **registry (Run/RunOnce)** | an autorun value exists **now**, with this data | **when the value was written.** The timestamp is the containing KEY's last-write, shared by every sibling value | **D-027**, and `value_count_in_key` exists to say how many share it | `$MFT` on the hive file ⛔, USN ⛔ |
 | | | that the target ever ran | — | Prefetch, Amcache |
-| **evtx.security** | events the log **still contains** | **anything cleared.** `wevtutil cl security` destroyed the 4688 for the payload; `janed` appears in zero 4624 and zero 4688 afterwards | `s1_v2` ground truth; measured | LSM channel, SAM ⛔, Prefetch, Amcache |
-| | | **who was created** on a 4720 without `TargetUserName` — the original parser kept only the creator | **D-029** | SAM ⛔ |
-| | | anything an audit subcategory suppresses — 4697/4698/4702 are **off by default** | measured: 0 across five collections | Task XML ⛔, registry Services ⛔ |
-| **evtx.system** | service installations the log still holds (7045) | services installed **before the log's retention window**, or after a System-log clear (EID 104) | log rollover is size-capped by default | registry `Services` key ⛔ |
+| **evtx.security** | events the log **still contains** | **anything cleared.** `wevtutil cl security` destroyed the 4688 for the payload; `janed` appears in zero 4624 and zero 4688 afterwards | `s1_v2` ground truth; measured | LSM channel, SAM, Prefetch, Amcache |
+| | | **who was created** on a 4720 without `TargetUserName` — the original parser kept only the creator | **D-029** | SAM |
+| | | anything an audit subcategory suppresses — 4697/4698/4702 are **off by default** | measured: 0 across five collections | Task XML ⛔, registry Services |
+| **evtx.system** | service installations the log still holds (7045) | services installed **before the log's retention window**, or after a System-log clear (EID 104) | log rollover is size-capped by default | registry `Services` key |
 | **evtx.powershell** | script blocks, **capped at 4096 UTF-8 bytes** | the remainder of a longer block. A rule may read it with **positive operators only** — `not_contains` against a capped field asserts an absence the evidence cannot support | **D-031**; enforced by `validate_rules.py` | legacy `Windows PowerShell` EID 800 ⛔ |
 | | | anything at all when **script-block logging is disabled**. Measured: 5 rows against 997 with it on | `clean_c` first collection | — |
 | **evtx.wmi** | that a permanent event subscription was **registered**; its filter, consumer class, and WQL query | **what the consumer executes.** 5861 records the binding, not the payload | parser reads 5861 only | WMI repository `OBJECTS.DATA` ⛔ |
 | **evtx.rdp** | a Terminal Services session; its user, session ID and origin `Address` | that the session was **authorised**; and nothing when the channel is absent | — | Security 4624 type 10 |
+| **shimcache** | a binary was **present** on disk, with its path and modification time | **that it ran.** Windows 10/11 populate the cache on enumeration as well as on execution | CD-007; `program_shimcached` is deliberately not `process_exec` | prefetch, bam, amcache |
+| | | **when** it was seen — the FILETIME is the file's modification time, a property of the file | parser source | prefetch `last_run` |
+| **bam** | a binary ran, **and which SID ran it** | anything about binaries the service has aged out; DAM is absent on most desktop builds | parser reads both, emits `bam_service` | prefetch, Security 4688 |
+| **services** | a service **exists now**, with its image path, start type and account | **when it was installed.** The timestamp is the key's last write | CD-019, same limit as registry Run keys | System 7045 |
+| | | that the service ever **started** | — | prefetch on the image, System 7036 |
+| **sam** | a local account **exists now**; its RID, flags, and a logon count SAM maintains itself | **when the account was created.** `password_last_set` approximates it on an untouched account and is not the same fact | parser source; CD-007 `local_account` is not `account_created` | Security 4720 |
+| | | **who** created it, or from where a logon came | SAM records no principal but the account itself | Security 4720 `SubjectUserName`, 4624 |
+| | | anything about **domain** accounts — SAM is local only | Windows design | domain controller logs ⛔ |
+| | | that an account was **deleted**. Measured: `testuser` was created in `clean_b` on 2026-08-24 and is absent from SAM entirely | measured 2026-09-17 | Security 4726 |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -64,7 +73,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 | Suppressed | Survives | What is still provable |
 |---|---|---|
 | `Security.evtx` cleared (EID 1102) | prefetch, amcache, registry, browser, **evtx.rdp**, evtx.powershell | execution, presence, persistence, arrival, remote sessions. **Measured on `s1_v2`: every step of the attack remained recoverable** |
-| Prefetch disabled or purged | amcache, Shimcache ⛔, BAM ⛔ | that the binary existed and was inventoried |
+| Prefetch disabled or purged | amcache, Shimcache, BAM | that the binary existed and was inventoried |
 | Amcache stale or missing (D-028) | prefetch, `$MFT` ⛔ | that the binary ran, and when |
 | Script-block logging off | legacy PowerShell EID 800 ⛔, prefetch | that PowerShell ran, and its `HostApplication` command line |
 | Registry value deleted | prefetch, amcache | that the target ran, if it did |
@@ -75,8 +84,8 @@ Read as: **if the left family is suppressed, the right families still attest.**
 
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
-*consistently* for the evidence to lie. Seven families is the minimum for the
-property to hold at all.
+*consistently* for the evidence to lie. Seven families was the minimum for the
+property to hold at all; the pipeline now parses **thirteen**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -87,14 +96,28 @@ this document's thesis demonstrated on real evidence.
 
 ## 3. Where the map is incomplete, and why
 
-Three of the seven families in the KAPE collection are **collected and not
-parsed**, and they are the ones carrying most of the corroboration above:
+**Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
+62cb065 and SAM landed today, taking the pipeline from 7 families to **13**.
+The ⛔ markers those closed have been cleared from the table above rather than
+left standing — a matrix that understates what is parsed is as misleading as
+one that overstates it.
+
+### Closed since this document was written
+
+| Family | Rows it closed | What it supplies |
+|---|---|---|
+| **SYSTEM hive** — `shimcache`, `bam`, `services` | 4 | Execution evidence when Prefetch is off; **the principal Prefetch cannot supply**; services when 7045 is gone. Demonstrated on `s1_v3`: BAM attributed `invoice_scan.exe` to `S-1-5-21-…-1000` 31 seconds after Prefetch recorded the same execution with no user at all |
+| **SAM hive** — `sam` | 2 | Accounts and their logon counts after a Security-log clear. `s1_v3` retains **12** Security events and all five accounts |
+
+### Still collected and not parsed
 
 | Unparsed family | Rows it would close | Why it matters |
 |---|---|---|
-| **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file |
-| **SYSTEM hive** (Shimcache, BAM, Services) | 4 | Execution evidence when Prefetch is off; the principal Prefetch cannot supply; services when 7045 is gone |
+| **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
 | **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
+| **SRUM** (`SRUDB.dat`) | 2 | Per-process network bytes and application run duration. `dissect.esedb` reads the ESE database; not yet wired in |
+| **Scheduled Tasks XML** (220 files in `s1_v3`) | 1 | Persistence when 4698 is suppressed, which it is by default — measured 0 across all five collections |
+| **NTUSER.DAT beyond Run keys** | 1 | UserAssist, RecentDocs, TypedPaths: per-user execution and file access |
 
 **The map is honest about this:** every ⛔ is a stated gap, not a silent one. A
 corroboration marked ⛔ is a corroboration this pipeline cannot currently

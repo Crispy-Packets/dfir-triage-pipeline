@@ -34,3 +34,4 @@ from . import registry  # noqa: E402,F401
 from . import browser  # noqa: E402,F401
 from . import amcache  # noqa: E402,F401
 from . import system_hive  # noqa: E402,F401
+from . import sam_hive  # noqa: E402,F401

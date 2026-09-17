@@ -110,6 +110,22 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. The SAM hive, which is not a log and survives a
+        Security-log clear intact.
+
+        SAM Domains\Account\Users -> sam        local_account
+
+        `local_account` is a new event_type rather than a reuse of
+        `account_created`. 4720 records a CREATION EVENT; SAM records that an
+        account EXISTS NOW, with a logon count SAM maintains itself. Spelling
+        them the same would let R-CORR-0005 join a SAM record as if it were a
+        creation and report an interval between an account existing and an
+        account signing in, which is not a claim about anything.
+
+        The distinction is the same one drawn for `service_registered` below,
+        and it exists for the same reason: an account created before the log's
+        retention window, or after a clear, is in SAM and nowhere else.
+
         `service_registered` is distinct from `service_install` (System 7045).
         7045 records an INSTALLATION EVENT; the registry records that a service
         EXISTS NOW. A service installed before the log's retention window, or
@@ -337,6 +353,21 @@ CD-019  timestamp_type is a required Event field over a closed vocabulary:
                        (Prefetch)
             presence   the artifact evidences existence, not execution
                        (Shimcache, Amcache)
+
+        Amended 2026-09-17, SAM. The vocabulary is defined by SHAPE, not by
+        artifact: `last_run` means "the artifact records only the most recent
+        occurrence", and SAM's last-logon -- one overwritten slot behind a count
+        of 13 logons -- is exactly that shape despite recording an
+        authentication rather than an execution. It takes `last_run`. A new
+        `last_logon` term was considered and rejected: it would split one
+        concept in two and break every rule reasoning over recency.
+
+        SAM is also the first family whose timestamp_type VARIES BY RECORD. An
+        account that has logged on carries a real FILETIME; one that never has
+        falls back to the key's last write and emits `presence`. The static map
+        in validate_rules.py can only state the dominant case, so
+        MIXED_TIMESTAMP_TYPE names such families and a windowed step selecting
+        one must exclude the never-used records explicitly.
 
         Validated in __post_init__; a value outside the set raises ValueError.
         It participates in the event_id content hash, so the same observation

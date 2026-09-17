@@ -101,6 +101,39 @@ leaves behind (T1546.003) -- it survives a reboot and touches no file on disk.
 | `service_type` | str | `services` | `kernel_driver`, `fs_driver`, `own_process` or `shared_process`, decoded the same way. |
 | `account` | str | `services` | `ObjectName` -- the principal the service runs as. Omitted when absent, which is meaningful: a driver has none. Also emitted as `Event.user`. |
 
+### SAM hive (`sam`), added 2026-09-17
+
+The Security log records account events; SAM records accounts. After
+`wevtutil cl security` the log holds neither, and SAM holds both.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `rid` | str(int) | `sam` | Relative identifier, the account's last SID component. Unique within the hive and stable across renames, which a name is not, so it is also the `source_locator` (as the hex key name). |
+| `logon_count` | str(int) | `sam` | Interactive logons counted by SAM itself, not by the log. **The value the artefact exists for**: a non-zero count with no 4624 is authentication the log no longer holds. Measured 0 on every built-in account and 1-29 on used ones across the five collections. |
+| `account_flags` | str | `sam` | Comma-separated, sorted, decoded from the flags WORD: `disabled`, `normal_account`, `password_never_expires`, `password_not_required`, `account_auto_locked`, `workstation_trust`, `server_trust`, `home_directory_required`, `temporary_duplicate`. Omitted when no known bit is set. Undecoded bits are dropped rather than guessed at. |
+| `well_known` | str | `sam` | `administrator`, `guest`, `default_account` or `wdag_utility` for RIDs 500/501/503/504. Named rather than suppressed: a rule may want to know an account is built-in, and hiding built-ins would remove evidence that one was enabled or used. Absent for RIDs >= 1000. |
+| `last_logon` | str | `sam` | ISO-8601 Z, or the literal `never`. `never` is written explicitly rather than omitting the key, because SAM's zero means the logon never happened -- which a missing key could not distinguish from a field this parser failed to read. |
+| `password_last_set` | str | `sam` | Same encoding, same `never` convention. Creation-adjacent: Windows sets it when the account is created, so on an untouched account it approximates the creation time that 4720 would have carried. |
+| `password_last_failed` | str | `sam` | Same encoding. A failed-authentication time SAM keeps independently of 4625. |
+
+**Why `last_run` and not a new `last_logon` timestamp type.** CD-019's
+vocabulary is defined by shape -- "the artifact records only the most recent
+occurrence" -- and SAM's single overwritten slot behind a count of 13 logons is
+exactly that shape. A separate term would split one concept in two and break
+every rule that reasons over recency. An account that never logged on has no
+such time at all; it carries the key's last-write and `presence` instead.
+
+**Why the event timestamp is NOT the key's last-write time.** Measured across
+all five collections: the user key's last-write is EXACTLY the last-logon
+FILETIME on every account with a non-zero logon count, because Windows rewrites
+the key on logon. Timestamping by the key write would restate one fact twice
+and label it `presence`, understating what the artefact knows.
+
+**What this parser does not read.** No password hash and no decryption. The `V`
+value holds the NT hash and `SupplementalCredentials` holds more; neither is
+touched. A triage pipeline that extracted credential material would be a
+different tool with different handling requirements.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never
