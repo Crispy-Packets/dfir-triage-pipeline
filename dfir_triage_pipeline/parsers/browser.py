@@ -153,6 +153,133 @@ def record_to_event(record: dict) -> Event:
     )
 
 
+#: Page visits joined to their URL, and the search terms typed into the
+#: address bar. Read alongside `downloads`, which this parser read alone until
+#: 2026-09-17 -- measured on s1_v3, that was hiding 610 visits and 65 search
+#: terms behind 86 downloads.
+_VISITS_QUERY = """
+    SELECT v.id, v.visit_time, u.url, u.title, v.transition
+    FROM visits v JOIN urls u ON u.id = v.url
+    ORDER BY v.id
+"""
+
+#: `keyword_search_terms` has NO unique key of its own -- keyword_id is the
+#: search ENGINE, so every term typed into Bing shares one. Using it as the
+#: locator produced 61 duplicates on s1_v3 and violated CD-004. The row is
+#: identified by (keyword_id, url_id) instead, which is the table's real
+#: primary key.
+_SEARCH_QUERY = """
+    SELECT k.keyword_id, k.url_id, k.term, u.url, u.last_visit_time
+    FROM keyword_search_terms k JOIN urls u ON u.id = k.url_id
+    ORDER BY k.keyword_id, k.url_id
+"""
+
+#: Chromium's transition mask. The low byte is the core type; only the values
+#: that say something about HOW the user arrived are named, and the raw mask is
+#: always kept so nothing is lost to this table being incomplete.
+_TRANSITIONS = {
+    0: "link",
+    1: "typed",
+    2: "auto_bookmark",
+    3: "auto_subframe",
+    4: "manual_subframe",
+    5: "generated",
+    6: "start_page",
+    7: "form_submit",
+    8: "reload",
+    9: "keyword",
+    10: "keyword_generated",
+}
+
+
+def _query(abs_path: Path, query: str) -> list[tuple]:
+    """Rows from a copy of the database, or [] when the table is absent.
+
+    Copied and opened `immutable=1` for the same reasons `_records` does it:
+    opening read-write replays the journal and modifies the evidence.
+
+    Rows are fetched eagerly and the connection closed before returning --
+    holding it open across a `yield` exhausted the process descriptor limit
+    once (D-050).
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        copy = Path(tmpdir) / "History"
+        try:
+            shutil.copy2(abs_path, copy)
+        except OSError:
+            return []
+        uri = f"file:{copy.as_posix()}?immutable=1&mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
+        try:
+            return list(connection.execute(query))
+        except sqlite3.DatabaseError:
+            # A schema this browser version does not have. An absence, not a
+            # failure to read evidence (D-024's reasoning).
+            return []
+        finally:
+            connection.close()
+
+
+def _visit_events(
+    abs_path: Path, relative_path: str, browser: str
+) -> Iterator[Event]:
+    """One event per page visit, and one per search term."""
+    for row in _query(abs_path, _VISITS_QUERY):
+        visit_id, visit_time, url, title, transition = row
+        if not visit_time or not url:
+            continue
+        details = {"browser": browser, "url": url}
+        if title:
+            details["page_title"] = title
+        if isinstance(transition, int):
+            details["transition_raw"] = str(transition)
+            core = transition & 0xFF
+            if core in _TRANSITIONS:
+                # `typed` is the discriminating value: it means the user wrote
+                # the address rather than following a link to it.
+                details["transition"] = _TRANSITIONS[core]
+        yield Event(
+            timestamp=webkit_to_utc(visit_time),
+            source_artifact="browser",
+            event_type="page_visited",
+            action="page visited in the browser",
+            source_file=relative_path,
+            source_locator=f"visits.id={visit_id}",
+            # The browser wrote the row as the visit happened.
+            timestamp_type="recorded",
+            host=None,
+            user=None,
+            path=url,
+            confidence="high",
+            details=details,
+        )
+
+    for row in _query(abs_path, _SEARCH_QUERY):
+        keyword_id, url_id, term, url, last_visit = row
+        if not term:
+            continue
+        timestamp = webkit_to_utc(last_visit) if last_visit else None
+        yield Event(
+            # `keyword_search_terms` carries no time of its own; the URL row's
+            # last-visit time is the closest the artefact offers, and when it
+            # has none the event is presence-typed rather than invented.
+            timestamp=timestamp or datetime(1601, 1, 1, tzinfo=UTC),
+            source_artifact="browser",
+            event_type="search_term",
+            action="search term entered in the browser",
+            source_file=relative_path,
+            source_locator=(
+                f"keyword_search_terms.{keyword_id}.{url_id}"
+            ),
+            timestamp_type="recorded" if timestamp else "presence",
+            host=None,
+            user=None,
+            path=term,
+            confidence="high",
+            details={"browser": browser, "search_term": term, "url": url or ""},
+        )
+
+
 def browser_of(relative_path: str) -> str | None:
     """Which Chromium browser this path is the history database of, or None.
 
@@ -185,3 +312,12 @@ class BrowserParser:
             # record_to_event because the record carries no such field.
             event.details["browser"] = browser
             yield event
+
+        # Page visits and search terms, added 2026-09-17.
+        #
+        # This parser read `downloads` alone for most of the project, and
+        # docs/artifact-attestation-matrix.md recorded that as a stated limit:
+        # "page visits -- the parser reads FROM downloads only". Measured on
+        # s1_v3 that limit was hiding 610 visit rows and 65 search terms
+        # against 86 downloads. A stated gap is still a gap.
+        yield from _visit_events(abs_path, relative_path, browser)

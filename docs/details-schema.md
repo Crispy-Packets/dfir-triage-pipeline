@@ -560,6 +560,38 @@ rather than repaired. Measured: zero torn in 59,992 scanned.
 **Not decoded**: data runs, resident content, `$DATA` streams, attribute lists
 and the directory index.
 
+### Generic EVTX channels (`evtx.x.*`), added 2026-09-17
+
+Every channel without a curated EID map. Family names are derived from the
+filename: `Microsoft-Windows-Store%4Operational.evtx` becomes
+`evtx.x.microsoft-windows-store.operational`. Measured on `s1_v3`: **88
+families, 46,464 records**.
+
+Records carry their `EventData` fields as details under the field names the
+channel itself used, plus the standard EVTX keys. **No key is invented and no
+EID is interpreted** -- `event_type` is always `log_record`, because this
+pipeline has not studied what these EIDs mean and will not claim otherwise.
+
+### Browser visits and searches (`browser`), added 2026-09-17
+
+Read alongside `downloads`, which this parser read alone until now.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `url` | str | `browser` | On `page_visited`, the page. Also `Event.path`. |
+| `page_title` | str | `browser` | The title as recorded, when present. |
+| `transition` | str | `browser` | `link`, `typed`, `form_submit`, `reload`, … from the low byte of Chromium's transition mask. **`typed` is the discriminating value**: the user wrote the address rather than following a link. |
+| `transition_raw` | str(int) | `browser` | The full mask, always emitted. The name table above is deliberately incomplete, and the raw value must survive it. |
+| `search_term` | str | `browser` | On `search_term`, the text typed. Also `Event.path`. Measured 65 on `s1_v3`; on `s1_v2` they include the delivery URL the operator typed by hand. |
+
+**`keyword_search_terms` has no unique key of its own** — `keyword_id`
+identifies the search *engine*, so every Bing search shares one. Using it as
+the locator produced 61 duplicates and violated CD-004; the locator is
+`(keyword_id, url_id)`, the table's real primary key.
+
+A search term whose URL row carries no `last_visit_time` is `presence`-typed
+rather than given an invented time.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

@@ -340,10 +340,50 @@ _CHANNELS: tuple[tuple[str, str], ...] = (
 )
 
 
+#: Channels whose records this pipeline reads but does not interpret.
+#:
+#: Ten channels above have a curated EID map: a named event_type per EID,
+#: chosen because the EID means something specific. The other 95 channels KAPE
+#: collects hold 46,464 records between them, and reading NONE of them was a
+#: judgement call that hid evidence behind an opinion.
+#:
+#: These are read generically instead. Every record becomes a `log_record` with
+#: its EventData intact, timestamped and attributed to its channel, but with no
+#: claim about what the EID MEANS. That is the honest middle position: the
+#: evidence is in the timeline and searchable, and the pipeline does not invent
+#: semantics for 3,000 EIDs it has not studied.
+#:
+#: A channel that later earns a curated map simply moves into _CHANNELS above.
+_GENERIC_CHANNEL_PREFIX = "evtx.x."
+
+#: Channel file names are `Provider%4Channel.evtx`; KAPE writes them verbatim.
+_EVTX_SUFFIX = ".evtx"
+
+
+def generic_artifact(lowered_path: str) -> str:
+    """A stable family name for an uncurated channel, from its file name.
+
+    `Microsoft-Windows-Bits-Client%4Operational.evtx` becomes
+    `evtx.x.microsoft-windows-bits-client.operational`. The name is derived
+    from the file rather than assigned, so a channel this pipeline has never
+    seen still lands in a predictable family.
+    """
+    name = lowered_path.rsplit("/", 1)[-1]
+    if name.endswith(_EVTX_SUFFIX):
+        name = name[: -len(_EVTX_SUFFIX)]
+    # %4 is the collector's encoding of the backslash between provider and
+    # channel; a space appears in a few legacy names.
+    cleaned = name.replace("%4", ".").replace(" ", "-")
+    return _GENERIC_CHANNEL_PREFIX + cleaned
+
+
 def _artifact_for(lowered_path: str) -> str | None:
     for suffix, artifact in _CHANNELS:
         if lowered_path.endswith(suffix):
             return artifact
+    # Every other .evtx file is read generically rather than skipped.
+    if lowered_path.endswith(_EVTX_SUFFIX):
+        return generic_artifact(lowered_path)
     return None
 
 
@@ -369,11 +409,16 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         "evtx.winlogon": WINLOGON_EIDS,
         "evtx.firewall": FIREWALL_EIDS,
         "evtx.bits": BITS_EIDS,
-    }[artifact]
-    if eid not in table:
-        return None
+    }.get(artifact)
 
-    event_type, action = table[eid]
+    if table is None:
+        # A channel with no curated EID map: every remaining EVTX file KAPE
+        # collected. See _GENERIC_CHANNEL_PREFIX and CD-007.
+        event_type, action = "log_record", f"{artifact.split('.', 1)[-1]} log record"
+    elif eid not in table:
+        return None
+    else:
+        event_type, action = table[eid]
 
     time_node = system.find("e:TimeCreated", NS)
     system_time = time_node.get("SystemTime") if time_node is not None else None

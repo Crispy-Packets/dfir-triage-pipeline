@@ -123,22 +123,42 @@ def test_other_powershell_eids_are_ignored():
         # line of the process that started PowerShell, and that is present when
         # script-block logging is off and 4104 holds nothing at all.
         ("C/Windows/System32/winevt/logs/Windows PowerShell.evtx", "evtx.ps_classic"),
-        # The Admin channel carries engine errors only.
+        # AMENDED 2026-09-17. These two mapped to None until every collected
+        # channel was read. The Admin channel carries engine errors only and
+        # Application is general application logging, so NEITHER earns a
+        # curated EID map -- but "no curated map" is not "not evidence", and
+        # skipping 95 channels holding 46,464 records was a judgement hiding
+        # data. They now land in generic families named from the file.
         (
             "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Admin.evtx",
-            None,
+            "evtx.x.microsoft-windows-powershell.admin",
         ),
-        ("C/Windows/System32/winevt/logs/Application.evtx", None),
+        ("C/Windows/System32/winevt/logs/Application.evtx", "evtx.x.application"),
     ],
 )
 def test_artifact_for(path, expected):
     assert _artifact_for(path.lower()) == expected
 
 
-def test_can_handle_accepts_the_operational_channel():
+def test_a_curated_channel_is_not_given_a_generic_name():
+    """The curated map must win. If Security fell through to the generic
+    branch its EIDs would stop being interpreted and every rule joined on
+    `logon` or `process_exec` would silently match nothing."""
+    assert _artifact_for(PS_REL.lower()) == "evtx.powershell"
+    assert (
+        _artifact_for("c/windows/system32/winevt/logs/security.evtx")
+        == "evtx.security"
+    )
+
+
+def test_can_handle_accepts_every_collected_channel():
+    """Amended with the same reasoning: no .evtx KAPE collects is skipped."""
     p = EvtxWindowsParser()
     assert p.can_handle(PS_REL) is True
-    assert p.can_handle("C/Windows/System32/winevt/logs/Application.evtx") is False
+    assert p.can_handle("C/Windows/System32/winevt/logs/Application.evtx") is True
+    # Still anchored to the log directory: a .evtx a user downloaded is not
+    # the machine's event log.
+    assert p.can_handle("C/Users/janed/Downloads/Security.evtx") is False
 
 
 COLLECTION = os.environ.get("DFIR_TEST_COLLECTION")

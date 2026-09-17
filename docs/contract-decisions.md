@@ -110,6 +110,54 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. EVERY remaining EVTX channel, and the rest of the
+        browser History database.
+
+        <any other>.evtx  ->  evtx.x.<provider>.<channel>  log_record
+        History visits    ->  browser  page_visited
+        History searches  ->  browser  search_term
+
+        FIVE OF 100 CHANNELS WERE PARSED, AND THE OTHER 95 WERE SKIPPED BY MY
+        JUDGEMENT. They hold 46,464 records on s1_v3. Skipping them was an
+        opinion presented as a scope decision, and the opinion is not one this
+        pipeline is entitled to make on the examiner's behalf.
+
+        The ten curated channels keep their EID maps: a named event_type per
+        EID, because the EID means something specific. Every other channel is
+        read GENERICALLY -- each record becomes a `log_record` carrying its
+        EventData, timestamped and attributed to its channel, with NO claim
+        about what the EID means.
+
+        That is the honest middle position. The evidence is in the timeline and
+        searchable; the pipeline does not invent semantics for thousands of
+        EIDs it has not studied. A channel that later earns a curated map moves
+        into _CHANNELS, and test_a_curated_channel_is_not_given_a_generic_name
+        guards the boundary -- a curated channel falling through would stop its
+        EIDs being interpreted and every rule joined on `logon` would silently
+        match nothing.
+
+        Family names are DERIVED from the filename
+        (evtx.x.microsoft-windows-store.operational), so a channel this
+        pipeline has never seen still lands somewhere predictable. The `evtx.x.`
+        prefix lets the validator accept them as a class, since a static map
+        cannot enumerate them.
+
+        41 of the 88 generic families on s1_v3 fall below MIN_TRAINING_ROWS and
+        are never modelled by the anomaly layer, which is the existing guard
+        working as designed. Ablation re-measured after they landed: rules 1/5,
+        both 1/976, unchanged.
+
+        THE BROWSER PARSER READ `downloads` ALONE, and the attestation matrix
+        recorded that as a stated limit. Measured, the limit was hiding 613
+        page visits and 65 search terms behind 86 downloads. A stated gap is
+        still a gap. On s1_v2 the search terms hold the delivery URL the
+        operator typed -- http://192.168.50.5:8000/invoice_scan.exe -- which
+        the downloads table alone did not carry.
+
+        `page_visited` records the visit's `transition`, whose `typed` value
+        means the user wrote the address rather than following a link. The raw
+        mask is always kept, because the name table is deliberately incomplete.
+
         Added 2026-09-17. The $MFT.
 
         C\$MFT  ->  mft  file_record

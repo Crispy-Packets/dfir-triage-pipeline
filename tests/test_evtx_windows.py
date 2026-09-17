@@ -144,7 +144,11 @@ def test_can_handle_matches_real_path_shape():
     p = EvtxWindowsParser()
     assert p.can_handle("C/Windows/System32/winevt/Logs/Security.evtx")
     assert p.can_handle("C/Windows/System32/winevt/logs/System.evtx")
-    assert not p.can_handle("C/Windows/System32/winevt/Logs/Application.evtx")
+    # Amended 2026-09-17: every channel in the log directory is now read, the
+    # uncurated ones into generic families. See test_powershell_4104.py.
+    assert p.can_handle("C/Windows/System32/winevt/Logs/Application.evtx")
+    # The directory anchor still holds: a .evtx sitting in Downloads is a file
+    # somebody copied, not this machine's event log.
     assert not p.can_handle("C/Users/janed/Downloads/Security.evtx")
 
 

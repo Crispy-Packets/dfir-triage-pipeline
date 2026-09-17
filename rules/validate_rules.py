@@ -206,6 +206,12 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     "mft": "presence",               # mft.py MftParser.parse
 }
 
+#: Uncurated EVTX channels are named from their filename at parse time --
+#: `evtx.x.microsoft-windows-store.operational` and 87 others on s1_v3 -- so
+#: they cannot be listed above. Every one is `recorded`: an event log writes
+#: its record as the event occurs, whichever channel it is.
+GENERIC_EVTX_PREFIX = "evtx.x."
+
 #: Families where timestamp_type varies BY RECORD rather than by family, so the
 #: static map above states only the dominant case.
 #:
@@ -517,6 +523,11 @@ def check_select(node: Any, where: str, report: Report, vocabulary: set[str] | N
         report.error(where, "select.source_artifact must be a list")
         return []
     for value in artifacts:
+        # Generic EVTX channels are named from their file, so the static map
+        # cannot enumerate them. They are all `recorded` -- a log writes its
+        # record as the event occurs, whatever the channel.
+        if value.startswith(GENERIC_EVTX_PREFIX):
+            continue
         if value not in TIMESTAMP_TYPE_BY_ARTIFACT:
             report.error(
                 where,
