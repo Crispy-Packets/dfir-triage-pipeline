@@ -1215,10 +1215,24 @@ and opened normally THERE, so SQLite performs the recovery on the copy. The
 originals are only ever read -- verified by hashing both before and after a
 parse, unchanged. A collection with no `-wal` behaves exactly as before.
 
-**Scope check still owed.** `browser.py` and `browser_profile.py` use the same
-`immutable=1` pattern on `History` and the profile databases, and those have
-`-journal` siblings in these collections. The same measurement should be run
-there before assuming the rows are all present.
+**Scope check done 2026-09-17, and the browser parsers are NOT affected.**
+Every database the pipeline queries was counted both ways -- `immutable=1`
+against a copy with its journals replayed -- across all five collections and
+all seven queried tables. **Zero differences.**
+
+The reason is structural rather than luck, and is pinned by
+`tests/test_sqlite_journal_coverage.py` so it does not have to be re-derived:
+
+    browser profiles   `-journal`, 8,720 bytes   ROLLBACK journal
+    ActivitiesCache    `-wal`, up to 1.8 MB      WRITE-AHEAD log
+
+A rollback journal holds UNDO data for a transaction that may be aborted;
+nothing committed waits in it, so ignoring it loses nothing. A WAL holds rows
+that ARE committed but not yet checkpointed. The two are not interchangeable,
+and `immutable=1` is safe against one and blinding against the other.
+
+The test fails loudly if a browser profile ever switches to WAL mode, which is
+the condition that would make this conclusion stale.
 
 **Same family as D-051 and D-052.** D-051 was a derived signal asserted without
 measuring; D-052 was a capability asserted without attempting; this is a
