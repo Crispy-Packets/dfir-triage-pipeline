@@ -1,9 +1,12 @@
 """`$Recycle.Bin` `$I` records: a file's original path and its deletion time.
 
 When a file is sent to the Recycle Bin, Windows writes two files: `$R...` holds
-the content, `$I...` holds the metadata. The `$I` record is the **only artefact
-in this pipeline that attests to a deletion** -- every other family records that
-a file existed, ran, or was opened.
+the content, `$I...` holds the metadata.
+
+The `$I` record carries what the USN journal cannot: the **original full path**
+and the size at deletion. The journal sees more deletions -- including files
+that never reached the bin -- but identifies the parent by MFT reference
+number, so it holds a NAME where this holds a PATH.
 
 It carries three things nothing else does:
 
@@ -14,8 +17,8 @@ It carries three things nothing else does:
 **Measured on `s1_v3`:** one record, and it names the scenario payload --
 `C:\\Users\\vboxuser\\Desktop\\invoice_scan.exe`, 4,608 bytes. The binary was
 executed, established persistence, and was then deleted; Prefetch, Amcache, BAM
-and Shimcache all attest that it RAN, and this is the only family that says it
-was removed afterwards.
+and Shimcache all attest that it RAN, and this says it was removed afterwards --
+with the path, which the USN journal cannot supply.
 
 **The record is per-SID by location.** `$Recycle.Bin\\<SID>\\$I...` puts the
 deleting account in the path, so the principal needs no inference -- the same

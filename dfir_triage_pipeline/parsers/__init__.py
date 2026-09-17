@@ -43,3 +43,4 @@ from . import timeline  # noqa: E402,F401
 from . import ps_history  # noqa: E402,F401
 from . import jumplist  # noqa: E402,F401
 from . import shellbags  # noqa: E402,F401
+from . import usn_journal  # noqa: E402,F401

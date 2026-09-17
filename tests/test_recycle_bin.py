@@ -1,4 +1,4 @@
-"""`$I` records: the only family that attests to a deletion.
+"""`$I` records: a deletion, with the path the USN journal cannot supply.
 
 The property that would silently produce a wrong path is the VERSION: v1 has a
 fixed 260-character name field, v2 a length prefix. Applying the wrong layout
@@ -179,13 +179,41 @@ class TestTheIterationHistory:
         assert len(rows) >= 9
         assert len({e.details["deleted_size"] for e in rows}) >= 3
 
-    def test_no_other_family_records_a_deletion(self):
-        """The claim that makes this family necessary rather than redundant."""
+    def test_the_bin_records_what_the_journal_cannot(self):
+        """AMENDED 2026-09-17. This asserted that `recyclebin` was the ONLY
+        family recording a deletion, which was true when written and stopped
+        being true when the USN journal landed the same day. The test caught
+        that, so the claim is corrected rather than deleted.
+
+        The two are not redundant and each holds what the other cannot:
+
+          recyclebin  the ORIGINAL FULL PATH and the size at deletion, for
+                      files that went to the bin
+          usn         a NAME only -- the journal identifies the parent by MFT
+                      reference, which resolving needs the $MFT -- but it sees
+                      deletions that NEVER went to the bin: shift-delete, a
+                      program removing its own temp files, an attacker
+                      cleaning up
+
+        Measured on s1_v2: the bin holds nine deletions of invoice_scan.exe
+        with full paths and three distinct sizes; the journal holds the
+        Prefetch file's deletion, which never went to the bin at all.
+        """
         from dfir_triage_pipeline.ingest import collect_events
 
         events, _ = collect_events(EVIDENCE / "collection_s1_v2")
         deleters = {e.source_artifact for e in events if e.event_type == "file_deleted"}
-        assert deleters == {"recyclebin"}
+        assert deleters == {"recyclebin", "usn"}
+
+        bin_rows = [
+            e
+            for e in events
+            if e.source_artifact == "recyclebin" and "invoice_scan" in e.path.lower()
+        ]
+        assert bin_rows
+        # Only the bin carries a full path and a size.
+        assert all(e.path.startswith("C:") for e in bin_rows)
+        assert all("deleted_size" in e.details for e in bin_rows)
 
 
 class TestAcrossCollections:

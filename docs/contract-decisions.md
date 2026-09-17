@@ -110,6 +110,48 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. The USN change journal.
+
+        C\$Extend\$J  ->  usn  file_created / file_deleted /
+                                 file_renamed_from / file_renamed_to
+
+        The ONLY family that records a RENAME, and the only one besides
+        recyclebin that records a DELETION -- and unlike the Recycle Bin it
+        sees deletions that never went to the bin at all.
+
+        Measured on s1_v3 it caught what nothing else did:
+
+          11:50:09  invoice_scan.exe          data overwrite
+          11:50:10  invoice_scan_marker.txt   CREATE  <- the payload's effect
+          11:50:25  INVOICE_SCAN.EXE-...pf    CREATE
+
+        The marker file appears in NO other family. Prefetch, Amcache, BAM and
+        Shimcache all say the binary RAN; only the journal shows what it DID.
+
+        ONLY LIFECYCLE REASONS ARE EMITTED. The journal holds 169,304 records
+        on s1_v3 and 328,156 on s1_v2, and the overwhelming majority are
+        Windows servicing writing .mui resource files. Data overwrites,
+        attribute changes, security changes and stream changes are skipped:
+        they say a file was touched, which is both extremely common and the
+        weakest claim the journal makes.
+
+        ONE OPERATION IS ONE EVENT. NTFS writes a record at each STAGE of an
+        operation -- create, create+extend, create+extend+close -- all with the
+        same timestamp and name. Measured: 43% of otherwise-emitted rows are
+        such restatements, and invoice_scan_marker.txt alone produced three
+        identical creations. The first record for a (name, type, timestamp)
+        wins. 44,854 -> 29,655 rows on s1_v3.
+
+        THE FAMILY IS STILL ~80% OF ALL EVENTS, and that is a property of the
+        artifact rather than a defect. It does not disturb the layer ablation:
+        measured after it landed, rules 1/5 and both 1/976, unchanged, because
+        USN events carry a FILE NAME rather than an executable-name entity and
+        so create no new entities to rank.
+
+        `path` is a NAME, never a path. The journal names the file and its
+        parent by MFT reference number; resolving to a full path needs the
+        $MFT, which is not parsed. Recorded as it stands (CD-010).
+
         Added 2026-09-17. Shellbags, from UsrClass.dat.
 
         UsrClass BagMRU  ->  shellbags  folder_browsed

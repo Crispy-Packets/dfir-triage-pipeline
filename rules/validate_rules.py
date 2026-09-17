@@ -192,6 +192,9 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # Added 2026-09-17. The containing key's last write, shared by every bag
     # beneath it -- D-027 exactly, same as the registry Run keys.
     "shellbags": "presence",         # shellbags.py ShellbagsParser.parse
+    # Added 2026-09-17. NTFS appends the record as the change happens, so this
+    # is among the strongest observations in the pipeline.
+    "usn": "recorded",               # usn_journal.py UsnJournalParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

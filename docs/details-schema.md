@@ -446,6 +446,34 @@ positions are still walked, because ordinary folders sit beneath them.
 **`timestamp_type` is `presence`** -- the containing key's last write, shared by
 every sibling bag. D-027 exactly.
 
+### USN change journal (`usn`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `usn_reason` | str | `usn` | The full reason bitmask as `0x%08x`. The event_type names the strongest flag; this preserves the rest, so a consumer can see that a deletion was also a close, or a creation also an extend. |
+| `file_name` | str | `usn` | The name as recorded. Also emitted as `Event.path`. |
+
+**`Event.path` is a NAME, never a path.** The journal identifies a file and its
+parent by MFT reference number; resolving those to a full path requires the
+`$MFT`, which is not parsed. The name is recorded as it stands (CD-010) rather
+than being given a fabricated directory.
+
+**Only four reasons are emitted**: `file_created`, `file_deleted`,
+`file_renamed_from`, `file_renamed_to`. Data overwrites, attribute changes,
+security changes and stream changes are skipped — they say a file was touched,
+which is both extremely common and the weakest claim the journal makes. The
+journal holds 169,304 records on `s1_v3` and 328,156 on `s1_v2`, mostly Windows
+servicing writing `.mui` files.
+
+**One operation is one event.** NTFS writes a record at each *stage* — create,
+create+extend, create+extend+close — all with the same timestamp and name.
+Measured: **43% of otherwise-emitted rows are such restatements**, and
+`invoice_scan_marker.txt` alone produced three identical creations. The first
+record for a (name, type, timestamp) wins: 44,854 → 29,655 rows on `s1_v3`.
+
+**`timestamp_type` is `recorded`** — NTFS appends the record as the change
+happens, which makes it among the strongest observations in the pipeline.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never
