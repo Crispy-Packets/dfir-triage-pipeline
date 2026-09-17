@@ -136,6 +136,11 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # occurs, like the other EVTX channels.
     "evtx.wmi": "recorded",          # evtx_windows.py record_to_event
     "evtx.rdp": "recorded",          # evtx_windows.py record_to_event
+    # Added 2026-09-17, SYSTEM hive. Shimcache and Services carry a key's
+    # last-write time (presence); BAM carries a real last-run FILETIME.
+    "shimcache": "presence",         # system_hive.py _shimcache_events
+    "bam": "last_run",               # system_hive.py _bam_events
+    "services": "presence",          # system_hive.py _service_events
 }
 
 # schema.md 4.7 (D-027): ten downloads share the name invoice_scan.exe; only size

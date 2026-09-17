@@ -77,6 +77,30 @@ leaves behind (T1546.003) -- it survives a reboot and touches no file on disk.
 | `Address` | str | `evtx.rdp` | **The discriminating field.** Literal `LOCAL` for a console logon, an IP address for a remote desktop session. Without it a rule cannot tell the two apart and every console logon reads as remote access. |
 
 
+### SYSTEM hive: Shimcache (`shimcache`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `shimcache_position` | str(int) | `shimcache` | 0-based index in the cache. **The only stable identifier the artefact offers** -- there is no id, and order is meaningful: entry 0 was inserted most recently. It is also the `source_locator`. |
+| `file_modified` | str | `shimcache` | The FILETIME the entry carries, which is the file's MODIFICATION time -- a property of the file, not of when it was seen. Omitted when the artefact recorded zero, which means "not recorded" rather than 1601. |
+
+### SYSTEM hive: BAM (`bam`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `sid` | str | `bam` | The security identifier the entry sits under. **This is the artefact's reason for existing**: Prefetch records that a binary ran and carries no principal at all, so BAM is what re-attributes an execution after a 4688 is destroyed. Also emitted as `Event.user`. |
+| `bam_service` | str | `bam` | `bam` or `dam`. DAM is the Desktop Activity Moderator and is absent on most desktop builds; the key says which service recorded the entry rather than merging two sources. |
+
+### SYSTEM hive: Services (`services`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `service_name` | str | `services` | Registry key name, which is the service's short name. |
+| `image_path` | str | `services` | `ImagePath` exactly as recorded. Frequently a command line rather than a path, so `paths.derive` declines it by design (CD-021, D-032). |
+| `start_type` | str | `services` | `boot`, `system`, `auto`, `manual` or `disabled`, decoded from the numeric value. The raw number is kept when it is outside the documented set rather than guessed at. |
+| `service_type` | str | `services` | `kernel_driver`, `fs_driver`, `own_process` or `shared_process`, decoded the same way. |
+| `account` | str | `services` | `ObjectName` -- the principal the service runs as. Omitted when absent, which is meaningful: a driver has none. Also emitted as `Event.user`. |
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

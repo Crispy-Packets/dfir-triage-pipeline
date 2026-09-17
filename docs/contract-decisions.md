@@ -92,6 +92,30 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         WMI-Activity/Operational  5861  ->  evtx.wmi  wmi_subscription
         TerminalServices-LSM      21,25 ->  evtx.rdp  rdp_session
 
+        Added 2026-09-17. ONE FILE, THREE FAMILIES: the SYSTEM hive holds three
+        structurally different artefacts with different timestamp semantics,
+        and folding them into one family would mix presence with last-run.
+
+        SYSTEM AppCompatCache  ->  shimcache  program_shimcached
+        SYSTEM bam/dam         ->  bam        process_exec
+        SYSTEM Services        ->  services   service_registered
+
+        `program_shimcached` is deliberately NOT `process_exec`. Windows 10 and
+        11 populate the compatibility cache on enumeration as well as on run,
+        so a Shimcache entry attests PRESENCE and nothing stronger. Spelling it
+        process_exec would let a correlation rule join it to a download and
+        claim an execution the artefact never recorded.
+
+        `bam` DOES emit process_exec, sharing the string with Prefetch and 4688
+        by the same contract that governs those two: a second spelling for one
+        concept silently breaks every chain joined on event_type.
+
+        `service_registered` is distinct from `service_install` (System 7045).
+        7045 records an INSTALLATION EVENT; the registry records that a service
+        EXISTS NOW. A service installed before the log's retention window, or
+        after a System-log clear, exists in the registry and nowhere else --
+        which is the point of parsing it.
+
         5861 is the only WMI EID taken. 5857-5860 are provider lifecycle and
         query telemetry written constantly by normal Windows operation; 5861
         records a PERMANENT event subscription, which is the artifact fileless
