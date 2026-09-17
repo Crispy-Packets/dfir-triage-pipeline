@@ -323,6 +323,70 @@ all. A `.lnk` whose header is not a shell link yields nothing rather than
 raising — a mislabelled file is not a parser fault, and raising would inflate
 the failure count (D-024's reasoning).
 
+### Recycle Bin (`recyclebin`), added 2026-09-17
+
+The only family that attests to a **deletion**. One event per `$I` record.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `original_path` | str | `recyclebin` | The file's full path before deletion. **The `$R` filename destroys this** -- `$RA9EQBZ.exe` says nothing about where the file lived. Also emitted as `Event.path`. |
+| `deleted_size` | str(int) | `recyclebin` | Size in bytes at deletion. Measured on `s1_v2`: the same payload name at 201216, then 360448, then 4608 bytes over four days. |
+| `info_version` | str(int) | `recyclebin` | `1` (Vista-8, fixed 260-character name) or `2` (8.1+, length-prefixed). **Read, not assumed**: applying the v1 layout to a v2 record yields a path assembled from the length prefix onward, which looks real and does not raise. |
+| `sid` | str | `recyclebin` | The deleting account, taken from the `$Recycle.Bin\<SID>\` path segment. Per-SID by location, so the principal needs no inference. Also emitted as `Event.user`. |
+
+**`timestamp_type` is `recorded`**, unlike `lnk` and the other file-metadata
+families. Windows wrote this FILETIME at the moment it moved the file, so it is
+an observation rather than a property copied from a target.
+
+**`$R` files are not parsed.** They hold the deleted content itself and have no
+structure of their own.
+
+### Windows Timeline (`timeline`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `activity_type` | str(int) | `timeline` | `5` (application opened) or `6` (UserEngaged). Types 11 (settings sync) and 16 (clipboard) are **not parsed** -- they name no program. Measured on `s1_v3`: 41 / 102 / 2 / 37. |
+| `active_seconds` | str(int) | `timeline` | **How long a person actively used the program.** Type 6 only. No other family in this pipeline carries a duration -- Prefetch counts runs, SRUM samples intervals, neither says someone sat in front of something. Measured max 68,791s on `s1_v2`. |
+| `display_text` | str | `timeline` | The payload's `displayText` or `appDisplayName`, when present -- a human-readable name beside the raw application id. |
+| `end_time` | str | `timeline` | ISO-8601 Z, when the row records one. Absent on type 5, which has no end. |
+
+`Event.path` is the application, taken from the **most specific platform present**
+in the `AppId` JSON array: `x_exe_path` (a full path, sometimes on another
+drive), then `windows_win32`, `packageId`, `alternateId`. `data_boundary` is
+deliberately excluded -- its application is the constant
+`microsoft.default.default`, and taking the first array member blindly returns
+it on most rows.
+
+**Times are Unix epoch seconds**, not FILETIME and not OLE. Applying either of
+the other two conventions used in this pipeline places the events decades away
+without raising.
+
+**A database with no `Activity` table yields nothing rather than raising.**
+Measured on host 1's `admin_local`: an account that logged on but never used the
+Activity Feed has an initialised, empty database. That is an absence of
+evidence, not a parser fault (D-024's reasoning).
+
+### PowerShell console history (`ps_history`), added 2026-09-17
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `command` | str | `ps_history` | The command as typed, with backtick continuations joined back into one line. Also emitted as `Event.path`. |
+| `history_line` | str(int) | `ps_history` | 1-based line number of the command's FIRST line. **Order is the only sequence information the file carries** -- PSReadLine records no timestamps -- so the number is the locator and preserves it. |
+| `commands_in_file` | str(int) | `ps_history` | How many commands the file holds, so a consumer can see where one sits in the whole. |
+
+**`timestamp_type` is `presence`.** PSReadLine writes no timestamps at all. Every
+event carries the FILE's modification time, shared by every command in it --
+D-027's situation exactly. The file says a command is present, not when it ran.
+
+**Why this is worth parsing beside `evtx.powershell`:** 4104 records script
+blocks only when script-block logging is enabled. Measured: `clean_c`'s first
+collection held **5** rows against **470** with it on. This file holds the typed
+line even when the channel holds nothing.
+
+**Multi-line commands are joined.** PSReadLine writes a backtick at the end of
+each incomplete line, as typed; splitting on newlines would report fragments
+like `'HKCU:\Software\...\RunOnce',` as if they were commands.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

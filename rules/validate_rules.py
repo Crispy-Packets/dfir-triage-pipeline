@@ -171,6 +171,14 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # into the link -- the OS logged no event at that instant. `presence` is
     # the honest label, which is also why a link outlives its target.
     "lnk": "presence",               # lnk.py LnkParser.parse
+    # Added 2026-09-17. Windows wrote this FILETIME when it moved the file, so
+    # unlike the other file-metadata families it IS an observation.
+    "recyclebin": "recorded",        # recycle_bin.py RecycleBinParser.parse
+    # Added 2026-09-17. The Activity Feed writes the row when the activity
+    # happens; PSReadLine writes no timestamp at all, so its events carry the
+    # FILE's mtime and say only that the command is present (D-027's shape).
+    "timeline": "recorded",          # timeline.py TimelineParser.parse
+    "ps_history": "presence",        # ps_history.py PsHistoryParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

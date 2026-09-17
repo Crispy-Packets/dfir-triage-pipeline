@@ -38,3 +38,6 @@ from . import sam_hive  # noqa: E402,F401
 from . import srum  # noqa: E402,F401
 from . import scheduled_tasks  # noqa: E402,F401
 from . import lnk  # noqa: E402,F401
+from . import recycle_bin  # noqa: E402,F401
+from . import timeline  # noqa: E402,F401
+from . import ps_history  # noqa: E402,F401

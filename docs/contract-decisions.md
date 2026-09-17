@@ -110,6 +110,56 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. Windows Timeline and PSReadLine history.
+
+        ActivitiesCache.db        ->  timeline    app_opened / app_engaged
+        ConsoleHost_history.txt   ->  ps_history  command_typed
+
+        `app_engaged` carries activeDurationSeconds -- HOW LONG A PERSON USED
+        A PROGRAM, which no other family in this pipeline holds. Prefetch
+        counts runs, BAM names a SID, SRUM samples intervals; none says someone
+        sat in front of something for seventeen seconds. It is a separate
+        event_type from `app_opened` because the claims differ: type 5 says a
+        program was launched, type 6 says a person interacted with it.
+
+        Only ActivityTypes 5 and 6 are parsed. Type 11 is settings sync
+        (bluelight, pen input) and type 16 is clipboard notification; neither
+        names a program, and emitting them would put configuration blobs into a
+        family whose other rows are things a person did.
+
+        `ps_history` reuses `command_typed`, shared with runmru, by the same
+        contract that governs every shared string: both record a command a
+        human typed, and a second spelling would break any chain joined on it.
+
+        ps_history is `presence`, NOT `recorded`. PSReadLine writes no
+        timestamps at all -- the file says the command is there, not when it
+        ran. Order is the only sequence information and the line number
+        preserves it.
+
+        THE REASON ps_history MATTERS: 4104 records script blocks only when
+        script-block logging is enabled -- measured, clean_c's first collection
+        held 5 rows against 470 with it on. This file holds the typed line even
+        when the channel holds nothing.
+
+        Added 2026-09-17. Recycle Bin $I records -- the ONLY family in this
+        pipeline that attests to a DELETION.
+
+        $Recycle.Bin\<SID>\$I*  ->  recyclebin  file_deleted
+
+        Every other family records that a file existed, ran, or was opened.
+        This one records that it was removed, with the original full path (the
+        $R name destroys it), the size at deletion, and a real FILETIME.
+
+        timestamp_type is `recorded`, unlike the other file-metadata families:
+        Windows wrote the FILETIME at the moment it moved the file, so this IS
+        an observation rather than a property copied from elsewhere.
+
+        The $R file holds the deleted content and is NOT parsed: it is the file
+        itself, with no structure of its own.
+
+        Measured on s1_v2: fourteen records, nine of them invoice_scan.exe at
+        three different sizes over four days.
+
         Added 2026-09-17. Shell links, which carry a volume.
 
         *.lnk  ->  lnk  file_opened
