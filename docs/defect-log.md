@@ -1238,3 +1238,70 @@ the condition that would make this conclusion stale.
 measuring; D-052 was a capability asserted without attempting; this is a
 NEGATIVE RESULT asserted without checking whether the reading method could see
 the data. All three produce output that looks correct.
+
+## D-054  Twenty-eight event_types CD-007 documented were invisible to the validator that enforces CD-007
+
+Found 2026-09-17, at the start of the rules-coverage phase, before any rule was
+written against the 31 families added this session.
+
+`rules/validate_rules.py` builds its `event_type` vocabulary by regex over
+`docs/contract-decisions.md`: `r"->\s+(\S+)\s+(\S+)\s*$"`, one token for the
+artifact and one for the event_type, anchored to the end of the line. It
+existed to read the vocabulary FROM the contract rather than duplicating it —
+the intent recorded when CD-007 was first written.
+
+Every mapping this session added that named MORE THAN ONE event_type on a line
+failed to match, silently. Not an error: the regex simply produced no capture
+for that line, and the loader moved on. `load_cd007_event_types` returns a
+`set`; a value never added is indistinguishable from a value that was never
+meant to exist.
+
+Confirmed by calling the loader directly rather than reading the regex and
+guessing: vocabulary size was **30** before the fix. Cross-checked against
+every literal string parsers actually pass as `event_type=`, twenty-eight were
+missing, all of them from a multi-value line:
+
+    app_opened / app_engaged                    (timeline)
+    file_created / file_deleted /
+      file_renamed_from / file_renamed_to        (usn -- file_deleted alone
+                                                   happened to predate this and
+                                                   was already in the 30)
+    page_visited / dom_storage /
+      background_transfer                        (webcache)
+    servicing_pending / component_version_change  (txf_pending)
+    process_exec / file_reported /
+      scan_skipped / av_service_started           (defender_mplog)
+    400 ps_engine_start, 403 ps_engine_stop,
+      600 ps_provider_start                       (evtx.ps_classic)
+    1116 malware_detected, 1117 malware_remediated,
+      5001 defense_disabled, 5007 defense_configured  (evtx.defender)
+    811, 812 logon_ui                             (evtx.winlogon)
+    2004/2005/2006/2033 rule added/changed/
+      deleted/all deleted                         (evtx.firewall)
+    3, 4, 59, 60 job created/cancelled,
+      transfer started/completed                  (evtx.bits)
+
+**Every rule ever written against any of these event_types would have failed
+`validate_rules.py` with `event_type 'app_engaged' is not in CD-007` —**
+wrong, because CD-007 does document it, in prose a human reads correctly and a
+regex anchored on `\S+\s*$` does not. The validator would have reported a
+correct-shaped rule as broken, and the fix a person reaches for first is to
+loosen the regex or hand-add an exception, which is how a vocabulary drifts
+from its source document. Caught here because the coverage inventory for the
+rules phase started by calling the loader and printing its result, rather than
+assuming CD-007's prose was sufecient because the doc read correctly.
+
+**Fix:** every multi-value CD-007 line was split into one `-> artifact
+event_type` line per value — the format the first six mappings already used,
+and the only format the regex was ever built to parse. No prose was changed,
+only the tabular lines. Re-run: vocabulary size **58**, matching every
+event_type string a parser emits with two exceptions (`file_modified` and
+`log_ahead_of_hive`, both confirmed to be `details` keys, not event_types, by
+grep against the parser source — correctly absent).
+
+**Same family as D-050 through D-053: a mechanism that looks correct because
+its narrow success case was the only one exercised.** The first six mappings
+in CD-007 were all single-value and the regex was written and tested against
+them; every mapping added after inherited a format the regex was never
+extended to parse, and nothing failed until a rule tried to select on one of
+the missing values.

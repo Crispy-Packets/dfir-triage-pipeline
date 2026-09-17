@@ -112,8 +112,9 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
 
         Added 2026-09-17. WebCacheV01.dat, the WinINet index.
 
-        WebCacheV01.dat  ->  webcache  page_visited / dom_storage /
-                                       background_transfer
+        WebCacheV01.dat  ->  webcache  page_visited
+        WebCacheV01.dat  ->  webcache  dom_storage
+        WebCacheV01.dat  ->  webcache  background_transfer
 
         A different record from the Chromium History database, not a duplicate.
         It carries three things Chromium's does not:
@@ -145,8 +146,8 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         WHICH I HAD DISMISSED AS UNPARSEABLE WITHOUT TESTING THE CLAIM.
 
         C\$LogFile                   ->  ntfs_logfile  file_referenced
-        $TxfLog\$T                   ->  txf_pending   servicing_pending /
-                                                       component_version_change
+        $TxfLog\$T                   ->  txf_pending   servicing_pending
+        $TxfLog\$T                   ->  txf_pending   component_version_change
 
         $LogFile was dismissed on the strength of its first four bytes being
         RSTR. Measured: 16,382 RCRD pages, 4001 of 4001 sampled with a valid
@@ -254,9 +255,10 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Added 2026-09-17. Defender's text logs, the LSA policy, the SYSTEM
         profile hive, and registry transaction logs.
 
-        Defender Support/MP*.log  ->  defender_mplog  process_exec /
-                                      file_reported / scan_skipped /
-                                      av_service_started
+        Defender Support/MP*.log  ->  defender_mplog  process_exec
+        Defender Support/MP*.log  ->  defender_mplog  file_reported
+        Defender Support/MP*.log  ->  defender_mplog  scan_skipped
+        Defender Support/MP*.log  ->  defender_mplog  av_service_started
         SECURITY Policy\Accounts  ->  lsa_policy      privilege_granted
         DEFAULT  Run/RunOnce       ->  registry        persistence_autorun
         *.LOG1 / *.LOG2            ->  registry_txlog  pending_registry_write
@@ -297,8 +299,10 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
 
         Added 2026-09-17. The USN change journal.
 
-        C\$Extend\$J  ->  usn  file_created / file_deleted /
-                                 file_renamed_from / file_renamed_to
+        C\$Extend\$J  ->  usn  file_created
+        C\$Extend\$J  ->  usn  file_deleted
+        C\$Extend\$J  ->  usn  file_renamed_from
+        C\$Extend\$J  ->  usn  file_renamed_to
 
         The ONLY family that records a RENAME, and the only one besides
         recyclebin that records a DELETION -- and unlike the Recycle Bin it
@@ -367,17 +371,23 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Store/Operational with 21,068 rows and nothing forensic in any of them,
         so SIZE WAS NOT THE CRITERION -- what each channel ATTESTS was.
 
-        Windows PowerShell.evtx       ->  evtx.ps_classic
-              400 ps_engine_start, 403 ps_engine_stop, 600 ps_provider_start
-        Windows Defender/Operational  ->  evtx.defender
-              1116 malware_detected, 1117 malware_remediated,
-              5001 defense_disabled, 5007 defense_configured
-        Winlogon/Operational          ->  evtx.winlogon
-              811, 812 logon_ui
-        Windows Firewall/Firewall     ->  evtx.firewall
-              2004/2005/2006/2033 rule added/changed/deleted/all deleted
-        BITS-Client/Operational       ->  evtx.bits
-              3, 4, 59, 60 job created/cancelled, transfer started/completed
+        Windows PowerShell.evtx  400  ->  evtx.ps_classic  ps_engine_start
+        Windows PowerShell.evtx  403  ->  evtx.ps_classic  ps_engine_stop
+        Windows PowerShell.evtx  600  ->  evtx.ps_classic  ps_provider_start
+        Defender/Operational    1116  ->  evtx.defender    malware_detected
+        Defender/Operational    1117  ->  evtx.defender    malware_remediated
+        Defender/Operational    5001  ->  evtx.defender    defense_disabled
+        Defender/Operational    5007  ->  evtx.defender    defense_configured
+        Winlogon/Operational     811  ->  evtx.winlogon    logon_ui
+        Winlogon/Operational     812  ->  evtx.winlogon    logon_ui
+        Windows Firewall/Firewall 2004 -> evtx.firewall    firewall_rule_added
+        Windows Firewall/Firewall 2005 -> evtx.firewall    firewall_rule_changed
+        Windows Firewall/Firewall 2006 -> evtx.firewall    firewall_rule_deleted
+        Windows Firewall/Firewall 2033 -> evtx.firewall    firewall_rules_deleted
+        BITS-Client/Operational     3  ->  evtx.bits        bits_job_created
+        BITS-Client/Operational     4  ->  evtx.bits        bits_job_cancelled
+        BITS-Client/Operational    59  ->  evtx.bits        bits_transfer_started
+        BITS-Client/Operational    60  ->  evtx.bits        bits_transfer_completed
 
         `evtx.ps_classic` closes a gap the attestation matrix has carried as
         stated since it was written: EID 600 holds HostApplication, the full
@@ -434,7 +444,8 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
 
         Added 2026-09-17. Windows Timeline and PSReadLine history.
 
-        ActivitiesCache.db        ->  timeline    app_opened / app_engaged
+        ActivitiesCache.db        ->  timeline    app_opened
+        ActivitiesCache.db        ->  timeline    app_engaged
         ConsoleHost_history.txt   ->  ps_history  command_typed
 
         `app_engaged` carries activeDurationSeconds -- HOW LONG A PERSON USED
