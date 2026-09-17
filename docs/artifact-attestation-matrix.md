@@ -77,6 +77,18 @@ defect number that established it.
 | | | **who** opened an installed link. Start Menu, Desktop and Quick Launch links are written by software, not by use — 15-16 per collection regardless of activity | measured 2026-09-17; `lnk_location` separates them | userassist, recentdocs |
 | | | **which application** opened the file | — | JumpLists ⛔ |
 | | | anything, for a protocol link (`ms-settings:`). Those name a URI handler and carry no path at all | parser source | — |
+| **usn** | a file was **created, deleted or renamed**, with a real timestamp. Sees deletions that **never went to the Recycle Bin** | **where the file was.** The journal names the parent by MFT reference number; resolving to a path needs the `$MFT` | parser source; CD-010 | recyclebin (carries the full path), `$MFT` ⛔ |
+| | | that a file was merely **read or modified** — data overwrites are recorded but not emitted, being both ubiquitous and the weakest claim | measured: 169,304 records on `s1_v3`, mostly `.mui` servicing writes | prefetch, srum |
+| | | anything older than the journal's rollover. Its head is sparse — records age out and the space is zeroed | measured: the file begins with a zeroed region | `$MFT` ⛔, `$LogFile` ⛔ |
+| **recyclebin** | a file was **deleted to the Recycle Bin**, with its **original full path**, its size, and when | deletions that bypassed the bin (shift-delete, a program removing its own files) | Windows design | usn |
+| **shellbags** | a folder was **displayed in Explorer**, by a named user, including folders since removed and volumes since detached | **when** it was browsed. The timestamp is the containing key's last write, shared by every sibling bag | **D-027** | lnk, jumplist, recentdocs |
+| **timeline** | an application was opened, and **how many seconds a person actively used it** | anything for ActivityTypes 11 and 16 (settings sync, clipboard) — they name no program | parser source | userassist, prefetch, srum |
+| **ps_history** | a command **typed at a PowerShell prompt**, present **whether or not script-block logging was on** | **when** it ran — PSReadLine writes no timestamps at all. Order is the only sequence information | parser source; `presence` | evtx.powershell 4104, evtx.ps_classic 600 |
+| **evtx.ps_classic** | that PowerShell ran, and its **HostApplication** — the command line of the process that started it | the script text. 4104 carries that, and only when script-block logging is enabled | measured: 5 rows against 470 with logging on | evtx.powershell, ps_history |
+| **evtx.defender** | an AV **detection**, **remediation**, or protection being **disabled** | anything when Defender is not the installed AV | Windows design | — |
+| **evtx.winlogon** | that a logon UI session occurred — **survives a Security-log clear** | **who** logged on. 811/812 name no principal at all | parser source | evtx.security 4624, sam, evtx.rdp |
+| **evtx.firewall** | a firewall rule **added, changed or deleted** | that a deletion was unusual. **Measured 200+ per collection on CLEAN hosts** — Windows churns rules constantly during policy refresh | measured 2026-09-17 | — |
+| **evtx.bits** | a **background transfer** — a download that leaves **no browser history at all** | the file's destination path in most records | parser reads 3/4/59/60 | browser, usn |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -103,7 +115,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
 *consistently* for the evidence to lie. Seven families was the minimum for the
-property to hold at all; the pipeline now parses **twenty**.
+property to hold at all; the pipeline now parses **thirty**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -116,7 +128,7 @@ this document's thesis demonstrated on real evidence.
 
 **Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
 62cb065; SAM, SRUM, scheduled tasks and the NTUSER Explorer keys landed today,
-taking the pipeline from 7 families to **20** (19 of which appear in these
+taking the pipeline from 7 families to **30** (29 of which appear in these
 collections -- `typedpaths` parses but the key is empty on both hosts).
 The ⛔ markers those closed have been cleared from the table above rather than
 left standing — a matrix that understates what is parsed is as misleading as
@@ -132,13 +144,27 @@ one that overstates it.
 | **Scheduled tasks** — `scheduled_task` | 4 | The **only** record that a task exists: 4698 is off by default and measures 0 across all five collections. Unlike services, there is no enabled-by-default event to fall back on. 222 events on `s1_v3`, of which 115 are COM actions with no command line at all |
 | **NTUSER Explorer keys** — `userassist`, `recentdocs`, `typedpaths`, `runmru` | 6 | **Per-user execution and file access, attributed by construction.** On `s1_v2`, whose Security log was cleared, UserAssist names `janed` as the account that ran the payload 28 times — while Prefetch records the same execution, to the second, with no principal at all |
 | **Shell links** — `lnk` | 4 | **CD-013 reopened and measured.** Two links on `s1_v2` name a removable volume — serial `18334A83`, label `JOE` — that NO other family in the pipeline mentions, in any collection. A device touched the machine and the only record is a 1 KB link |
+| **JumpLists** — `jumplist` | 1 | **Which application** opened each file, carried by no other family. Also reveals four paths on that removable volume the Recent links never recorded |
+| **USN journal** — `usn` | 3 | **Rename**, and deletions that never reached the bin. Caught `invoice_scan_marker.txt` — the payload's side effect, one second after execution, named by no execution-evidence family |
+| **Recycle Bin** — `recyclebin` | 1 | A deletion **with the original full path**, which the journal cannot supply. `s1_v2` holds nine deletions of the payload at three sizes over four days |
+| **Shellbags, Timeline, PS history** — `shellbags`, `timeline`, `ps_history` | 3 | Folders browsed; **how long a person used a program**; commands typed at a prompt regardless of logging |
+| **Five EVTX channels** — `ps_classic`, `defender`, `winlogon`, `firewall`, `bits` | 4 | Selected by surveying all 100 unparsed channels. Closes the legacy-PowerShell gap this document has carried as stated since it was written |
 
 ### Still collected and not parsed
 
 | Unparsed family | Rows it would close | Why it matters |
 |---|---|---|
-| **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
-| **JumpLists** (`*.automaticDestinations-ms`, `*.customDestinations-ms`) | 1 | 6-18 and 6-12 per collection. OLE compound files holding embedded shell links plus an **application id** — which application opened each file, carried by no family now. The LNK decoding they would reuse is in place |
+| **`$MFT`** (361 MB in `s1_v3`) | 4 | Resolves USN's MFT reference numbers to **full paths**, and is the only artefact attesting to **timestomping**. Needs streaming plus an index — see the feasibility study |
+| **`$LogFile`**, **`$Boot`**, **`$Secure_$SDS`** | 1 | Transaction-level NTFS detail and volume metadata. `$LogFile` can recover very recent operations the journal has already rolled past |
+| **Defender `MPLog`** (17 files) | 1 | Scan history in a proprietary text format, including paths scanned and threats named |
+| **`WebCacheV01.dat`** | 1 | Legacy IE/Edge cache and history in an ESE database. Both hosts used Chromium Edge, whose history is already parsed |
+| **95 remaining EVTX channels** | 0 | Surveyed 2026-09-17: the largest is Store/Operational with 21,068 rows of app-install telemetry. **None carries an attestation the parsed families lack** — the five taken were chosen on that basis, and this is a measured judgement rather than a backlog |
+
+**Correctly unparsed**, and not a gap: registry transaction logs (`.LOG1`,
+`.LOG2`) hold no committed values; `.chk`, `.jrs` and `.jfm` are ESE journals
+and checkpoints; `desktop.ini` is a folder-view setting; KAPE's own
+`ConsoleLog.txt`, `CopyLog.csv` and `SkipLog.csv` describe the collection, not
+the machine.
 
 **The map is honest about this:** every ⛔ is a stated gap, not a silent one. A
 corroboration marked ⛔ is a corroboration this pipeline cannot currently
