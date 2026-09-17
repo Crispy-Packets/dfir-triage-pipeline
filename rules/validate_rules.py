@@ -204,6 +204,11 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # Added 2026-09-17. An MFT record attests that a file EXISTED with these
     # times; it is not a log of an event occurring.
     "mft": "presence",               # mft.py MftParser.parse
+    # Added 2026-09-17. Neither carries a wall-clock time: the log has only
+    # LSNs, and the servicing XML has none at all. Both say the record IS
+    # there, not when it was written.
+    "ntfs_logfile": "presence",      # ntfs_logfile.py NtfsLogFileParser.parse
+    "txf_pending": "presence",       # txf_pending.py TxfPendingParser.parse
 }
 
 #: Uncurated EVTX channels are named from their filename at parse time --

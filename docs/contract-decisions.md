@@ -110,6 +110,42 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. $LogFile and the TxF servicing log -- BOTH OF
+        WHICH I HAD DISMISSED AS UNPARSEABLE WITHOUT TESTING THE CLAIM.
+
+        C\$LogFile                   ->  ntfs_logfile  file_referenced
+        $TxfLog\$T                   ->  txf_pending   servicing_pending /
+                                                       component_version_change
+
+        $LogFile was dismissed on the strength of its first four bytes being
+        RSTR. Measured: 16,382 RCRD pages, 4001 of 4001 sampled with a valid
+        update sequence array, zero torn, and invoice_scan_marker.txt among the
+        recovered names. It is the same page shape $MFT uses.
+
+        $T was dismissed as "TxF metadata, no per-file records". Measured:
+        147,668 printable characters of Component Based Servicing XML naming
+        KB5033052, 47 component version changes and 2 deployment installs --
+        and ZERO on every other collection, so it discriminates.
+
+        NEITHER IS PARSED AS A STRUCTURE, and both docstrings say so. $LogFile
+        is scanned for $FILE_NAME-shaped runs rather than by opcode, and $T is
+        recovered by pattern because TxF interleaves 290 pairs of \x01\x00
+        into the character stream, splitting ProcessorArchitecture mid-word and
+        leaving a document ET cannot balance.
+
+        THE STATED LIMIT ON ntfs_logfile: a recovered name MAY BE A SUFFIX of
+        the real filename. The length/namespace pair matches at offsets inside
+        a long name, and two byte-level filters were written to reject those
+        and BOTH FAILED -- distinguishing them needs opcode parsing.
+        _drop_suffix_fragments removes the 8% that appear beside their parent
+        in one page; cross-page fragments survive and are visible in the
+        output. The family is usable for "did this name appear in the log" and
+        must NOT be treated as authoritative. mft and usn carry authoritative
+        names; this exists for the window they no longer cover.
+
+        Both are `presence`: $LogFile has only LSNs and $T has no time at all.
+        Deriving a timestamp from an LSN would be a fabrication.
+
         Added 2026-09-17. EVERY remaining EVTX channel, and the rest of the
         browser History database.
 

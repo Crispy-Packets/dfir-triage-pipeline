@@ -49,3 +49,5 @@ from . import security_hive  # noqa: E402,F401
 from . import registry_txlog  # noqa: E402,F401
 from . import browser_profile  # noqa: E402,F401
 from . import mft  # noqa: E402,F401
+from . import ntfs_logfile  # noqa: E402,F401
+from . import txf_pending  # noqa: E402,F401

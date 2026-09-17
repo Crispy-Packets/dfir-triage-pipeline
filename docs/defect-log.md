@@ -1126,3 +1126,56 @@ is absent, and `test_no_timestomping_verdict_is_emitted` pins the absence.
 than to a base rate**: measure before asserting. The difference here is that
 the assertion would have been a per-event detail rather than a rule, which is
 exactly where an unmeasured claim is easiest to ship unnoticed.
+
+---
+
+## D-052  Two files were called unparseable without the claim being tested
+
+Found 2026-09-17, when the assessment was challenged.
+
+Three files were reported to the user as "not parseable", with a reason given
+for each. Two of the three reasons were wrong, and neither had been tested --
+both judgements came from reading a header, not from attempting a parse.
+
+**`$LogFile`** was dismissed because its first four bytes are `RSTR`, a restart
+area rather than a record signature. Measured: **16,382 `RCRD` pages, 4001 of
+4001 sampled with a valid update sequence array, zero torn**, and the string
+`invoice_scan` present seven times. The page structure is the same shape `$MFT`
+uses -- a format this pipeline already parses.
+
+**`$T`** was dismissed as "TxF metadata, no per-file records". Measured:
+**147,668 printable characters of Component Based Servicing XML**, naming
+KB5033052, 47 component version changes and 2 deployment installs.
+
+**`MpWpp*.bin`** was the one correct dismissal, and testing it produced a
+better reason than the original guess: no ETW marker, and the only readable
+strings are the filename and a timezone reference. The payload is keyed to a
+TMF schema absent from the collection.
+
+**The failure mode is specific and worth naming.** Every other wrong claim in
+this project was a number asserted without measuring. This was a
+CAPABILITY claim asserted without attempting -- "I cannot parse this" reads as
+a technical limit, so it invites no verification, while functioning exactly
+like an unmeasured base rate. The standing rule now covers both: measure before
+asserting a number, ATTEMPT before asserting an inability.
+
+**Two further errors inside the fix**, recorded because they show the same
+pattern at smaller scale:
+
+Recovering names from `$LogFile` produced truncated fragments, because the
+length/namespace byte pair that marks a `$FILE_NAME` also matches at offsets
+INSIDE a long name -- UTF-16 puts a zero high byte after every ASCII character,
+and 0 is a valid namespace. Two byte-level filters were written to reject
+them. **Both were reasoned from what the bytes ought to look like, and both
+changed nothing** -- the output was byte-identical each time.
+
+The rule that worked was derived from the OUTPUT instead: a genuine filename is
+not a strict suffix of another genuine filename on the same page. 1,496 of
+18,534 removed, 8%, with no scenario name shadowed. Cross-page fragments
+survive, and rather than guess a third time that limit is stated in the
+parser's docstring and pinned by a test.
+
+`$T` likewise defeated three attempts to parse it as XML: the declaration
+starts at byte 3, TxF injects 290 pairs of `\x01\x00` mid-attribute, and
+removing them still leaves a document `ET.fromstring` cannot balance. It is
+recovered by pattern, and the docstring says it is never parsed as a tree.
