@@ -167,6 +167,10 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     "recentdocs": "presence",        # ntuser_explorer.py _mru_events
     "typedpaths": "presence",        # ntuser_explorer.py _mru_events
     "runmru": "presence",            # ntuser_explorer.py _mru_events
+    # Added 2026-09-17. A LNK's timestamps describe the TARGET file, copied
+    # into the link -- the OS logged no event at that instant. `presence` is
+    # the honest label, which is also why a link outlives its target.
+    "lnk": "presence",               # lnk.py LnkParser.parse
 }
 
 #: Families where timestamp_type varies BY RECORD rather than by family, so the

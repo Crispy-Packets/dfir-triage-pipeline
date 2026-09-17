@@ -37,3 +37,4 @@ from . import system_hive  # noqa: E402,F401
 from . import sam_hive  # noqa: E402,F401
 from . import srum  # noqa: E402,F401
 from . import scheduled_tasks  # noqa: E402,F401
+from . import lnk  # noqa: E402,F401

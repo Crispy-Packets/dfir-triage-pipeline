@@ -73,6 +73,10 @@ defect number that established it.
 | | | **when** it was opened. The timestamp is the containing key's last write, shared by every sibling value | **D-027**; `value_count_in_key` says how many share it | LNK ⛔, `$MFT` ⛔ |
 | **typedpaths** | a path was **typed into the Explorer address bar** by a named account | anything, when the key is empty — **measured 0 across all five collections** | measured 2026-09-17 | recentdocs, runmru |
 | **runmru** | a command was **typed into the Run dialog** by a named account | that the command ever executed, or succeeded | Windows design | prefetch, userassist, evtx.powershell |
+| **lnk** | a file was **opened through the shell**: its full path, the **volume serial and drive type** of the volume it lived on, its size, and three FILETIMEs copied from the target file | **that the target still exists.** The times describe the target, copied into the link, which is why a link outlives the file it names | CD-019; `timestamp_type=presence` | `$MFT` ⛔, recentdocs |
+| | | **who** opened an installed link. Start Menu, Desktop and Quick Launch links are written by software, not by use — 15-16 per collection regardless of activity | measured 2026-09-17; `lnk_location` separates them | userassist, recentdocs |
+| | | **which application** opened the file | — | JumpLists ⛔ |
+| | | anything, for a protocol link (`ms-settings:`). Those name a URI handler and carry no path at all | parser source | — |
 | **browser** | a file was **downloaded**; its size, MIME type, source URL, target path | **page visits.** The parser reads `FROM downloads` only; `urls` and `visits` are never read | parser source; measured — browsing yields zero events | `Zone.Identifier` ADS ⛔, `$MFT` ⛔ |
 | | | that the file was **executed** | — | Prefetch, Amcache |
 
@@ -99,7 +103,7 @@ Read as: **if the left family is suppressed, the right families still attest.**
 **An adversary suppressing one family leaves the others intact.** That is not a
 detection claim; it is a statement about what would have to be falsified
 *consistently* for the evidence to lie. Seven families was the minimum for the
-property to hold at all; the pipeline now parses **nineteen**.
+property to hold at all; the pipeline now parses **twenty**.
 
 **Measured on `s1_v2`:** a single `wevtutil cl security` destroyed the entire
 Security-log record of arrival, execution and persistence — and all three
@@ -112,7 +116,7 @@ this document's thesis demonstrated on real evidence.
 
 **Updated 2026-09-17.** The SYSTEM hive (Shimcache, BAM, Services) landed in
 62cb065; SAM, SRUM, scheduled tasks and the NTUSER Explorer keys landed today,
-taking the pipeline from 7 families to **19** (18 of which appear in these
+taking the pipeline from 7 families to **20** (19 of which appear in these
 collections -- `typedpaths` parses but the key is empty on both hosts).
 The ⛔ markers those closed have been cleared from the table above rather than
 left standing — a matrix that understates what is parsed is as misleading as
@@ -127,13 +131,14 @@ one that overstates it.
 | **SRUM** — `srum` | 4 | **Transfer volume**, which no other family carries. 6,179 rows on `clean_a`. Its own limits are now stated above rather than assumed: it did not record the scenario binary on either host, for two different and measured reasons |
 | **Scheduled tasks** — `scheduled_task` | 4 | The **only** record that a task exists: 4698 is off by default and measures 0 across all five collections. Unlike services, there is no enabled-by-default event to fall back on. 222 events on `s1_v3`, of which 115 are COM actions with no command line at all |
 | **NTUSER Explorer keys** — `userassist`, `recentdocs`, `typedpaths`, `runmru` | 6 | **Per-user execution and file access, attributed by construction.** On `s1_v2`, whose Security log was cleared, UserAssist names `janed` as the account that ran the payload 28 times — while Prefetch records the same execution, to the second, with no principal at all |
+| **Shell links** — `lnk` | 4 | **CD-013 reopened and measured.** Two links on `s1_v2` name a removable volume — serial `18334A83`, label `JOE` — that NO other family in the pipeline mentions, in any collection. A device touched the machine and the only record is a 1 KB link |
 
 ### Still collected and not parsed
 
 | Unparsed family | Rows it would close | Why it matters |
 |---|---|---|
 | **`$MFT`** (361 MB in `s1_v3`) | 6 | The only artefact attesting to **file deletion** and **timestomping**. The only corroborator for a deleted family file. Needs streaming plus a SQLite index — see the feasibility study |
-| **LNK / JumpLists** | 3 | File access including **removable media no longer present** — reopens CD-013 |
+| **JumpLists** (`*.automaticDestinations-ms`, `*.customDestinations-ms`) | 1 | 6-18 and 6-12 per collection. OLE compound files holding embedded shell links plus an **application id** — which application opened each file, carried by no family now. The LNK decoding they would reuse is in place |
 
 **The map is honest about this:** every ⛔ is a stated gap, not a silent one. A
 corroboration marked ⛔ is a corroboration this pipeline cannot currently

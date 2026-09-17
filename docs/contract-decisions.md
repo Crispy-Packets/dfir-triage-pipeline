@@ -110,6 +110,32 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. Shell links, which carry a volume.
+
+        *.lnk  ->  lnk  file_opened
+
+        `file_opened` is SHARED with recentdocs, deliberately: both record that
+        a file was opened through the shell, and a second spelling would break
+        any chain joined on event_type. What differs is the strength, and that
+        is in the details rather than the vocabulary -- RecentDocs holds a NAME
+        and a shared key timestamp (D-027); a LNK holds the full path, the
+        volume serial, the target's size and three FILETIMEs copied from the
+        target file.
+
+        THIS IS THE FAMILY THAT REOPENS CD-013. The volume serial and drive
+        type describe the volume the TARGET lived on, so a link attests that a
+        file was opened from a device that is not in the image. Measured on
+        s1_v2: two links name E:\ with serial 18334A83, drive_type
+        `removable`, label `JOE` -- and ZERO other families across the whole
+        pipeline mention that volume or serial.
+
+        timestamp_type is `presence`, not `recorded`. The times describe the
+        TARGET, not the link: the OS did not log an event at that instant, it
+        copied a property of a file. The honest claim is that this file existed
+        with this timestamp when the link was written -- which is why a LNK
+        survives the target's deletion and is evidence of a file that may no
+        longer exist.
+
         Added 2026-09-17. The Explorer keys in NTUSER.DAT, which are
         per-user BY CONSTRUCTION.
 

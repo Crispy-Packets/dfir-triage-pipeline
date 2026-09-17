@@ -276,6 +276,53 @@ opened through the shell, not that a file exists: entry 15 on `clean_b` decodes
 to a URL query string rather than a filename, which is why the recorded string
 is reported without asserting it is a path.
 
+### Shell links (`lnk`), added 2026-09-17
+
+One event per file. `Event.path` is the target's **full local path** when the
+link carries one, falling back to the relative path; a link with neither yields
+no event. `Event.user` is the profile owner when the link lives under `Users\`.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `lnk_location` | str | `lnk` | `recent` or `installed`. Links under `AppData\Roaming\Microsoft\Windows\Recent` were written by Explorer when a user opened something; those under Start Menu, Desktop and Quick Launch were installed by software and describe the machine's configuration rather than anyone's activity. **The distinction matters for every rule**: an installed link is not evidence of use. Measured on `s1_v2`: 38 recent, 16 installed. |
+| `target_size` | str(int) | `lnk` | The target file's size in bytes, as recorded in the link header. `0` for directories and for targets that no longer existed when the link was written. |
+| `volume_serial` | str | `lnk` | Eight uppercase hex digits, from the volume the **target** lived on. Measured: `A62AF538` is host 1's system disk, `5659C38D` the transfer volume, `18334A83` a removable device present in `s1_v2` alone. |
+| `volume_label` | str | `lnk` | The volume's label, when the link records one. `New Volume`, `JOE`. |
+| `drive_type` | str | `lnk` | `fixed`, `removable`, `remote`, `cdrom`, `ramdisk`, `no_root_directory` or `unknown`, decoded from the numeric field. **This is the CD-013 field.** |
+| `relative_path` | str | `lnk` | The path relative to the link, when present — `..\..\..\Downloads\Files.zip`. |
+| `working_dir` | str | `lnk` | The working directory, when present. |
+| `arguments` | str | `lnk` | Command-line arguments, when present. Measured 2 of 69 on `s1_v2`; a Recent link normally has none, so their presence on one is worth an analyst's attention. |
+| `target_created` | str | `lnk` | ISO-8601 Z. **A property of the target file**, copied into the link, not of the link itself. Omitted when the link recorded zero. |
+| `target_accessed` | str | `lnk` | Same. |
+| `target_modified` | str | `lnk` | Same, and the event's timestamp when present — the strongest claim the link makes about *when*. |
+
+**`timestamp_type` is `presence`, not `recorded`.** The three FILETIMEs describe
+the **target**, not the link: the OS logged no event at that instant, it copied
+a property of a file. The honest claim is *this file existed with this timestamp
+when the link was written* — which is exactly why a link survives the target's
+deletion and is evidence of a file that may no longer exist.
+
+**Parsing traps, both bounds-checked.** Every section after the 76-byte header
+is length-prefixed and positioned relative to the one before it, so one
+mis-sized field shifts everything after it and yields plausible strings read out
+of the middle of other structures, without raising:
+
+- **StringData counts CHARACTERS, not bytes.** All 256 links in this corpus are
+  Unicode, so the byte length is `count * 2`. Read as bytes, every later section
+  lands mid-string.
+- **LinkInfo offsets are relative to the start of the LinkInfo structure**, not
+  to the file. Treated as absolute they read from inside the header.
+
+A section that would run past the end of the file ends the parse, and the fields
+gathered so far are kept: a truncated link still attests to its header.
+Measured: **256 files across five collections, 0 raised, 0 overran.**
+
+**Files that yield no event.** Protocol links (`ms-settings:`,
+`ms-gamingoverlay:`) name a URI handler rather than a file and carry no path at
+all. A `.lnk` whose header is not a shell link yields nothing rather than
+raising — a mislabelled file is not a parser fault, and raising would inflate
+the failure count (D-024's reasoning).
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never
