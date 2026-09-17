@@ -592,6 +592,34 @@ the locator produced 61 duplicates and violated CD-004; the locator is
 A search term whose URL row carries no `last_visit_time` is `presence`-typed
 rather than given an invented time.
 
+### WebCache (`webcache`), added 2026-09-17
+
+The WinINet history, cache and transfer index -- a different record from the
+Chromium `History` database, not a duplicate.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `url` | str | `webcache` | The address, with the `Visited:` marker and any date-range prefix stripped. Also `Event.path`. |
+| `container` | str | `webcache` | `History`, `DOMStore`, `BackgroundTransferApi`, or `MSHist01<start><end>` for per-day history. **Read from the `Containers` index, never inferred from the table number.** |
+| `container_id` | str(int) | `webcache` | The numeric id, so a finding can be traced back to `Container_<n>`. |
+| `cache_directory` | str | `webcache` | The on-disk directory the container indexes, from `Containers.Directory`. |
+| `access_count` | str(int) | `webcache` | How many times the entry was accessed, when non-zero. |
+| `cached_bytes` | str(int) | `webcache` | `FileSize` of the cached entry, when non-zero. **The response body itself is not read.** |
+| `created`, `modified`, `expires` | str | `webcache` | ISO-8601 Z, when the row records them. |
+
+**`Event.user` comes from inside the record.** `Visited: vboxuser@https://...`
+puts the account in the data, so a visit is attributed without inferring the
+user from the file's path — measured on `s1_v2`, three profiles yield Youssef
+62, janed 31, admin_local 18.
+
+**`Content` containers are not emitted.** They index cache files describing what
+a page loaded rather than what a person did, and on a real machine they number
+in the tens of thousands.
+
+**Timestamps are FILETIME** — a third convention beside `browser`'s WebKit
+microseconds and `srum`'s OLE dates. A row with no `AccessedTime` is `presence`
+rather than given an invented time, which makes this family mixed by record.
+
 ## Derived path fields (B-9)
 
 Emitted by every parser that carries a path. These are **additions**, never

@@ -110,6 +110,37 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         by the same contract that governs those two: a second spelling for one
         concept silently breaks every chain joined on event_type.
 
+        Added 2026-09-17. WebCacheV01.dat, the WinINet index.
+
+        WebCacheV01.dat  ->  webcache  page_visited / dom_storage /
+                                       background_transfer
+
+        A different record from the Chromium History database, not a duplicate.
+        It carries three things Chromium's does not:
+
+          - `Visited: vboxuser@https://...` -- THE ACCOUNT IS INSIDE THE
+            RECORD, so a visit is attributed without inferring the user from
+            the file's location. Measured on s1_v2: Youssef 62, janed 31,
+            admin_local 18, from three separate profile databases.
+          - per-day containers (MSHist012026091020260911) bounding a visit to
+            a date range.
+          - BackgroundTransferApi rows: downloads the OS performed, which leave
+            no Chromium history at all.
+
+        THE Containers TABLE IS THE INDEX AND IS READ FIRST. Rows live in
+        Container_<n> tables whose number means nothing alone; reading
+        Container_5 without the mapping would report cache entries as browsing
+        history. `Content` containers are deliberately NOT emitted -- they
+        index cache files describing what a page loaded, not what a person did.
+
+        Timestamps are FILETIME, which is a third convention beside browser.py's
+        WebKit microseconds and srum.py's OLE dates. Each parser states its own
+        because the three are not interchangeable.
+
+        `page_visited` is SHARED with browser.py by the usual contract: both
+        record that a page was visited, and a second spelling would break any
+        chain joined on event_type.
+
         Added 2026-09-17. $LogFile and the TxF servicing log -- BOTH OF
         WHICH I HAD DISMISSED AS UNPARSEABLE WITHOUT TESTING THE CLAIM.
 

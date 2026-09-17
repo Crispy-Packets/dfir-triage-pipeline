@@ -220,10 +220,21 @@ class TestTimelineAgainstRealDatabase:
             assert event.source_file == TIMELINE_REL
             assert event.user == "vboxuser"
 
-    def test_an_empty_database_yields_nothing_rather_than_raising(self):
-        """Measured on host 1's admin_local: an account that logged on but
-        never used the Activity Feed has an initialised, table-less database.
-        Absence of evidence, not a parser fault (D-024)."""
+    def test_the_wal_carries_activity_the_database_does_not(self):
+        """AMENDED 2026-09-17, and the amendment is the point.
+
+        This asserted that `admin_local`'s database yields NOTHING, and the
+        docstring recorded the conclusion I drew from that: "an account that
+        logged on but never used the Activity Feed". Both were wrong.
+
+        The `.db` is 4,096 bytes and genuinely empty. Its `-wal` is 1.7 MB and
+        holds **17 real activities**, MSEdge and notepad.exe among them. The
+        account used the Activity Feed normally; none of it had been
+        checkpointed into the database when the machine was collected.
+
+        `immutable=1` was hiding all of it, and the absence looked like
+        evidence. See D-053.
+        """
         rel = (
             "C/Users/admin_local/AppData/Local/ConnectedDevicesPlatform/"
             "L.admin_local/ActivitiesCache.db"
@@ -231,7 +242,22 @@ class TestTimelineAgainstRealDatabase:
         path = EVIDENCE / "collection_clean_b" / rel
         if not path.is_file():
             pytest.skip("admin_local timeline database not present")
-        assert list(TimelineParser().parse(path, rel)) == []
+        events = list(TimelineParser().parse(path, rel))
+        assert events, "the WAL rows are being dropped again"
+        assert any("notepad" in str(e.path).lower() for e in events)
+
+    def test_a_database_with_no_activity_table_still_yields_nothing(self, tmp_path):
+        """The D-024 property the amended test above used to cover: a file
+        that is not an Activity database must yield nothing rather than
+        raising, and must not be mistaken for one."""
+        import sqlite3
+
+        path = tmp_path / "ActivitiesCache.db"
+        connection = sqlite3.connect(str(path))
+        connection.execute("CREATE TABLE Unrelated (x INTEGER)")
+        connection.commit()
+        connection.close()
+        assert list(TimelineParser().parse(path, "x/ActivitiesCache.db")) == []
 
 
 @needs_history

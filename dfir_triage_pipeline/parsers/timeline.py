@@ -37,7 +37,9 @@ places the events decades away without raising.
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
+import tempfile
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -132,11 +134,26 @@ def decode_payload(raw: Any) -> dict[str, Any]:
 
 
 def _rows(abs_path: Path) -> list[sqlite3.Row]:
-    """Activity rows, read without modifying the file.
+    r"""Activity rows, INCLUDING those still in the write-ahead log.
 
-    `immutable=1` opens read-only and tells SQLite the file cannot change,
-    which also avoids touching the -wal and -shm files sitting beside it. The
-    evidence is never written to (CD-016).
+    **The database and its `-wal` are copied to a temporary directory and
+    opened normally there**, which lets SQLite replay the log and recover rows
+    that were never checkpointed into the `.db`. The originals are only ever
+    read (CD-016); the replay happens on the copy.
+
+    This parser used `immutable=1` on the evidence in place, which is safe --
+    it prevents replay and touches no sibling file -- but `immutable=1`
+    IGNORES THE WAL ENTIRELY. Measured on `s1_v3`:
+
+        rows with the WAL ignored   182
+        rows with the WAL replayed  205
+
+    **23 activities existed only in the log**, and the most recent of them are
+    PowerShell. A parser that silently drops the newest evidence in a database
+    is worse than one that drops the oldest, because an incident's tail is
+    where the activity is. See D-053.
+
+    A collection with no `-wal` beside the database behaves exactly as before.
 
     **Rows are fetched EAGERLY and the connection closed before returning.**
     This was a generator with `yield from` inside `try/finally`, which holds
@@ -146,7 +163,27 @@ def _rows(abs_path: Path) -> list[sqlite3.Row]:
     resulting `OSError: Too many open files` surfaced in a DIFFERENT parser
     (the USN journal, which simply happened to open a file next). See D-050.
     """
-    connection = sqlite3.connect(f"file:{abs_path}?immutable=1", uri=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        staged = Path(tmpdir) / abs_path.name
+        try:
+            shutil.copy2(abs_path, staged)
+        except OSError:
+            return []
+        # The journal files must keep their exact names beside the copy, or
+        # SQLite will not find them and the replay silently yields nothing.
+        for suffix in ("-wal", "-shm"):
+            sibling = Path(str(abs_path) + suffix)
+            if sibling.is_file():
+                try:
+                    shutil.copy2(sibling, Path(str(staged) + suffix))
+                except OSError:
+                    pass
+        return _read_staged(staged)
+
+
+def _read_staged(staged: Path) -> list[sqlite3.Row]:
+    """Read the staged copy, letting SQLite recover the WAL into it."""
+    connection = sqlite3.connect(str(staged))
     connection.row_factory = sqlite3.Row
     try:
         # An initialised-but-unused database has no Activity table at all --

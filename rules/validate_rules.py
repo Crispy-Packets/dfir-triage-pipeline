@@ -209,6 +209,10 @@ TIMESTAMP_TYPE_BY_ARTIFACT = {
     # there, not when it was written.
     "ntfs_logfile": "presence",      # ntfs_logfile.py NtfsLogFileParser.parse
     "txf_pending": "presence",       # txf_pending.py TxfPendingParser.parse
+    # Added 2026-09-17. WinINet writes the row as the request happens, so the
+    # accessed time is an observation. A row with no AccessedTime falls back to
+    # presence, making this family mixed by record like sam and userassist.
+    "webcache": "recorded",          # webcache.py WebCacheParser.parse
 }
 
 #: Uncurated EVTX channels are named from their filename at parse time --
@@ -229,7 +233,7 @@ GENERIC_EVTX_PREFIX = "evtx.x."
 #: timestamps are key writes clustered at image-build time.
 #:
 #: A rule may still window `sam`, but must say it has dealt with this.
-MIXED_TIMESTAMP_TYPE = frozenset({"sam", "userassist"})
+MIXED_TIMESTAMP_TYPE = frozenset({"sam", "userassist", "webcache"})
 
 # schema.md 4.7 (D-027): ten downloads share the name invoice_scan.exe; only size
 # and source host separate the scenario from nine decoys.

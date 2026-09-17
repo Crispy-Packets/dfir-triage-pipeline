@@ -1179,3 +1179,48 @@ parser's docstring and pinned by a test.
 starts at byte 3, TxF injects 290 pairs of `\x01\x00` mid-attribute, and
 removing them still leaves a document `ET.fromstring` cannot balance. It is
 recovered by pattern, and the docstring says it is never parsed as a tree.
+
+---
+
+## D-053  `immutable=1` hid every uncommitted row, and the absence looked like evidence
+
+Found 2026-09-17, when the user challenged the "SQLite journals are not
+evidence" exclusion.
+
+`timeline.py` opened `ActivitiesCache.db` with `immutable=1`, which is the
+correct flag for reading evidence in place: it prevents SQLite replaying the
+write-ahead log, so the collected file is never modified (CD-016).
+
+**It also ignores the WAL entirely**, and the WAL is where the newest rows live.
+
+    collection_s1_v3, vboxuser
+      rows with the WAL ignored    182
+      rows with the WAL replayed   205      23 rows only in the log
+
+    collection_clean_b, admin_local
+      database  4,096 bytes, EMPTY
+      -wal      1,734,552 bytes, 17 activities including notepad.exe
+
+**The second case is the serious one.** `admin_local`'s database is genuinely
+empty, and this project recorded the conclusion that followed: "an account that
+logged on but never used the Activity Feed". A test asserted it. The docstring
+explained it. It was wrong -- the account used the feed normally and none of it
+had been checkpointed.
+
+An unread WAL does not produce an error or a gap. It produces a SMALLER,
+INTERNALLY CONSISTENT answer that invites a confident wrong conclusion.
+
+**Fix:** the database and its `-wal`/`-shm` are copied to a temporary directory
+and opened normally THERE, so SQLite performs the recovery on the copy. The
+originals are only ever read -- verified by hashing both before and after a
+parse, unchanged. A collection with no `-wal` behaves exactly as before.
+
+**Scope check still owed.** `browser.py` and `browser_profile.py` use the same
+`immutable=1` pattern on `History` and the profile databases, and those have
+`-journal` siblings in these collections. The same measurement should be run
+there before assuming the rows are all present.
+
+**Same family as D-051 and D-052.** D-051 was a derived signal asserted without
+measuring; D-052 was a capability asserted without attempting; this is a
+NEGATIVE RESULT asserted without checking whether the reading method could see
+the data. All three produce output that looks correct.
