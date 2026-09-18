@@ -118,7 +118,7 @@ to it. These are the only rows where "write a rule" is the correct next action.
 | **T1053.005** Scheduled Task | disk-resident | writable-now | `observable-unwritten` | `scheduled_task`, 222 rows on s1_v3 — needs a user-writable shape predicate, not a name list (D-040) |
 | **T1027** Obfuscated Files | disk-resident | writable-now | `observable-unwritten` | `evtx.powershell` 4104 already parsed; R-ATOMIC-0003's encoded-command branch matches 0 corpus-wide but is the canonical form. **`ps_history` must NOT be used to widen this** — see the leakage note in §2.6 |
 | **T1074.001** Local Data Staging | disk-resident | writable-now | `observable-unwritten` | `usn`/`mft` — archive creation in a temp/download directory |
-| **T1052.001** Exfiltration over USB | disk-resident | writable-now | `observable-unwritten` | `lnk` + `shellbags` + `usn`. **CD-013 evidence exists**: two links on s1_v2 name removable volume serial `18334A83` label `JOE`, which no other family mentions |
+| ~~**T1052.001** Exfiltration over USB~~ | disk-resident | writable-now | **`not-observable` in this corpus (D-064)** — moved out of the backlog 2026-09-18 on inspection | The capability is real: `lnk` and `jumplist` record a removable volume's serial and label, surviving the device's removal, and CD-013's point stands. **But this corpus's only removable-media activity is the operator's own.** `drive_type` measures 9 removable rows on `s1_v2` and 0 on the other four — apparently the best single-field base rate in the project — and the rows are `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`, `E:\handoff` and personal media from 2020/2024. **It is the USB stick the collections were carried off on**, browsed on 2026-08-20, before the `s1` directory existed. A rule here detects the evidence-handling procedure. `s1_v3` has zero removable rows |
 | **T1071.001** Web C2 / download | disk-resident | writable-now | `observable-unwritten` | `webcache` `background_transfer` (20 rows s1_v3) + `evtx.bits`. A BITS transfer leaves NO browser history |
 | **T1078.003** Valid Accounts — Local | disk-resident | writable-now | `observable-unwritten` | `sam` standalone shape rule, no join needed. **The predicate must be read off the real `details` first — see §3.3**: `password_not_required` is a token inside `account_flags`, and on its own it matches Guest and DefaultAccount on every host. Requires `rid >= 1000` plus `well_known` absent. Full population is 7 accounts per host, so the base rate is the whole population rather than a sample |
 
@@ -333,26 +333,34 @@ has 5 autoruns and 4 deleted executables and **zero** joins between them.
 The pattern across §3.2, §3.3 and this section: **the family that carries the
 signal and the property that discriminates are rarely the same thing.**
 
-### 3.6 The backlog is seven rows, not two hundred
+### 3.6 The backlog is five rows, not two hundred — and it shrinks on contact
 
-§2.2 is the entire writable-now, unwritten set: T1070.004, T1053.005, T1027,
-T1074.001, T1052.001, T1071.001, T1078.003. That is a finite and measured
-list. Everything else is covered, blocked with a named blocker, measured and
-dropped with a figure, or out of scope with a reason.
+§2.2 started at seven writable-now unwritten rows. **Two have since left it by
+being measured**, and the remaining five are T1053.005, T1027, T1074.001
+(now covered by R-CORR-0006), T1071.001 and T1078.003.
 
-Two of the seven changed shape the moment they were measured rather than
-reasoned about, which is why §4 says `observable-unwritten` is not a promise:
+**Three of the original seven changed shape the moment they were measured
+rather than reasoned about**, which is why §4 says `observable-unwritten` is a
+statement about evidence and join keys, never a promise that a rule will
+discriminate:
 
-* **T1070.004** — the obvious form of the rule (execution followed by deletion
-  of the same name) fires hardest on `clean_b`, which has 293 `.exe` deletions
-  against `s1_v3`'s 16. The writable version anchors on `recyclebin`, whose
-  population is 0/5/14/0/1 with the single `s1_v3` row being the payload.
-* **Prefetch deletion** — moved out of the backlog entirely on measurement:
-  125 rows on `s1_v2`, zero on the other scenario host, and the names are
-  Windows aging its own cache.
+* **T1070.004** — the obvious form (execution followed by deletion of the same
+  name) fires hardest on `clean_b`, which has 293 `.exe` deletions against
+  `s1_v3`'s 16. The writable version anchors on `recyclebin` instead, and is
+  now R-CORR-0006 at 0/0/1/0/1.
+* **T1052.001 (USB exfiltration) — removed from the backlog entirely.** Its
+  base rate looked like the best in the project: 9 removable rows on `s1_v2`,
+  zero on all four other collections. The rows are
+  `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`,
+  `E:\handoff` — **the USB stick this project's own evidence was carried off
+  on**, browsed before the `s1` collection existed. D-064.
+* **Prefetch deletion** — 125 rows on `s1_v2`, zero on the other scenario
+  host, and the names are Windows aging its own cache.
 
-The pattern is the same one D-051 and the firewall EID established: a shape
-that is sound in the abstract is not a rule until its base rate is known.
+The pattern D-051 and the firewall EID established holds three more times: **a
+shape that is sound in the abstract is not a rule until its base rate is
+known, and a base rate that looks excellent still has to be read row by row.**
+Two of these three had clean numbers and the wrong meaning.
 
 ---
 

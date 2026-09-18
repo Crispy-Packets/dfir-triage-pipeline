@@ -1914,3 +1914,67 @@ One config change would otherwise re-introduce the default silently.
 The row count it uses is derived from `MIN_TRAINING_ROWS` rather than
 hard-coded, so raising that floor cannot make the assertion vacuous (D-061's
 shape).
+
+## D-064  The removable-media evidence is the operator's own collection workflow
+
+Found 2026-09-18, inspecting the T1052.001 backlog row before writing a rule
+for it.
+
+`docs/technique-coverage-grid.md` listed **T1052.001 Exfiltration over USB** as
+`observable-unwritten`, on the strength of a real and often-repeated finding:
+two LNK files on `s1_v2` name removable volume serial `18334A83`, label `JOE`,
+**which no other family in the pipeline mentions in any collection**. CD-013
+was reopened on that basis.
+
+**The signal is as clean as advertised.** `drive_type` measured across all
+five collections:
+
+    clean_a  fixed 95              clean_b  fixed 100
+    s1_v2    fixed 135, REMOVABLE 9
+    clean_c  fixed 66              s1_v3    fixed 71
+
+Nine rows on one scenario collection, zero everywhere else. By base rate alone
+it is the most discriminating single field measured in this project.
+
+**Then read the rows.**
+
+    2026-08-20 14:35   E:\collection_clean_a
+    2026-08-20 14:48   E:\collection_clean_b
+    2026-08-21 01:48   E:\collection_s1
+    2026-08-21 17:22   E:\handoff
+    2024-09-10 16:48   E:\Camera
+    2020-10-09 14:14   E:\Camera\2020-10-09-171406379.mp4   (x3)
+
+**It is the USB stick the operator used to carry the collections off the
+host.** Two of the folders browsed are named `collection_clean_a` and
+`collection_clean_b` — this project's own evidence — and they were opened on
+2026-08-20, BEFORE the `s1` collection directory existed. `handoff` is what it
+sounds like. The remaining rows are personal media from 2020 and 2024 that
+came with the stick.
+
+A rule on `drive_type: removable` would fire 9 times on `s1_v2`, zero times on
+the clean collections, look like a perfect discriminator, and **detect the
+evidence-handling procedure**.
+
+**Same class as the `ps_history` leakage recorded in
+`docs/feature-decisions.md`**, and it went undetected for longer because the
+base rate looked better. `ps_history` at least contained commands; this is a
+field whose values are 9-vs-0 and whose meaning is the opposite of what the
+count suggests.
+
+`s1_v3`, the other scenario host, carries **zero** removable rows. A signal
+present on one of two scenario hosts, where on that host it is the collection
+method, is not a signal.
+
+**T1052.001 moves from `observable-unwritten` to `not-observable` in this
+corpus**, with the reason stated. The capability is real — `lnk` and
+`jumplist` do record removable-volume serials and labels that survive the
+device's removal, and CD-013's original point stands — but **this corpus
+cannot calibrate a rule for it**, because its only removable-media activity is
+the operator's.
+
+**What would make it writable:** a collection where removable media is used
+for something other than evidence transport, and where the collections are not
+staged through the volume being measured. That is a collection-design
+constraint worth recording for any future scenario: **the evidence must not
+leave the host by a route the pipeline parses.**

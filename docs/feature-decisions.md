@@ -112,6 +112,42 @@ A numeric threshold deserves more suspicion than a name list, not less,
 because it presents as principled. The test is the same one: could the value
 be derived from the technique, or only from reading these collections?
 
+### `drive_type`, `volume_serial` and `volume_label` are excluded (2026-09-18)
+
+The third instance of this class in two days, and the one with the most
+persuasive numbers. Found while inspecting T1052.001 before writing a rule
+(D-064).
+
+`drive_type` measures **9 `removable` rows on `s1_v2` and zero on all four
+other collections**. On base rate alone it is the cleanest single field in the
+project. The rows:
+
+    2026-08-20 14:35   E:\collection_clean_a
+    2026-08-20 14:48   E:\collection_clean_b
+    2026-08-21 01:48   E:\collection_s1
+    2026-08-21 17:22   E:\handoff
+    2024-09-10 16:48   E:\Camera
+    2020-10-09 14:14   E:\Camera\2020-10-09-171406379.mp4   (x3)
+
+**It is the USB stick this project's evidence was carried off on.** Two of the
+browsed folders are named for the clean collections and were opened before the
+`s1` collection directory existed; `handoff` is what it sounds like; the rest
+is personal media that came with the stick. A feature or rule keyed here
+learns the evidence-handling procedure.
+
+Volume serial `18334A83` and label `JOE` are excluded with it, for the same
+reason and additionally because a serial is an identifier of one device in one
+lab — the `path`/`source_file` exclusion argument applies unchanged.
+
+**A COLLECTION-DESIGN CONSTRAINT for any future scenario, which is the
+generalisable part: the evidence must not leave the host by a route the
+pipeline parses.** Staging collections through a USB volume writes that
+volume's serial, label and browsed folders into `lnk`, `jumplist` and
+`shellbags` — three families the pipeline reads — and makes removable-media
+activity indistinguishable between the operator and a hypothetical actor.
+Copying over the network, or collecting to a path the parsers do not index,
+avoids it.
+
 ---
 
 ## 3. Features retained
