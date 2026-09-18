@@ -190,6 +190,13 @@ All three collections were retaken on 23–24 August. The originals are supersed
 and are not retained. The reasons are recorded here because the detection method
 forms part of the methodology.
 
+**Before planning another collection, read
+`docs/scenario-design-constraints.md`.** It carries four constraints (C-01 to
+C-04) established by measuring this corpus — each one a case where scenario
+construction wrote itself into a parsed family and read back as an attack
+signal. Three of them produced the best base rates in the project. That
+document ends with a checklist for the next collection.
+
 ### clean_a - merged runs, then a more serious fault (SUPERSEDED COLLECTION)
 
 **This section documents the ORIGINAL clean_a, which was discarded.** The

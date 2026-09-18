@@ -1973,6 +1973,10 @@ device's removal, and CD-013's original point stands — but **this corpus
 cannot calibrate a rule for it**, because its only removable-media activity is
 the operator's.
 
+**The collection constraint this establishes is C-01 in
+`docs/scenario-design-constraints.md`.** This entry records what was measured;
+that document records what the next scenario must do differently.
+
 **What would make it writable:** a collection where removable media is used
 for something other than evidence transport, and where the collections are not
 staged through the volume being measured. That is a collection-design

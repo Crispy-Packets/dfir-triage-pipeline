@@ -262,7 +262,11 @@ R-ATOMIC-0009: 4/5/0/2/0. R-CORR-0005: 1/1/0/1/0. Both fire **zero** on both
 scenario collections and non-zero on three of three clean ones.
 
 The rules are not wrong: they match account creation, and account creation
-genuinely happened during lab setup and not during either scenario. But
+genuinely happened during lab setup and not during either scenario. **The
+collection constraint this establishes is C-04 in
+`docs/scenario-design-constraints.md`** — provision lab accounts before the
+baseline snapshot, so setup appears in clean and scenario images alike and
+cancels out. But
 "T1136.001 covered" must not be read as "an account creation in this corpus
 would be caught and distinguished", because on this evidence the rules
 identify the lab's own provisioning.

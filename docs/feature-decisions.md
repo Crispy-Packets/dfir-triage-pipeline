@@ -83,6 +83,10 @@ supplying model features. The distinction matters: the artefact is sound, the
 corpus is contaminated, and only the second fact restricts what may be built
 on it.
 
+**The collection constraint this establishes is C-02 in
+`docs/scenario-design-constraints.md`** — the exclusion stays here because it
+is a feature decision; how the next scenario avoids needing it belongs there.
+
 ### `recyclebin` deleted_size and repetition count are excluded (2026-09-18)
 
 Same category, found while choosing the predicate for R-CORR-0006
@@ -112,6 +116,10 @@ A numeric threshold deserves more suspicion than a name list, not less,
 because it presents as principled. The test is the same one: could the value
 be derived from the technique, or only from reading these collections?
 
+**The collection constraint the repetition count establishes is C-03 in
+`docs/scenario-design-constraints.md`** — one attempt per scenario, from a
+restored snapshot.
+
 ### `drive_type`, `volume_serial` and `volume_label` are excluded (2026-09-18)
 
 The third instance of this class in two days, and the one with the most
@@ -139,14 +147,11 @@ Volume serial `18334A83` and label `JOE` are excluded with it, for the same
 reason and additionally because a serial is an identifier of one device in one
 lab — the `path`/`source_file` exclusion argument applies unchanged.
 
-**A COLLECTION-DESIGN CONSTRAINT for any future scenario, which is the
-generalisable part: the evidence must not leave the host by a route the
-pipeline parses.** Staging collections through a USB volume writes that
-volume's serial, label and browsed folders into `lnk`, `jumplist` and
-`shellbags` — three families the pipeline reads — and makes removable-media
-activity indistinguishable between the operator and a hypothetical actor.
-Copying over the network, or collecting to a path the parsers do not index,
-avoids it.
+**The generalisable part is a collection-design constraint, not a feature
+decision, and it is recorded as C-01 in
+`docs/scenario-design-constraints.md`:** the evidence must not leave the host
+by a route the pipeline parses. The exclusion of these three fields stays here;
+what the next scenario must do instead belongs there.
 
 ---
 
