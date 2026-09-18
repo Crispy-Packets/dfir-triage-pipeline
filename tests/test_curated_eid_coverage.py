@@ -61,14 +61,10 @@ UNMAPPED_BY_DESIGN: dict[str, dict[int, str]] = {
               "corpus where it is enabled; 30 rows cannot calibrate a rule.",
         4100: "135 rows. Engine error -- a failure, not an execution.",
     },
-    "evtx.ps_classic": {
-        800: "30 rows. **A STATED GAP IN THE ATTESTATION MATRIX**, recorded "
-             "there as 'legacy PowerShell EID 800' with the not-parsed marker "
-             "-- written when this channel was unparsed. The channel is parsed "
-             "now and the EID is dropped inside it. 800 is pipeline execution "
-             "detail carrying the command line; mapping it needs a CD-007 "
-             "entry and a details key. See D-059.",
-    },
+    # evtx.ps_classic has no undeclared EIDs: 800 was MAPPED on 2026-09-18
+    # (CD-007), closing the gap the attestation matrix had carried as stated
+    # since before this channel was parsed. See D-059 and D-060.
+    "evtx.ps_classic": {},
     "evtx.security": {
         5379: "6,117 rows, the largest dropped EID in the corpus. Credential "
               "Manager read. A burst is a documented credential-access "
@@ -140,12 +136,6 @@ def _eids_in(path: Path) -> Counter:
 
 
 def _mapped_eids(family: str) -> set[int]:
-    for attr in dir(evtx_windows):
-        if not attr.endswith("_EIDS"):
-            continue
-        value = getattr(evtx_windows, attr)
-        if not isinstance(value, dict):
-            continue
     # The dispatch table the parser itself uses, rather than a second guess.
     table = {
         "evtx.ps_classic": evtx_windows.PS_CLASSIC_EIDS,

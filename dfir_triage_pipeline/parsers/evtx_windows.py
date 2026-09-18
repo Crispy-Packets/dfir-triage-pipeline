@@ -67,7 +67,73 @@ PS_CLASSIC_EIDS: dict[int, tuple[str, str]] = {
     400: ("ps_engine_start", "powershell engine started"),
     403: ("ps_engine_stop", "powershell engine stopped"),
     600: ("ps_provider_start", "powershell provider lifecycle"),
+    # Added 2026-09-18 by the curated-channel audit (D-059). 800 is pipeline
+    # execution detail and is the ONLY record in this pipeline carrying a
+    # PowerShell command line when script-block logging is off: 4104 exists
+    # only with that logging enabled, and 600 -- the EID this channel was
+    # taken for -- carries HostApplication that nothing extracted (D-055).
+    #
+    # Shares `script_block` with 4104 deliberately: both record that
+    # PowerShell executed a command and carry its text, and a second spelling
+    # would break any chain joined on event_type.
+    #
+    # Measured 10/10/10/0/0. Flat on host 1, absent on host 2 -- it does NOT
+    # discriminate by volume and is taken for the field, not the count.
+    800: ("script_block", "powershell pipeline executed a command"),
 }
+
+#: Fields read out of a legacy-PowerShell detail block, mapped to the
+#: `details` keys declared in docs/details-schema.md (CD-012).
+_PS_CLASSIC_FIELDS = {
+    "HostApplication": "host_application",
+    "CommandLine": "ps_command_line",
+    "ScriptName": "ps_script_name",
+    "UserId": "ps_user_id",
+    "SequenceNumber": "ps_sequence_number",
+}
+
+
+def parse_ps_detail_block(data: dict[str, str]) -> dict[str, str]:
+    r"""Fields from a legacy-PowerShell record's `key=value` detail block.
+
+    The classic channel does NOT use `<Data Name="...">`. It writes unnamed
+    `<Data>` elements whose text is a tab-indented block:
+
+        DetailSequence=1
+        SequenceNumber=18
+        UserId=WINDOWS10\Youssef
+        HostApplication=powershell.exe -ExecutionPolicy Bypass -File C:\...
+
+    `_event_data` keys on the `Name` attribute and therefore returns NOTHING
+    for these records -- which is why every 400/403/600 row carries empty
+    details (D-055) and why this needs its own reader rather than a `keep`
+    tuple like every other EID in this module.
+
+    A value may contain `=` (a command line usually does), so each line is
+    split on the FIRST `=` only. Lines without one are continuations of the
+    previous value and are appended to it, because a command line wrapped
+    across lines would otherwise be truncated at the wrap.
+    """
+    out: dict[str, str] = {}
+    for blob in data.values():
+        current: str | None = None
+        for line in blob.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                current = None
+                continue
+            key, sep, value = stripped.partition("=")
+            key = key.strip()
+            if sep and key in _PS_CLASSIC_FIELDS:
+                current = _PS_CLASSIC_FIELDS[key]
+                out[current] = value.strip()
+            elif sep and key and key[0].isalpha() and " " not in key:
+                # A field this parser does not keep; stop appending to the
+                # previous one rather than folding an unrelated value into it.
+                current = None
+            elif current:
+                out[current] = f"{out[current]} {stripped}".strip()
+    return {k: v for k, v in out.items() if v}
 
 # Defender. 1116/1117 are a detection and its remediation -- the only family in
 # this pipeline that records an AV verdict at all. 5001 is real-time protection
@@ -139,11 +205,29 @@ def parse_systemtime(value: str) -> datetime:
 
 
 def _event_data(root: ET.Element) -> dict[str, str]:
+    r"""Named `EventData/Data` fields, with a positional fallback.
+
+    Most channels write `<Data Name="ImagePath">...</Data>` and the name is
+    the key. **The legacy `Windows PowerShell` channel does not**: it writes
+    unnamed `<Data>` elements whose text is a tab-indented `key=value` block.
+
+    Keying only on the `Name` attribute returned an EMPTY DICT for every
+    record of that channel, which is the root cause of D-055 -- 400/403/600
+    emitting no details at all while CD-007 cited a field inside them as the
+    reason the channel was taken. Unnamed elements are therefore kept under
+    positional keys `0`, `1`, ... and `parse_ps_detail_block` reads them.
+
+    Named entries keep their name, so nothing that already worked changes.
+    """
     out: dict[str, str] = {}
+    position = 0
     for node in root.findall("e:EventData/e:Data", NS):
         name = node.get("Name")
         if name:
             out[name] = node.text or ""
+        else:
+            out[str(position)] = node.text or ""
+            position += 1
     return out
 
 
@@ -194,6 +278,11 @@ def _user_for(eid: int, data: dict[str, str]) -> str | None:
         # is that a parser records what the artifact wrote, and entity.user
         # normalisation happens in core/entity.py where it is visible.
         return data.get("User") or None
+    if eid == 800:
+        # The legacy channel's UserId, out of its key=value detail block. This
+        # is what makes ps_classic joinable on entity.user, which 811/812
+        # cannot be -- the only principal on those is S-1-5-18 (D-057).
+        return parse_ps_detail_block(data).get("ps_user_id") or None
     return None
 
 
@@ -239,6 +328,25 @@ def _truncate_utf8(text: str, cap: int) -> tuple[str, int, bool]:
 
 def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     keep: tuple[str, ...]
+    if eid == 800:
+        # The legacy channel writes a key=value block in unnamed <Data>
+        # elements rather than Name-keyed ones, so it needs its own reader
+        # instead of a `keep` tuple. See parse_ps_detail_block and D-059.
+        fields = parse_ps_detail_block(data)
+        command = fields.pop("ps_command_line", None)
+        if command:
+            # Capped on the same reasoning as 4104's script_block_text, and
+            # recorded the same way: the byte length is always the REAL one,
+            # so truncation is measurable rather than silent, and a rule may
+            # only read the capped value with positive operators.
+            text, full_len, truncated = _truncate_utf8(
+                command, SCRIPT_BLOCK_TEXT_CAP
+            )
+            fields["ps_command_line"] = text
+            fields["ps_command_line_bytes"] = str(full_len)
+            if truncated:
+                fields["ps_command_line_truncated"] = "true"
+        return fields
     if eid in (4624, 4625):
         keep = ("LogonType", "IpAddress", "WorkstationName", "LogonProcessName", "SubStatus")
     elif eid == 4688:

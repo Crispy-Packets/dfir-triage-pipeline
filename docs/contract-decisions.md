@@ -374,6 +374,7 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Windows PowerShell.evtx  400  ->  evtx.ps_classic  ps_engine_start
         Windows PowerShell.evtx  403  ->  evtx.ps_classic  ps_engine_stop
         Windows PowerShell.evtx  600  ->  evtx.ps_classic  ps_provider_start
+        Windows PowerShell.evtx  800  ->  evtx.ps_classic  script_block
         Defender/Operational    1116  ->  evtx.defender    malware_detected
         Defender/Operational    1117  ->  evtx.defender    malware_remediated
         Defender/Operational    5001  ->  evtx.defender    defense_disabled
@@ -393,6 +394,51 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         stated since it was written: EID 600 holds HostApplication, the full
         command line of the process that started PowerShell, and it is present
         when script-block logging is off and 4104 holds nothing.
+
+        Added 2026-09-18. EID 800, and the two EIDs deliberately NOT taken
+        with it. Found by the curated-channel audit (D-059), which measured
+        that the curated channels drop 34,556 of 70,873 records and that 189
+        EIDs were neither mapped nor declared.
+
+        800 SHARES `script_block` with 4104 by the usual contract: both record
+        that PowerShell executed a command and carry its text. A second
+        spelling would break any chain joined on event_type, and the claims
+        are the same claim from two channels. The DIFFERENCE is which is
+        available: 4104 exists only when script-block logging is enabled, 800
+        is written by the legacy channel regardless. On a host with logging
+        off, 800 is the only PowerShell command text in the evidence.
+
+        It also supersedes the reason 600 was taken. CD-007 justified this
+        channel by 600's HostApplication, and D-055 records that the parser
+        extracts no details for 400/403/600 at all. 800 carries
+        HostApplication AND the invoked CommandLine AND a UserId, so the
+        channel finally delivers what it was selected for.
+
+        MEASURED 10/10/10/0/0. Flat on host 1, absent on host 2. It does NOT
+        discriminate by volume and no rule may be written on its presence --
+        it is taken for the FIELD, not the count.
+
+        NOT TAKEN, and both were measured before the decision rather than
+        after:
+
+        Security 5379 (credential manager read) -- 2342/2454/108/1184/29.
+        MASSIVELY HIGHER ON CLEAN HOSTS. The records are the machine account
+        MINWINPC$ polling `WindowsLive:name=*` with
+        CountOfCredentialsReturned=0. A "burst of 5379" rule, which is a
+        commonly suggested credential-access indicator, would fire hardest on
+        the collections containing no attack.
+
+        Security 4672 (special privileges assigned) -- 848/861/54/586/11, the
+        same inverted shape. Every sampled record is SYSTEM being granted its
+        standard privilege set at boot. An earlier claim in
+        docs/technique-coverage-grid.md that 4672 is "off by default" was
+        wrong and has been corrected; it is on by default, abundant, and
+        almost entirely SYSTEM. Mapping it would add 2,360 rows of noise and
+        make `lsa_policy`'s corroboration look stronger than it is.
+
+        Both stay in UNMAPPED_BY_DESIGN in tests/test_curated_eid_coverage.py
+        with these figures, so the decision is visible rather than implied by
+        their absence.
 
         `evtx.bits` matters because a background transfer is a download that
         leaves NO BROWSER HISTORY -- the browser family cannot see it at all.

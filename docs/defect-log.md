@@ -1606,3 +1606,57 @@ against a relative POSIX path, so nothing matched, zero files were examined,
 and it passed in 0.10 seconds. A green audit that audits nothing is worse than
 no audit, so the test now asserts a minimum number of curated files examined
 before it is allowed to report success.
+
+## D-060  A stated gap outlived the work that closed it
+
+Found 2026-09-18 while acting on D-059.
+
+`docs/artifact-attestation-matrix.md` carried, in the `evtx.powershell` row's
+corroboration column:
+
+    legacy `Windows PowerShell` EID 800 ⛔
+
+with ⛔ defined at the foot of that table as "not parsed by this pipeline".
+True when written. **The legacy channel was parsed on 2026-09-17**, five
+curated channels landing together, and the marker stayed — because EID 800 was
+being dropped INSIDE the now-parsed channel, so nothing contradicted the
+statement from either direction. The matrix said "not parsed"; the channel was
+parsed; the EID was not; and all three were simultaneously true in a way that
+concealed the real state.
+
+**This is D-054's class, in the opposite direction.** D-054 was a document
+asserting event_types the validator could not see. This is a document
+asserting an ABSENCE that its own project had removed. Both are claims
+measurement falsifies, and neither had anything watching it.
+
+**The gap is now closed rather than merely re-labelled.** EID 800 is mapped
+(CD-007, 2026-09-18) and emits `host_application`, `ps_command_line`,
+`ps_script_name`, `ps_user_id` and `ps_sequence_number`, declared in
+`docs/details-schema.md` first per CD-012. Measured 10/10/10/0/0 — flat on
+host 1 and absent on host 2, so it does not discriminate by volume and no rule
+is written on its presence. It is taken for the field.
+
+**The root cause reached further than EID 800.** `_event_data()` keyed
+entirely on the `Name` attribute:
+
+    for node in root.findall("e:EventData/e:Data", NS):
+        name = node.get("Name")
+        if name:                      # <- unnamed elements dropped silently
+            out[name] = node.text or ""
+
+The legacy PowerShell channel writes **unnamed** `<Data>` elements holding a
+tab-indented `key=value` block. Every record of that channel therefore reached
+`_details_for()` as an empty dict, which is the mechanism behind D-055 as well
+— 400/403/600 were not merely missing a `keep` tuple, their fields were
+unreachable. Unnamed elements are now kept under positional keys and
+`parse_ps_detail_block()` reads them.
+
+**D-055 is NOT closed by this.** 400/403/600 still emit no details, because
+each needs its own decision about what it attests and its own declared keys.
+What changed is the blocker: it was "the data cannot be reached", it is now
+"nobody has decided what to keep". The attestation matrix row says so.
+
+Effect on the audit: `evtx.ps_classic` becomes the first curated channel with
+**zero dropped EIDs** — 4 present, 4 mapped. The corpus-wide figure moves
+34,556 → 34,526 dropped rows, which is the honest size of this change: 30
+rows, and a field nothing else in the pipeline carries.

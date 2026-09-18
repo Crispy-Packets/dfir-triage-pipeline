@@ -700,3 +700,32 @@ not that it ran at the recorded moment.
 | `version` | str | `amcache` | File version as inventoried. |
 | `binary_type` | str | `amcache` | e.g. `pe64_amd64`. Distinguishes architecture without reading the file. |
 | `program_id` | str | `amcache` | Links the file to its `InventoryApplication` parent entry. |
+
+### Legacy PowerShell 800 (`evtx.ps_classic`), added 2026-09-18
+
+**Closes a gap the attestation matrix has carried as stated since it was
+written** and which D-059 showed was no longer accurate: the matrix recorded
+`legacy PowerShell EID 800` with the not-parsed marker, written when the whole
+channel was unparsed. The channel has been parsed since 2026-09-17; EID 800
+was being discarded *inside* it, because an unmapped EID in a curated channel
+is dropped rather than falling through to the generic reader.
+
+800 is pipeline execution detail. It is the **only record in this pipeline that
+carries a PowerShell command line when script-block logging is off** --
+`evtx.powershell` 4104 holds the script text and exists only when that logging
+is enabled, and EID 600, which CD-007 cited as this channel's justification,
+carries `HostApplication` but not the invoked command (D-055).
+
+Measured 10 / 10 / 10 / 0 / 0 across the five collections. Flat on host 1 and
+absent on host 2, so it **does not discriminate by volume** and no rule should
+be written on its presence. It is taken for the field, not the count.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `host_application` | str | `evtx.ps_classic` | **The command line of the process that started PowerShell**, e.g. `powershell.exe -ExecutionPolicy Bypass -NonInteractive -File C:\...\ps-script-….ps1`. The field D-055 records as present in the evidence and unextracted. Carries the execution-policy bypass and the script path when either is present. |
+| `ps_command_line` | str | `evtx.ps_classic` | The `CommandLine` the pipeline invoked, from the record's detail block. What ran, as opposed to what launched PowerShell. Capped at `SCRIPT_BLOCK_TEXT_CAP` bytes on the same reasoning as `script_block_text`, and **positive operators only** when truncated. |
+| `ps_script_name` | str | `evtx.ps_classic` | `ScriptName` -- the `.ps1` or module file the pipeline was executing, when the record names one. Often a shipped module rather than a user script. |
+| `ps_user_id` | str | `evtx.ps_classic` | `UserId` as the channel wrote it, `DOMAIN\user`. Also emitted as `Event.user`, which is why this channel can be joined on `entity.user` while 811/812 cannot (D-057). |
+| `ps_sequence_number` | str(int) | `evtx.ps_classic` | `SequenceNumber` within the host session. Orders records inside one PowerShell host; not a time. |
+| `ps_command_line_truncated` | str | `evtx.ps_classic` | Present and `"true"` only when `ps_command_line` was cut at the cap. Absent otherwise, so truncation is measurable rather than silent. |
+| `ps_command_line_bytes` | str(int) | `evtx.ps_classic` | Full UTF-8 byte length of `CommandLine` **before** truncation, always the real length. |
