@@ -1472,3 +1472,137 @@ question, not a bug fix. Recorded so that:
 * the audit that should exist — every curated channel's EID map compared
   against the EIDs actually present in the evidence — is written down as
   missing rather than assumed done.
+
+## D-058  User and host entities accumulate weight for existing, and outrank the payload
+
+Found 2026-09-18, in the pre-ablation check of clean-host entity scores. The
+pipeline's headline — "`invoice_scan.exe` is the sole critical entity on both
+scenario hosts" — is true and hides this.
+
+**Top entity per collection, measured:**
+
+    clean_a    entity.user=youssef        97   38 findings, 5 rules
+    clean_b    entity.user=youssef        97   40 findings, 5 rules
+    clean_c    entity.user=vboxuser       92    3 findings, 3 rules
+    s1_v2      entity.exe_name=invoice…   99    4 findings, 4 rules
+    s1_v3      entity.exe_name=invoice…   99    3 findings, 3 rules
+
+`youssef` scores 97 on a collection containing no attack, and outranked
+`invoice_scan.exe` outright until R-CORR-0006 moved the payload from 94 to 99
+earlier the same day. **A seven-point margin between "the person who uses this
+laptop" and "the payload" is not a margin.**
+
+**The cause is not a mis-firing rule.** R-ATOMIC-0001's 42 findings on
+`clean_a` spread over **17 distinct `exe_name` entities** (largest:
+`dismhost.exe`, 19), and no binary rises above 45. The rules behave as
+designed and the binary ranking is sound.
+
+The cause is that **a user entity aggregates rules that are not evidence of
+anything when combined.** `youssef` is named by:
+
+    R-ATOMIC-0001  installs software from a Downloads folder
+    R-ATOMIC-0006  has a OneDrive autorun under AppData
+    R-ATOMIC-0009  has a local account
+    R-CORR-0002    mistyped a password, then logged in
+    R-CORR-0005    that account was created and later used
+
+Five independent rules, five weights, combined by diminishing returns to 97.
+Each is individually reasonable. Their conjunction describes **an ordinary
+person using an ordinary computer**, and the scorer cannot tell that from
+corroboration, because `entity_score.aggregate` treats "distinct rules agreeing
+on one entity" as strengthening regardless of what the entity IS.
+
+**`entity.host` is the same defect in a sharper form.** `entity.host=windows10`
+scores 88 on `clean_a` from **48 findings across 3 rules**. There is exactly
+one host per collection, so a host entity aggregates every finding in the run
+— a sum of unrelated evidence attached to a label that cannot discriminate by
+construction. `core/entity.py` already records that `host_key` is "defined for
+reporting; not joinable (schema 4.5)". It is excluded from JOINS and not from
+SCORING, and nothing states why those should differ.
+
+**Not fixed here**, because the fix is a design decision that belongs with
+Person A as well: candidates are scoring entity kinds separately (a user
+ranked against users, a binary against binaries), excluding `entity.host` from
+the ranked table as it is already excluded from joins, or weighting a rule's
+contribution by how specific its entity key is. Each changes what `run.json`
+reports and would invalidate the ablation figures again.
+
+**The immediate consequence, and the reason this is logged before the layer
+ablation rather than after:** the ablation reports where the attack entity
+ranks. That number is only meaningful if the entities ABOVE and BELOW it are
+ranked sensibly. Reporting "the attack ranks 1 of 5 on `s1_v3`" while
+`youssef` would rank 1 of 26 on a clean collection measures the rule set's
+ability to find a payload on a host where a payload exists, not its ability to
+tell the two apart.
+
+**Same family as D-056**, one level up. D-056 was two entities of the same kind
+scoring identically because the rules did not separate them. This is entities
+of DIFFERENT kinds being placed on one scale where their scores are not
+comparable — a user's 97 and a binary's 99 do not mean the same thing, and the
+table presents them as if they do.
+
+## D-059  The curated channels discard 49% of their own records, and nobody had counted
+
+Found 2026-09-18 by the audit D-057 said was missing. D-057 recorded that
+`Microsoft-Windows-Winlogon/Operational` contains EIDs 1 and 2 that no map
+claims and the parser drops. The obvious question — *how many others?* — had
+never been asked of any curated channel.
+
+**Measured across all five collections:**
+
+    family             mapped  present  dropped   rows kept   rows dropped
+    evtx.bits               4       13        9       2,189          1,055
+    evtx.defender           4       17       16       2,048          1,226
+    evtx.firewall           4        6        4         983          3,049
+    evtx.powershell         1        6        5       4,363          1,017
+    evtx.ps_classic         3        4        1       2,566             30
+    evtx.rdp                2       13       11          83            508
+    evtx.security           5       46       41      21,692         14,479
+    evtx.system             1       90       89          91          8,829
+    evtx.winlogon           2        4        2       2,229            234
+    evtx.wmi                1        5        4          73          4,129
+    ------------------------------------------------------------------------
+    TOTAL                                            36,317         34,556
+
+**A curated channel keeps 51% of its records and drops the rest**, and the
+drop is invisible: `_artifact_for()` resolves a curated channel to its family
+before any EID check, so the generic `evtx.x.*` fallback — which exists
+precisely so an unstudied channel still lands somewhere — never sees them.
+An unmapped EID in a GENERIC channel becomes a `log_record`. The same EID in a
+CURATED channel is destroyed.
+
+**Selectivity is correct and is not the defect.** A curated map is a
+deliberate choice, most EIDs in a channel are noise, and CD-007 is explicit
+that this pipeline does not invent semantics for EIDs it has not studied. The
+defect is that **there was no difference between "considered and rejected" and
+"never seen"**, and no way to tell which had happened for any of 189 EIDs.
+
+Three of the dropped EIDs are not noise:
+
+* **`evtx.security` 4672, 2,360 rows.** Special privileges assigned to a new
+  logon. Corrected in the technique grid earlier the same day, where it had
+  been described as "off by default" — it is on by default and abundant, and
+  is the natural corroboration for `lsa_policy`, whose own rule is blocked on
+  the SID/name join.
+* **`evtx.security` 5379, 6,117 rows.** Credential Manager read. The largest
+  single dropped EID in the corpus.
+* **`evtx.ps_classic` 800, 30 rows.** `docs/artifact-attestation-matrix.md`
+  carries "legacy PowerShell EID 800 ⛔" as a STATED GAP, with ⛔ defined as
+  "not parsed by this pipeline". **The channel has been parsed since this
+  session's EVTX work.** The gap was recorded against a channel and is really
+  against an EID inside a channel the pipeline now reads, so the matrix
+  understates what is available while appearing to state a limit honestly.
+
+**Fixed by a test, not by a parser change.**
+`tests/test_curated_eid_coverage.py` requires every EID present in a curated
+channel to be either mapped or listed in `UNMAPPED_BY_DESIGN` with a reason.
+Selectivity survives; silence does not. Mapping any particular EID remains a
+separate decision needing a CD-007 entry and a details-key declaration.
+
+**The test itself had this defect first, which is why it asserts it cannot
+pass vacuously.** Its first version matched `_CHANNELS` fragments against
+`path.name`. The fragments begin with `/` because the parser matches them
+against a relative POSIX path, so nothing matched, zero files were examined,
+and it passed in 0.10 seconds. A green audit that audits nothing is worse than
+no audit, so the test now asserts a minimum number of curated files examined
+before it is allowed to report success.

@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  896 passed, 20 skipped
+    python -m pytest -q               ->  898 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.0.0  rules 15  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
