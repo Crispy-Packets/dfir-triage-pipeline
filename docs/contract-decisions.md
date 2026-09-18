@@ -386,9 +386,17 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Windows Firewall/Firewall 2006 -> evtx.firewall    firewall_rule_deleted
         Windows Firewall/Firewall 2033 -> evtx.firewall    firewall_rules_deleted
         BITS-Client/Operational     3  ->  evtx.bits        bits_job_created
-        BITS-Client/Operational     4  ->  evtx.bits        bits_job_cancelled
+        BITS-Client/Operational     4  ->  evtx.bits        bits_job_completed
+        BITS-Client/Operational     5  ->  evtx.bits        bits_job_cancelled
         BITS-Client/Operational    59  ->  evtx.bits        bits_transfer_started
         BITS-Client/Operational    60  ->  evtx.bits        bits_transfer_completed
+
+        EID 4 was mapped to `bits_job_cancelled` until 2026-09-19 and EID 5 was
+        not mapped at all. Corrected on measurement (D-066): no job carries both
+        a 4 and a 5, every job with a 4 has hr=0 on its own EID 60, and the 4's
+        bytesTransferred equals that transfer's bytesTotal exactly. EID 4 is the
+        job COMPLETION summary; EID 5, which carries no byte count, is the
+        cancellation.
 
         `evtx.ps_classic` closes a gap the attestation matrix has carried as
         stated since it was written: EID 600 holds HostApplication, the full

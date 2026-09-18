@@ -169,10 +169,19 @@ FIREWALL_EIDS: dict[int, tuple[str, str]] = {
 
 # BITS. A background transfer is a download that leaves no browser history at
 # all, which is why it is a favoured delivery mechanism. 3 is a job created, 59
-# a transfer started and 60 completed; 4 is a job cancelled.
+# a transfer started, 60 a transfer completed, 4 the JOB completion summary and
+# 5 the job cancellation.
+#
+# 4 was labelled "bits_job_cancelled" until D-066. Measured across the corpus:
+# no job carries both a 4 and a 5 (0 of 117 on clean_a, 0 of 51 on s1_v3), every
+# job with a 4 has hr=0 on its own EID 60, and the 4's bytesTransferred equals
+# that 60's bytesTotal exactly. A cancellation does not transfer every byte it
+# asked for. EID 5 -- which carries jobTitle, jobId, jobOwner and fileCount but
+# NO bytesTransferred -- is the cancellation, and it was not mapped at all.
 BITS_EIDS: dict[int, tuple[str, str]] = {
     3: ("bits_job_created", "bits transfer job created"),
-    4: ("bits_job_cancelled", "bits transfer job cancelled"),
+    4: ("bits_job_completed", "bits transfer job completed"),
+    5: ("bits_job_cancelled", "bits transfer job cancelled"),
     59: ("bits_transfer_started", "bits transfer started"),
     60: ("bits_transfer_completed", "bits transfer completed"),
 }
@@ -291,6 +300,12 @@ def _path_for(eid: int, data: dict[str, str]) -> str | None:
         return data.get("NewProcessName") or None
     if eid == 7045:
         return data.get("ImagePath") or None
+    if eid == 3:
+        # BITS job created: the process that created the job. This is what makes
+        # a background transfer joinable to an execution on entity.exe_name
+        # (D-065). EIDs 4/5/59/60 carry no process path -- only the job id links
+        # them back to the EID 3, and a job id is not a path.
+        return data.get("processPath") or None
     return None
 
 
@@ -328,24 +343,37 @@ def _truncate_utf8(text: str, cap: int) -> tuple[str, int, bool]:
 
 def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
     keep: tuple[str, ...]
-    if eid == 800:
+    if eid in (400, 403, 600, 800):
         # The legacy channel writes a key=value block in unnamed <Data>
         # elements rather than Name-keyed ones, so it needs its own reader
         # instead of a `keep` tuple. See parse_ps_detail_block and D-059.
+        #
+        # 400/403/600 were left out until D-055 was fixed on 2026-09-19, so
+        # every engine-lifecycle row carried details == {} while the record
+        # held HostApplication -- the full command line of the process that
+        # started PowerShell, which is the field this channel was ADDED for
+        # (CD-007) and the only record of a PowerShell command line when
+        # script-block logging is off. Measured before widening: present on
+        # 100% of rows on all three EIDs in all five collections
+        # (400: 93/94/91/17/26, 403: 82/82/62/13/17, 600: 578/584/563/104/160).
         fields = parse_ps_detail_block(data)
-        command = fields.pop("ps_command_line", None)
-        if command:
-            # Capped on the same reasoning as 4104's script_block_text, and
-            # recorded the same way: the byte length is always the REAL one,
-            # so truncation is measurable rather than silent, and a rule may
-            # only read the capped value with positive operators.
+        # Both of these are command lines and are capped identically: the byte
+        # length is always the REAL one, so truncation is measurable rather
+        # than silent, and a rule may only read a capped value with positive
+        # operators. ps_command_line is what the pipeline invoked;
+        # host_application is what launched the host, including the
+        # -ExecutionPolicy Bypass and -File arguments a rule looks for.
+        for key in ("ps_command_line", "host_application"):
+            value = fields.pop(key, None)
+            if not value:
+                continue
             text, full_len, truncated = _truncate_utf8(
-                command, SCRIPT_BLOCK_TEXT_CAP
+                value, SCRIPT_BLOCK_TEXT_CAP
             )
-            fields["ps_command_line"] = text
-            fields["ps_command_line_bytes"] = str(full_len)
+            fields[key] = text
+            fields[f"{key}_bytes"] = str(full_len)
             if truncated:
-                fields["ps_command_line_truncated"] = "true"
+                fields[f"{key}_truncated"] = "true"
         return fields
     if eid in (4624, 4625):
         keep = ("LogonType", "IpAddress", "WorkstationName", "LogonProcessName", "SubStatus")
@@ -380,6 +408,36 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
         # on Win32_LogonSession or a timer is how fileless persistence survives
         # a reboot, and only the query shows which.
         keep = ("Namespace", "ESS", "CONSUMER", "PossibleCause")
+    elif eid in (3, 4, 5):
+        # BITS job lifecycle (D-065). processPath on EID 3 is the process that
+        # CREATED the job, which is the field that makes a background transfer
+        # attributable to a binary at all -- it is also read by _path_for, so an
+        # EID 3 row carries entity.exe_name and can be joined to an execution.
+        # jobOwner is DOMAIN\user verbatim, per CD-010: the parser records what
+        # the artefact wrote and entity normalisation happens in core/entity.py.
+        keep = ("jobTitle", "jobId", "jobOwner", "processPath", "fileCount",
+                "bytesTransferred")
+    elif eid in (59, 60):
+        # BITS transfer lifecycle (D-065). `url` is the source address, which no
+        # other family records for a background transfer -- the browser family
+        # cannot see these at all.
+        #
+        # `name` is the job's DISPLAY NAME, not a destination path. Measured
+        # across five collections it is a title ("Font Download") on 252/286/
+        # 349/89/105 rows and a filesystem path on only 2/2/2/6/6, all of them
+        # Edge Updater, which happens to name its jobs after the target file.
+        # It is the same value as EID 3's jobTitle for the same jobId. The local
+        # destination is NOT in this channel; see details-schema.md.
+        #
+        # bytesTotal/fileLength are excluded on EID 59 and kept on 60: at
+        # transfer START the size is frequently unknown and the record carries
+        # the UINT64_MAX sentinel 18446744073709551615 (10/9/9/7/7 rows). A
+        # numeric predicate against that value matches everything.
+        keep = ("transferId", "Id", "url", "name", "fileTime")
+        if eid == 60:
+            # hr is the result code -- non-zero is a failed transfer, and this
+            # is the only field that says so.
+            keep += ("hr", "bytesTotal", "bytesTransferred")
     elif eid in (21, 25):
         # Address separates a remote session from a local console one: it holds
         # "LOCAL" for a console logon and an IP for a remote desktop. Without it
@@ -523,6 +581,14 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         # A channel with no curated EID map: every remaining EVTX file KAPE
         # collected. See _GENERIC_CHANNEL_PREFIX and CD-007.
         event_type, action = "log_record", f"{artifact.split('.', 1)[-1]} log record"
+        # _details_for and _user_for dispatch on the EID ALONE, so on a generic
+        # channel they would answer for whichever curated channel happens to use
+        # that number. The BITS additions make this concrete: EIDs 3, 4 and 5 are
+        # among the most reused numbers in the Windows log estate. Measured over
+        # all five collections, no generic channel currently carries the field
+        # NAMES a curated branch keeps, so this fires on nothing today (D-067) --
+        # it is fixed because the next collection is not bound by that, not
+        # because it was observed breaking.
     elif eid not in table:
         return None
     else:
@@ -553,10 +619,16 @@ def record_to_event(xml_text: str, artifact: str, relative_path: str) -> Event |
         # whose slot 0 is a last-run summary. CD-019.
         timestamp_type="recorded",
         host=system.findtext("e:Computer", default=None, namespaces=NS) or None,
-        user=_user_for(eid, data),
-        path=_path_for(eid, data),
+        user=_user_for(eid, data) if table is not None else None,
+        path=_path_for(eid, data) if table is not None else None,
         confidence="high",
-        details={**_details_for(eid, data), **_path_details(eid, data)},
+        # Curated channels only: on a generic channel the EID is not evidence
+        # of which record shape this is (D-067, above).
+        details=(
+            {**_details_for(eid, data), **_path_details(eid, data)}
+            if table is not None
+            else {}
+        ),
     )
 
 

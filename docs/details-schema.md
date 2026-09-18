@@ -729,3 +729,49 @@ be written on its presence. It is taken for the field, not the count.
 | `ps_sequence_number` | str(int) | `evtx.ps_classic` | `SequenceNumber` within the host session. Orders records inside one PowerShell host; not a time. |
 | `ps_command_line_truncated` | str | `evtx.ps_classic` | Present and `"true"` only when `ps_command_line` was cut at the cap. Absent otherwise, so truncation is measurable rather than silent. |
 | `ps_command_line_bytes` | str(int) | `evtx.ps_classic` | Full UTF-8 byte length of `CommandLine` **before** truncation, always the real length. |
+| `host_application` | str | `evtx.ps_classic` | **The command line that LAUNCHED PowerShell** — `HostApplication` from the record's detail block, including `-ExecutionPolicy`, `-WindowStyle Hidden`, `-EncodedCommand` and the script path. Distinct from `ps_command_line`, which is what the pipeline then invoked. Emitted on EIDs 400, 403, 600 and 800 since 2026-09-19 (D-055); before that every 400/403/600 row carried `details == {}`. Measured present on **100%** of rows on all three EIDs in all five collections (400: 93/94/91/17/26, 403: 82/82/62/13/17, 600: 578/584/563/104/160). Capped at `SCRIPT_BLOCK_TEXT_CAP` bytes, **positive operators only** when truncated. |
+| `host_application_bytes` | str(int) | `evtx.ps_classic` | Full UTF-8 byte length of `HostApplication` **before** truncation, always the real length. |
+| `host_application_truncated` | str | `evtx.ps_classic` | Present and `"true"` only when `host_application` was cut at the cap. Absent otherwise, so truncation is measurable rather than silent. |
+
+**A warning about `host_application` as a rule predicate.** The obvious
+reading — `-ExecutionPolicy Bypass` is suspicious — is **inverted in this
+corpus**. Measured after the D-055 fix: `Bypass` appears in
+**640 rows on `clean_a` and 0 rows on `s1_v3`**. On host 1 it is Chocolatey and
+other provisioning tooling; the scenario's own PowerShell ran with
+`-ExecutionPolicy Restricted`. A rule keyed on `Bypass` would fire on the clean
+host and miss both scenarios — the same shape as T1136.001 (see
+`docs/scenario-design-constraints.md` C-04). The field is declared because it is
+real evidence, not because a predicate on it is calibrated.
+
+## `evtx.bits` — BITS background transfers
+
+Added 2026-09-19 (D-065). Before that every row in this family carried
+`details == {}`: the family emitted an `event_type` and a timestamp and nothing
+else, while the raw records held a source URL, a byte count, a result code and
+the process that created the job.
+
+The channel is `Microsoft-Windows-Bits-Client/Operational`. It matters because a
+background transfer is a download that leaves **no browser history** — the
+`browser` and `webcache` families cannot see one at all.
+
+| key | type | families | meaning |
+|---|---|---|---|
+| `jobId` | str | `evtx.bits` | GUID of the BITS job, as the channel spells it. Present on EIDs 3, 4 and 5. **The join key within this family**: EIDs 59/60 carry the same value in `Id`, and only this links a transfer to the process that created it. |
+| `Id` | str | `evtx.bits` | On EIDs 59/60, the job GUID — the same value EID 3 calls `jobId`. Kept under the channel's own two names rather than unified, per CD-010: the parser records what the artefact wrote. |
+| `transferId` | str | `evtx.bits` | GUID of the individual transfer within a job. Distinct from the job id: a job may retry. |
+| `jobTitle` | str | `evtx.bits` | The job's display name, set by the client that created it. Not a filename. Observed values are `Font Download`, `Edge Component Updater`, `PreSignInSettingsConfigJSON`, `UpdateBinary`. |
+| `name` | str | `evtx.bits` | On EIDs 59/60, **the job display name, NOT the destination path.** Measured across five collections: a title on 252/286/349/89/105 rows and a filesystem path on only 2/2/2/6/6, all of them Edge Updater, which happens to name its jobs after the target file. It is the same value as `jobTitle` for the same job. **The local destination path is not recorded in this channel** — a rule must not treat this key as one. |
+| `jobOwner` | str | `evtx.bits` | The account that owns the job, as `DOMAIN\user` verbatim (CD-010; normalisation happens in `core/entity.py`). Observed: `NT AUTHORITY\LOCAL SERVICE` for OS jobs, a real user for browser and OneDrive updates. |
+| `processPath` | str | `evtx.bits` | **EID 3 only.** Full path of the process that created the job. Also `Event.path`, so an EID 3 row carries the derived path fields and `entity.exe_name` and is joinable to an execution. No other EID in this channel names a process. |
+| `url` | str | `evtx.bits` | EIDs 59/60. The **source address** of the transfer. Retains its query string, which for update CDNs carries signed expiry parameters. |
+| `fileTime` | str | `evtx.bits` | EIDs 59/60. The remote file's own timestamp as the server reported it — **not** when the transfer happened, and frequently years earlier. `Event.timestamp` is the record time; this is metadata about the file. |
+| `hr` | str | `evtx.bits` | **EID 60 only.** The transfer result code. `"0"` is success; anything else is a failed transfer, and this is the only field that says so. |
+| `bytesTotal` | str(int) | `evtx.bits` | **EID 60 only, deliberately.** On EID 59 the size is frequently unknown at transfer start and the record carries the `UINT64_MAX` sentinel `18446744073709551615` (10/9/9/7/7 rows across the five collections), so a numeric predicate on the EID-59 value would match everything. Excluded there rather than filtered, so the key never carries a sentinel. |
+| `bytesTransferred` | str(int) | `evtx.bits` | Bytes actually moved. On EID 60 it equals `bytesTotal` for a successful transfer; on EID 4 it is the per-job total. |
+| `fileCount` | str(int) | `evtx.bits` | EIDs 4 and 5. Number of files in the job. |
+
+**`fileLength` and `bytesTotal` on EID 59, `peer`, `proxy`, `bandwidthLimit`,
+`peerProtocolFlags`, `PeerContextInfo`, `AdditionalInfoHr`,
+`ignoreBandwidthLimitsOnLan` and `ClientProcessStartKey` are dropped.** They are
+either the sentinel described above, empty on every record measured, or
+transport tuning that carries no forensic claim.

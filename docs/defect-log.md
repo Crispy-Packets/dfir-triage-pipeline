@@ -1361,6 +1361,58 @@ during. Recorded so the attestation matrix stops crediting `ps_classic` with a
 capability the code does not have: its row in Section 1 and Section 6.3 of
 `docs/artifact-attestation-matrix.md` both now say so.
 
+
+### Resolved 2026-09-19
+
+`_details_for`'s EID-800 branch is widened to `(400, 403, 600, 800)`. No new
+reader was needed: `parse_ps_detail_block` already read this shape, and the
+positional-`Data` fix (D-059) had already made the fields reachable. The branch
+was simply never widened to the three EIDs the channel was added for.
+
+`host_application` is capped exactly as `ps_command_line` and
+`script_block_text` are -- `host_application_bytes` always carries the REAL
+length and `host_application_truncated` appears when the cap was hit -- because
+it is a command line and can run long.
+
+**Measured before widening:** `HostApplication` is present on **100%** of rows
+on all three EIDs in all five collections (400: 93/94/91/17/26,
+403: 82/82/62/13/17, 600: 578/584/563/104/160). CD-007's claim about this
+channel was correct; only the extraction was missing.
+
+**Measured after:** `evtx.ps_classic` rows with empty details fall from 100% to
+**0 of 763** on `clean_a` and **0 of 203** on `s1_v3`.
+
+Asserted in `TestPsClassicLifecycleCarriesHostApplication`, including the
+truncation contract and a regression guard that EID 800 still distinguishes
+`ps_command_line` (what the pipeline invoked) from `host_application` (what
+launched the host).
+
+### The field arrives with an inverted base rate, and that is the finding
+
+The obvious predicate on this field -- `-ExecutionPolicy Bypass` is suspicious
+-- is **backwards in this corpus**. Measured immediately after the fix:
+
+| collection | rows whose `host_application` contains `Bypass` |
+|---|---|
+| clean_a | **640** |
+| s1_v3 | **0** |
+
+On host 1 the `Bypass` invocations are Chocolatey and other provisioning
+tooling. **Both scenarios ran PowerShell with `-ExecutionPolicy Restricted`**,
+so the scenario's own PowerShell does not match the predicate that is supposed
+to catch it.
+
+This is the fourth technique in the project whose textbook indicator fires on
+the clean hosts and not the attack -- after T1136.001 (account creation),
+T1052.001 (removable media) and the naive form of T1070.004. Recorded as a
+predicate warning in `docs/details-schema.md` beside the key itself, where
+someone writing a rule will meet it. The field is declared because it is real
+evidence, not because a predicate on it is calibrated.
+
+`event_type` and `path` are unchanged for all three EIDs, so **no `event_id`
+changes** from this fix -- `details` is not a hash input (CD-002). That was
+checked rather than assumed.
+
 ## D-056  A benign autorun scored identically to the payload, and the scorer could never have fixed it
 
 Found 2026-09-17, by running the pipeline end to end on `s1_v3` and reading the
@@ -2038,6 +2090,166 @@ dict and `_details_for` simply has no `elif` for 3/4/59/60. This one is a
 T1071.001 therefore moves to `blocked` with this defect named, not to
 `not-observable`: the evidence is present and rich, and a parser change makes
 it writable.
+### Resolved 2026-09-19 -- and two claims in this entry were wrong
+
+The `keep` branches are in (`3/4/5` and `59/60`), `processPath` on EID 3 now
+reaches `_path_for`, and every key is declared in `docs/details-schema.md`.
+Measured after the change: **0 of 505** `evtx.bits` rows on `clean_a` and
+**0 of 231** on `s1_v3` carry empty details, against 100% before. Row counts
+rose 498 -> 505 and 225 -> 231 because EID 5 is now read at all (D-066).
+
+An EID 3 row now carries `Event.path`, the derived path fields and
+`entity.exe_name` -- so a background transfer is joinable to an execution, which
+is the part of this family that no other family can supply.
+
+**This entry claimed a destination path that is not there.** It quoted a
+raw EID 59 record as carrying a local destination in `name`. Measured across all
+five collections, `name` is the job DISPLAY NAME: a title (`Font Download`,
+`Edge Component Updater`) on **252/286/349/89/105** rows and a filesystem path
+on only **2/2/2/6/6**, every one of those Edge Updater, which happens to name
+its jobs after the target file. It is the same value as EID 3's `jobTitle` for
+the same job id. **The local destination is not recorded in this channel.** The
+attestation matrix's wording was corrected with it.
+
+**And `bytesTotal` on EID 59 is frequently a sentinel.** 10/9/9/7/7 rows carry
+`18446744073709551615` -- `UINT64_MAX`, meaning the size was unknown when the
+transfer began. A numeric predicate against that matches everything, so the key
+is not kept on EID 59 at all: excluded rather than filtered, so it can never
+carry a sentinel. EID 60 carries the real size.
+
+### The consequence for T1071.001 is NOT what this entry predicted
+
+This entry said the technique moves to `blocked` rather than `not-observable`
+because "a parser change makes it writable." **The parser change is done and it
+is still not writable**, for a reason no parser change can fix.
+
+Measured, the URL host of **every** BITS transfer in the corpus -- the host
+counts sum to the full 59/60 row count on all five collections, so this is every
+transfer, not a top-N:
+
+| collection | transfers | hosts |
+|---|---|---|
+| clean_a | 254 | `msedge.b.tlu.dl.delivery.mp.microsoft.com` 124, `g.live.com` 98, `oneclient.sfx.ms` 17, `fs.microsoft.com` 13, `msedge.f.tlu...` 2 |
+| clean_b | 288 | same five |
+| s1_v2 | 351 | same five |
+| clean_c | 95 | the above plus `edgedl.me.gvt1.com` 4 |
+| s1_v3 | 111 | same as clean_c |
+
+**Every transfer on every collection, clean and scenario alike, is Microsoft or
+Google update infrastructure.** Both scenarios delivered the payload over
+`WebClient.DownloadFile`, not BITS. There is no positive class: no
+attacker-controlled background transfer exists anywhere in this corpus to
+calibrate a rule against, and a rule keyed on these hosts would encode the
+update endpoints of two vendors.
+
+**T1071.001 moves from `blocked (D-065)` to `measured-no-discriminator`** -- the
+same state as T1053.005 and T1027, and for the same reason. The family is now
+parsed, rich and joinable, and the technique is unwritable on this evidence
+because the evidence does not contain it. That is a scenario-design fact
+(`docs/scenario-design-constraints.md`), not a parser one.
+
+**Fixing the parser was still right.** The data was real and discarded; a
+family that cannot say what it saw is a defect whether or not a rule wants it
+today. "No rule can use it" would have been the same mistake as calling
+`evtx.winlogon` disqualified when it was a parser bug.
+
+
+### event_id changes from D-065/D-066
+
+`event_id` hashes `event_type` and `path` (CD-002), so two of these changes
+alter ids. Recorded per CLAUDE.md. Representative rows, first of each type by
+`source_locator`:
+
+| collection | event_type | locator | old id | new id | why |
+|---|---|---|---|---|---|
+| clean_a | `bits_transfer_started` | EventRecordID=101 | `82834ead5b7c9264` | `82834ead5b7c9264` | unchanged -- details are not hashed |
+| clean_a | `bits_transfer_completed` | EventRecordID=102 | `86cf33ff4fc69589` | `86cf33ff4fc69589` | unchanged |
+| clean_a | `bits_job_created` | EventRecordID=104 | `b539a1a99e1a85b4` | `2e59efdcfe4038a5` | **path** now set from `processPath` |
+| clean_a | EID 4 | EventRecordID=103 | `fa9983f63295c553` (`bits_job_cancelled`) | `ef02cdfcf0bdbf0c` (`bits_job_completed`) | **event_type** corrected (D-066) |
+| s1_v3 | `bits_transfer_started` | EventRecordID=105 | `41db2013fa9e815c` | `41db2013fa9e815c` | unchanged |
+| s1_v3 | `bits_transfer_completed` | EventRecordID=106 | `ac85d3ddd6ca19d6` | `ac85d3ddd6ca19d6` | unchanged |
+| s1_v3 | `bits_job_created` | EventRecordID=102 | `41cd0fa80aa71b13` | `dc11dc7e46e9365c` | **path** now set |
+| s1_v3 | EID 4 | EventRecordID=100 | `be0201c2cadab8af` (`bits_job_cancelled`) | `b4b7b3069b346efb` (`bits_job_completed`) | **event_type** corrected |
+
+EID 5 rows have no prior id: they were not parsed before (7 on `clean_a`, 6 on
+`s1_v3`).
+
+Every `bits_job_created` and every EID 4 row in every collection changes id.
+EIDs 59 and 60 are unaffected -- `details` is not a hash input, so enriching
+them does not move their ids, which is the property that made this check worth
+running rather than assuming.
+
+## D-066  `evtx.bits` EID 4 was labelled a cancellation and EID 5 was not read at all
+
+Found 2026-09-19, reading the raw BITS records before declaring keys for D-065.
+Found by an advisor challenge to an existing label, not by a failing test: the
+sample EID 4 record carried `fileCount=1, bytesTransferred=55` for a job whose
+EID 60 showed all 55 bytes transferred, which is not what a cancellation looks
+like.
+
+`BITS_EIDS` mapped:
+
+    4: ("bits_job_cancelled", "bits transfer job cancelled")
+
+**Measured, and the label is wrong.** Per job, across `clean_a` and `s1_v3`:
+
+| check | clean_a | s1_v3 |
+|---|---|---|
+| jobs carrying BOTH an EID 4 and an EID 5 | **0** of 117 | **0** of 51 |
+| jobs with an EID 4 whose own EID 60 has `hr != 0` | **0** | **0** |
+| EID 4 `bytesTransferred` vs that job's EID 60 `bytesTotal` | equal | equal |
+
+A cancellation does not transfer every byte it asked for, and 117 EID 4 records
+tracking 123 EID 60 records is not a cancellation rate. **EID 4 is the job
+completion summary.**
+
+**EID 5 is the cancellation, and it was never mapped**, so every cancellation in
+the corpus was discarded unseen -- 7 rows on `clean_a`, 6 on `s1_v3`. It carries
+`User`, `jobTitle`, `jobId`, `jobOwner` and `fileCount` and, tellingly, **no
+`bytesTransferred`**: nothing was moved.
+
+**Fix:** `4 -> bits_job_completed`, new `5 -> bits_job_cancelled`, CD-007
+updated, both asserted in `tests/test_evtx_windows.py`.
+
+**This is a class the D-059 coverage audit cannot catch.** That audit finds EIDs
+present in the evidence and *absent* from the curated map. EID 4 was present in
+both. An EID mapped to the wrong meaning looks identical to a correct mapping
+from the outside, and only reading the records against each other shows it. The
+audit is not at fault; the gap is real and is now named.
+
+`event_type` is hashed into `event_id` (CD-002), so every EID 4 row's id
+changes. Recorded in D-065 below with the EID 3 path change.
+
+## D-067  `_details_for` and `_user_for` dispatch on the EID alone, on every channel
+
+Found 2026-09-19 while adding the BITS `keep` branches (D-065), by asking what
+happens when an uncurated channel carries EID 3.
+
+`record_to_event` looks the artifact up in a table of curated channels. When
+there is no entry the row is correctly labelled `log_record` -- and then falls
+through to `details={**_details_for(eid, data), **_path_details(eid, data)}`
+and `user=_user_for(eid, data)` regardless. Those functions branch on the EID
+and nothing else, so a generic channel carrying EID 3, 4, 5, 21 or 25 would be
+given whichever curated channel's keys use that number.
+
+The BITS work makes this concrete: 3, 4 and 5 are among the most reused event
+IDs in the Windows log estate.
+
+**Measured before fixing, across all five collections: zero generic-channel rows
+currently produce details from a claimed EID.** No uncurated channel in this
+corpus happens to carry the field *names* a curated branch keeps. So this fired
+on nothing, and is **latent, not active**.
+
+**Fixed anyway**, because the corpus is not the worst case and the next
+collection is not bound by what this one happened to contain. `details`, `user`
+and `path` are now gated on the channel being curated. Verified after the
+change: generic rows carrying any of the three = **0 of 55,294** on `clean_a`
+and **0 of 46,464** on `s1_v3`, i.e. the fix changed nothing that was working,
+exactly as the pre-measurement predicted.
+
+Asserted in `TestBitsCarriesTransferDetail::
+test_a_generic_channel_does_not_borrow_bits_keys`.
+
 
 **Not fixed here.** A `keep` tuple for 3/4/59/60 needs its details keys
 declared under CD-012 first, and `url`/`name` need a decision about whether
