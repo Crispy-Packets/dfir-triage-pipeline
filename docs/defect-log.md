@@ -1487,10 +1487,18 @@ scenario hosts" — is true and hides this.
     s1_v2      entity.exe_name=invoice…   99    4 findings, 4 rules
     s1_v3      entity.exe_name=invoice…   99    3 findings, 3 rules
 
-`youssef` scores 97 on a collection containing no attack, and outranked
-`invoice_scan.exe` outright until R-CORR-0006 moved the payload from 94 to 99
-earlier the same day. **A seven-point margin between "the person who uses this
-laptop" and "the payload" is not a margin.**
+`youssef` scores 97 on a collection containing no attack.
+
+**Correction, 2026-09-18, on measuring this properly.** The first version of
+this entry said `youssef` "outranked `invoice_scan.exe` outright until
+R-CORR-0006 moved the payload from 94 to 99". That was true when observed and
+is no longer: measured across all five collections, **no clean-host entity of
+any kind outscores the payload** -- 97 and 92 sit below 99 on both scenario
+hosts. The defect is not an inversion. It is a **two-point margin between "the
+person who uses this laptop" and "the payload", on a scale that mixes entity
+kinds whose scores are not comparable.** The correction matters because an
+inversion would demand an urgent fix and a narrow margin demands a structural
+one.
 
 **The cause is not a mis-firing rule.** R-ATOMIC-0001's 42 findings on
 `clean_a` spread over **17 distinct `exe_name` entities** (largest:
@@ -1520,12 +1528,43 @@ construction. `core/entity.py` already records that `host_key` is "defined for
 reporting; not joinable (schema 4.5)". It is excluded from JOINS and not from
 SCORING, and nothing states why those should differ.
 
-**Not fixed here**, because the fix is a design decision that belongs with
-Person A as well: candidates are scoring entity kinds separately (a user
-ranked against users, a binary against binaries), excluding `entity.host` from
-the ranked table as it is already excluded from joins, or weighting a rule's
-contribution by how specific its entity key is. Each changes what `run.json`
-reports and would invalidate the ablation figures again.
+**DECIDED 2026-09-18 on measurement: Option B, rank entity kinds
+separately.** Full working in `docs/evidence/entity-scoring-d058-2026-09-18.md`.
+
+Three candidates were simulated against the real findings rather than reasoned
+about, and two failed:
+
+* **A, declare a rule class** (inventory vs detection) and let only detection
+  rules aggregate. **Its premise is false.** Measured, R-ATOMIC-0001 feeds 36
+  binary entities, 7 user and 3 host; R-ATOMIC-0006 feeds 9 and 11. The same
+  finding names the executable AND the account that ran it, which is correct
+  behaviour. Rules do not partition into classes, so A means hand-labelling
+  against the evidence.
+* **C, drop `entity.host` from scoring.** Leaves `entity.user=youssef` at 97
+  as the top entity on two clean collections. Removes the 94-on-`s1_v2` host
+  artifact and not the defect.
+* **B, a ranked table per entity kind.** Addresses the actual error, which is
+  a category error: a user's 97 and a binary's 99 do not measure the same
+  thing. Subsumes C, needs no schema change, and touches `entity_score.py`
+  plus the `run.json` shape rather than all 15 rule files.
+
+**What B exposes, and the reason the decision is not merely tidy-up.**
+Restricted to binaries the separation is already there and was hidden:
+
+    clean_a  86 high      clean_b  86 high      clean_c  75 high
+    s1_v2    99 CRITICAL  s1_v3    99 CRITICAL
+
+Thirteen points, and **no clean collection produces a critical binary at all**.
+That discriminator existed the whole time; users and hosts sharing the table
+concealed it.
+
+**What B does not fix:** `youssef` still scores 97 among users. Separating the
+kinds stops that contaminating the binary ranking; it does not make the user
+score meaningful. Whether a user entity should aggregate rule weights at all
+is a further question.
+
+**Not implemented in this session.** `run.json`'s shape is Person A's report
+surface, and the ablation must be re-run after it lands (see above).
 
 **The immediate consequence, and the reason this is logged before the layer
 ablation rather than after:** the ablation reports where the attack entity
