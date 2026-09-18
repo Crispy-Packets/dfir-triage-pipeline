@@ -64,18 +64,48 @@ def test_drafts_are_excluded_by_extension_not_by_accident(tmp_path):
     )
 
 
-def test_every_correlation_rule_names_a_shared_entity():
+@pytest.fixture
+def every_rule():
+    """Every rule in the repository, guaranteed non-empty.
+
+    The four tests below assert grammar invariants by looping over the loaded
+    rules and asserting inside the loop. **If `load_rules` ever returned an
+    empty list they would all pass while checking nothing** -- and they are
+    the tests enforcing that presence steps stay out of sliding windows
+    (D-027) and that every rule carries a measured base rate. Silence there
+    would be the most expensive silence in the suite.
+
+    That is not hypothetical in this repository. `rules/blocked/` emptied out
+    when R-ATOMIC-0003 moved into `atomic/`, and the test guarding it "iterated
+    over nothing and proved nothing" until it was rewritten to build its own
+    fixture -- the note is still in that test below. The same shape appeared
+    again in `tests/test_curated_eid_coverage.py`, which matched `_CHANNELS`
+    fragments against `path.name`, examined zero files and passed in 0.10s
+    (D-059).
+
+    One guard shared by every test that iterates the rule set, so a future
+    test gets it by asking for the fixture rather than by remembering.
+    """
+    rules = load_rules(RULES_ROOT, include_disabled=True)
+    assert len(rules) >= 10, (
+        f"load_rules returned {len(rules)} rule(s); the grammar invariants "
+        "below pass vacuously on an empty set, so they refuse to run on one"
+    )
+    return rules
+
+
+def test_every_correlation_rule_names_a_shared_entity(every_rule):
     """The schema-level half of A-9. A rule that cannot name a shared entity
     cannot be loaded, so proximity can never stand in for identity."""
-    for rule in load_rules(RULES_ROOT, include_disabled=True):
+    for rule in every_rule:
         if rule.kind == "correlation":
             assert rule.join_on, f"{rule.rule_id} has no join.on"
 
 
-def test_every_presence_step_is_excluded_from_the_window():
+def test_every_presence_step_is_excluded_from_the_window(every_rule):
     """Schema 5.2. Checked against the loaded rules rather than trusted."""
     presence = {"registry", "amcache"}
-    for rule in load_rules(RULES_ROOT, include_disabled=True):
+    for rule in every_rule:
         for step in rule.steps:
             if presence.intersection(step.select.source_artifacts):
                 assert not step.in_window, (
@@ -84,7 +114,7 @@ def test_every_presence_step_is_excluded_from_the_window():
                 )
 
 
-def test_every_rule_records_its_measured_base_rate():
+def test_every_rule_records_its_measured_base_rate(every_rule):
     """Schema 8.1, added in 1.4.0.
 
     `expected` was required on atomic rules only until the first run over all
@@ -92,17 +122,17 @@ def test_every_rule_records_its_measured_base_rate():
     no attack in it. The four rules most likely to be read as detections were
     the four with no measurement recorded beside them.
     """
-    for rule in load_rules(RULES_ROOT, include_disabled=True):
+    for rule in every_rule:
         names = {name for name, _ in rule.expected}
         assert names == {"clean_a", "clean_b", "s1_v2"}, (
             f"{rule.rule_id} does not record a base rate for every collection"
         )
 
 
-def test_every_window_justification_cites_a_number():
+def test_every_window_justification_cites_a_number(every_rule):
     """A round figure chosen because it looks tidy misses the only chain in the
     corpus, so the justification has to carry a measurement."""
-    for rule in load_rules(RULES_ROOT, include_disabled=True):
+    for rule in every_rule:
         if rule.window is not None:
             assert any(ch.isdigit() for ch in rule.window.justification)
 

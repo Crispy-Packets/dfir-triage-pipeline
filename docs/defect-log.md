@@ -1660,3 +1660,64 @@ Effect on the audit: `evtx.ps_classic` becomes the first curated channel with
 **zero dropped EIDs** — 4 present, 4 mapped. The corpus-wide figure moves
 34,556 → 34,526 dropped rows, which is the honest size of this change: 30
 rows, and a field nothing else in the pipeline carries.
+
+## D-061  Four grammar-invariant tests would have passed on an empty rule set
+
+Found 2026-09-18 by a bounded audit of the whole suite for the vacuous-pass
+shape, prompted by that shape appearing twice in two days.
+
+**The shape:**
+
+    for x in <discovery>:        # yields nothing
+        assert something(x)      # never runs
+    # test passes, having checked nothing
+
+Audited by AST rather than by grep: a test whose assertions all sit inside a
+loop over a discovery expression (`rglob`, `glob`, `load_rules`,
+`collect_events`, …), with no assertion outside that loop and no count guard.
+45 test files, 5 candidates, 4 real.
+
+**The four, all in `tests/test_ruleset_agrees_with_validator.py`:**
+
+    test_every_correlation_rule_names_a_shared_entity
+    test_every_presence_step_is_excluded_from_the_window
+    test_every_rule_records_its_measured_base_rate
+    test_every_window_justification_cites_a_number
+
+Each loops over `load_rules(RULES_ROOT, include_disabled=True)` and asserts
+inside the loop. **Nothing in the suite asserted the rule set is non-empty**,
+so had the loader ever returned `[]` all four would have reported success.
+Demonstrated rather than argued: `load_rules` on an empty tree returns 0
+rules, and all four then iterate zero times.
+
+These are not incidental tests. They are the ones enforcing that a presence-
+typed step never enters a sliding window (**D-027**) and that every rule
+carries a measured base rate — the two disciplines this project's rule set
+rests on. Silence there would be the most expensive silence in the suite.
+
+**Fix:** one shared `every_rule` fixture asserting `len(rules) >= 10` before
+returning them. Four tests take the fixture instead of calling the loader, so
+a future test gets the guard by asking for it rather than by remembering.
+
+**The fifth candidate is a false positive and stays as it is.**
+`test_lnk.py::test_protocol_links_yield_nothing` calls `pytest.skip` when its
+discovery finds nothing, which is the correct handling — an absent artefact
+class is not a failure. The audit script does not model skip-on-empty, and
+that limitation is recorded here rather than worked around, because a checker
+that silently reclassifies its own false positives is the thing this entry is
+about.
+
+**Third occurrence of this shape in this repository**, which is why it was
+audited rather than fixed case by case:
+
+* `rules/blocked/` emptied when R-ATOMIC-0003 moved into `atomic/`, and the
+  test guarding it "iterated over nothing and proved nothing" until it was
+  rewritten to build its own fixture. The note is still in that test.
+* `tests/test_curated_eid_coverage.py` matched `_CHANNELS` fragments against
+  `path.name` when those fragments begin with `/`, examined zero files and
+  passed in 0.10 s (**D-059**).
+* These four.
+
+The first was fixed in place, the second by an explicit non-vacuity assertion,
+and only after the third did anyone ask how many others there were. **A defect
+found twice is a defect class; the audit is the response to the class.**
