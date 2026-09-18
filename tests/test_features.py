@@ -39,6 +39,12 @@ def _event(ts, artifact="prefetch", leaf="a.exe", run_count=None, canonical=None
 
 BASE = datetime(2026, 8, 23, 22, 0, tzinfo=UTC)
 
+#: Comfortably above anomaly.MIN_TRAINING_ROWS, so a test that expects a family
+#: NOT to be modelled cannot pass for the trivial reason that it had too few
+#: rows. Derived from the constant rather than hard-coded, so raising the floor
+#: cannot silently make those tests vacuous (D-061's shape).
+MIN_ROWS_COMFORTABLY_CLEAR = anomaly.MIN_TRAINING_ROWS * 3
+
 
 class TestExclusions:
     def test_leaking_fields_are_named_with_their_measurement(self):
@@ -471,3 +477,54 @@ class TestPublisherAndLocationFeatures:
         for family, names in features.FAMILY_FEATURES.items():
             if family != "amcache":
                 assert "has_publisher" not in names
+
+
+class TestUndeclaredFamiliesAreNotModelled:
+    """D-063. A family with no entry in FAMILY_FEATURES must be SKIPPED, never
+    handed the full feature vocabulary and modelled anyway.
+
+    The layer appeared to cover 38 families while FAMILY_FEATURES still listed
+    the original seven, because `features_for` fell back to FEATURE_NAMES for
+    anything missing. Nothing reported the difference, so the gap was invisible
+    until the ablation measured where the attack entity actually ranked.
+
+    One config change would re-introduce it, which is why this is asserted
+    rather than left to the docstring.
+    """
+
+    def test_is_declared_agrees_with_the_table(self):
+        for family in features.FAMILY_FEATURES:
+            assert features.is_declared(family)
+        assert not features.is_declared("recyclebin")
+        assert not features.is_declared("usn")
+        assert not features.is_declared(None)
+        assert not features.is_declared("a family nobody has ever written")
+
+    def test_an_undeclared_family_is_never_fitted(self):
+        """Enough rows, plenty of variety, and still not modelled -- because
+        no one has chosen its features or leakage-tested them."""
+        events = [
+            _event(BASE + timedelta(minutes=n), artifact="recyclebin",
+                   leaf=f"deleted{n}.exe", run_count=n)
+            for n in range(MIN_ROWS_COMFORTABLY_CLEAR)
+        ]
+        model = anomaly.PerFamilyModel().fit(events, None)
+        assert "recyclebin" not in model.models, (
+            "an undeclared family reached the modelled set; features_for's "
+            "fallback to FEATURE_NAMES is back (D-063)"
+        )
+        assert "FAMILY_FEATURES" in model.unscored_families.reason("recyclebin"), (
+            "the family must be skipped for the STATED reason, so the layer's "
+            "coverage gap is visible rather than implied by a missing score"
+        )
+
+    def test_a_declared_family_with_the_same_rows_IS_fitted(self):
+        """The control: identical row count and shape, declared family. Without
+        this the test above would pass if fit() were broken outright."""
+        events = [
+            _event(BASE + timedelta(minutes=n), artifact="prefetch",
+                   leaf=f"prog{n}.exe", run_count=n)
+            for n in range(MIN_ROWS_COMFORTABLY_CLEAR)
+        ]
+        model = anomaly.PerFamilyModel().fit(events, None)
+        assert "prefetch" in model.models

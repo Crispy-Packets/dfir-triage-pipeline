@@ -230,6 +230,16 @@ the finding.**
 Entity rank **40 of 525 — top 7.6%**. Three of the four attack events are
 scored, against 1 of 11 on host 1.
 
+> **Measured 2026-09-13, against SEVEN parsed families. Superseded as a
+> current figure — see D-062.** Re-run on 2026-09-18 against 38 families, the
+> same host and the same model configuration gives **134 of 892 (top 15.0%)**.
+> The position halved in percentile terms, and the cause is that
+> `FAMILY_FEATURES` below still lists only the original seven: none of the 31
+> families added since has a feature set, 5 of 126 families are modelled, and
+> the entity denominator grew with the event pool while the model did not
+> change. The 7.6% figure remains correct for the pipeline it describes and
+> must not be quoted as current.
+
 ### Host 1 — as originally measured (`clean_b` training, `s1_v2` scored)
 
 | step | artifact | rank | flagged? |

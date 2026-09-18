@@ -207,16 +207,42 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
 
 
 def features_for(family: str | None) -> tuple[str, ...]:
-    """Feature names for `family`; the full set when it is unknown.
+    """Feature names for `family`, or the full set when it is unknown.
 
-    An unrecognised family falls back to every feature rather than to a guess.
-    A new parser then scores with redundant columns -- measurably worse, per
+    **Callers that fit a model must use `is_declared` instead of relying on
+    this fallback.** It survives for `family is None` and for callers that
+    genuinely want the full vocabulary; `PerFamilyModel.fit` no longer reaches
+    it (D-063).
+
+    The original rationale is kept because it was sound for the situation it
+    was written in: falling back to every feature meant a new parser scored
+    with redundant columns -- measurably worse, per
     `docs/per-family-features.md` -- rather than silently dropping a column its
     artifact does populate, which would be wrong rather than merely diluted.
+
+    That reasoning assumed a handful of undeclared families. It inverted at 31:
+    every family added across two sessions of parser work took the full
+    fifteen-column vocabulary, most of whose columns its records cannot
+    populate, and a constant column spends splits partitioning nothing.
     """
     if family is None:
         return FEATURE_NAMES
     return FAMILY_FEATURES.get(family, FEATURE_NAMES)
+
+
+def is_declared(family: str | None) -> bool:
+    """Whether `family` has a feature set chosen for it deliberately.
+
+    An undeclared family is **not modelled**. It is not given the full
+    vocabulary and quietly scored, which is what happened until D-063: the
+    anomaly layer appeared to cover 38 families while `FAMILY_FEATURES` still
+    listed the original seven, and nothing reported the difference.
+
+    Declaring a family is a decision with a leakage test behind it
+    (`docs/feature-decisions.md`), so the honest default for an undeclared one
+    is to say so and score nothing.
+    """
+    return family is not None and family in FAMILY_FEATURES
 
 
 @dataclass(frozen=True, slots=True)

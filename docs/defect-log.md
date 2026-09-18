@@ -1721,3 +1721,157 @@ audited rather than fixed case by case:
 The first was fixed in place, the second by an explicit non-vacuity assertion,
 and only after the third did anyone ask how many others there were. **A defect
 found twice is a defect class; the audit is the response to the class.**
+
+## D-062  Baseline: the anomaly layer is scoped to 7 families and the ablation measures it before any ML work
+
+Found 2026-09-18 by the layer ablation, run after the rules-coverage work
+froze.
+
+**The headline measurement, host 2 (`clean_c` -> `s1_v3`):**
+
+    2026-09-13, 7 families     attack entity ranks   40 of 525   (top 7.6%)
+    2026-09-18, 38 families    attack entity ranks  134 of 892   (top 15.0%)
+
+**This is a baseline, not a regression.** The parser work did not harm the
+anomaly layer: the layer was never extended to see what the parsers added. The
+entity denominator grew with the event pool while the model stayed fitted on
+the original seven families, so the attack entity's percentile fell without
+anything about the model changing. A workstream-sequencing fact, recorded so
+the number is not read as damage.
+
+The 2026-09-13 figure is not wrong — it measured a different pipeline — and
+the comparison is the point: it establishes where the ML layer stands
+**before** any ML work, which is the only honest starting point for deciding
+whether that work is worth doing.
+
+**The cause is not the model. `features.FAMILY_FEATURES` still contains
+exactly seven entries:**
+
+    amcache, browser, evtx.powershell, evtx.security, evtx.system,
+    prefetch, registry
+
+Those are the original seven families. **Not one of the 31 families added
+across this session and the last has a feature set**, and
+`features_for_family()` falls back to the full `FEATURE_NAMES` for anything
+missing — which is precisely the failure `docs/per-family-features.md` was
+written to prevent: a family receives columns its records cannot populate
+(`run_count` for a deletion, `download_size_log10` for a registry value), the
+columns are constant, and Isolation Forest spends splits partitioning nothing.
+
+**Measured on `s1_v3`: 5 families are modelled out of 126 present.**
+
+    modelled: amcache, evtx.powershell, prefetch, services, shimcache
+    scored rows: 3,019 of 453,082 events
+
+`services` and `shimcache` reach the model only through that same fallback.
+Everything else is either below `MIN_TRAINING_ROWS` or unmodellable.
+
+**So the denominator grew and the signal did not.** `evaluation.rank_entities`
+draws entities from the scored rows, the event pool grew roughly 70% in
+entity terms (525 -> 892), and the model behind the ranking is unchanged from
+2026-09-13. The attack entity did not get harder to find; it got diluted.
+
+**Per-family contribution, and this is the more serious half.** No family
+places the attack entity in its own top decile:
+
+    host 1   bam 33.3%   prefetch 41.0%   shimcache 79.2%   userassist 86.3%
+    host 2   prefetch 63.2%   amcache 89.3%
+
+**The anomaly layer contributes nothing to finding this payload on either
+host.** The `both` figure of 1/1193 and 1/894 is the RULES layer placing it
+first and the ML ranking appended behind; ML alone puts it at 298/1189 and
+134/892, outside any review budget.
+
+That is consistent with what `CLAUDE.md` already says -- "the anomaly layer
+ranks; it does not detect" -- but the ranking claim itself now needs
+restating, because top-7.6% and top-15.0% support different sentences.
+
+**Not fixed here.** Adding feature sets for 31 families is per-family work
+requiring a leakage test each (`docs/feature-decisions.md`'s standard), and
+several families have no obvious numeric feature at all -- `recyclebin`
+carries a size and a path, `lnk` carries volume metadata, `txf_pending`
+carries neither. Whether the anomaly layer should cover them, or should be
+explicitly scoped to execution-shaped families and say so, is a design
+decision and belongs with the ML stage record rather than with a quick patch.
+
+**What must NOT happen meanwhile:** quoting 40/525 or "top 7.6%" as the
+current figure. `CLAUDE.md` and `docs/feature-decisions.md` both carry it,
+both now qualified with the date and the family count they describe. **A rank
+figure quoted without its pipeline version is the defect class here**, not the
+particular number -- the 2026-09-18 figures need the same treatment the moment
+anything below them moves.
+
+**THE ABLATION MUST BE RE-MEASURED AFTER D-058 LANDS.** Its rules-side ranks
+were taken against the current entity scoring, which D-058 will change: a
+clean-host user scores 97 against the attack binary's 99, and any of the three
+candidate fixes alters what "rank 1 of 5" means. The figures in
+`docs/evidence/layer-ablation-2026-09-18.md` therefore describe **pre-D-058
+scoring** and are superseded the day that decision lands. Stated here because
+a deferred re-measurement is the thing that gets lost.
+
+**Update 2026-09-18, after D-063.** Skipping undeclared families instead of
+defaulting them changed the measurement again, in the direction the diagnosis
+predicted: modelled families 5 -> 3 (`services` and `shimcache` were reaching
+the model only through the fallback), scored rows 3,019 -> 2,180, entities
+892 -> 443, attack rank 134 -> 81. The PERCENTILE barely moved -- 15.0% to
+18.3% -- which is the confirmation that the denominator, not the model, was
+carrying the earlier change.
+
+## D-063  An undeclared family was handed every feature and modelled anyway
+
+Found 2026-09-18 while investigating D-062's cause.
+
+`features.features_for()` ended:
+
+    return FAMILY_FEATURES.get(family, FEATURE_NAMES)
+
+A family with no entry received **the full fifteen-column vocabulary**, and
+`PerFamilyModel.fit` then modelled it like any declared one. The docstring
+said so deliberately, and its reasoning was sound for the situation it was
+written in: a new parser scoring with redundant columns is merely diluted,
+whereas silently dropping a column its artifact does populate would be wrong.
+
+**That reasoning inverted at 31 families.** `FAMILY_FEATURES` still listed the
+original seven while the pipeline parsed 38, so every family added across two
+sessions took columns its records cannot populate -- `run_count` for a
+deletion, `download_size_log10` for a registry value -- and a constant column
+spends splits partitioning nothing. `docs/per-family-features.md` was written
+to prevent exactly this and was being bypassed by the default.
+
+**The layer therefore appeared to cover 38 families while its feature table
+covered 7, and nothing reported the difference.** `UnscoredFamilies` already
+existed to record *why* a family is not modelled -- below `MIN_TRAINING_ROWS`,
+or too few distinct vectors -- and "nobody declared its features" was not one
+of the reasons it could give.
+
+**Fix:** `features.is_declared()`, and `fit` skips an undeclared family with
+that reason recorded. `features_for` keeps its fallback for `family is None`
+and for callers wanting the full vocabulary; the fitting path no longer
+reaches it.
+
+**Measured effect on `s1_v3`**, and it is a correction rather than an
+improvement:
+
+    modelled families   5 -> 3   (amcache, evtx.powershell, prefetch)
+    scored rows     3,019 -> 2,180
+    entities          892 -> 443
+    attack rank       134 -> 81   (15.0% -> 18.3%)
+
+**`services` and `shimcache` were reaching the model only through the
+fallback** -- neither has ever had a declared feature set. Their removal is
+the honest state, not a loss: they were being scored on columns nobody chose
+for them.
+
+The percentile barely moved, which is the point. The denominator was carrying
+D-062's apparent change, not the model.
+
+**Asserted, not just documented.**
+`tests/test_features.py::TestUndeclaredFamiliesAreNotModelled` fails if an
+undeclared family reaches `model.models`, checks the skip reason names
+`FAMILY_FEATURES`, and carries a control -- a declared family with identical
+rows IS fitted -- so the test cannot pass because `fit` is broken outright.
+One config change would otherwise re-introduce the default silently.
+
+The row count it uses is derived from `MIN_TRAINING_ROWS` rather than
+hard-coded, so raising that floor cannot make the assertion vacuous (D-061's
+shape).

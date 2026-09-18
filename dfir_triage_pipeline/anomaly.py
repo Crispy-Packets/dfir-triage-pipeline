@@ -282,6 +282,22 @@ class PerFamilyModel:
             grouped.setdefault(event.source_artifact, []).append(event)
 
         for family, rows in grouped.items():
+            if not features.is_declared(family):
+                # D-063. A family with no entry in FAMILY_FEATURES used to fall
+                # back to the FULL fifteen-column vocabulary and be modelled
+                # anyway, so the layer appeared to cover every family while the
+                # table still listed the original seven. Most of those columns
+                # cannot be populated by an arbitrary artifact -- a deletion has
+                # no run count, a registry value has no download size -- and a
+                # constant column spends splits partitioning nothing.
+                #
+                # Declaring a family is a decision with a leakage test behind
+                # it. Not declaring one is therefore a reason to score nothing,
+                # recorded here like any other, rather than a reason to guess.
+                self.unscored_families.add(
+                    family, "no feature set declared in FAMILY_FEATURES", len(rows)
+                )
+                continue
             if len(rows) < MIN_TRAINING_ROWS:
                 self.unscored_families.add(family, "below MIN_TRAINING_ROWS", len(rows))
                 continue

@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  898 passed, 21 skipped
+    python -m pytest -q               ->  901 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.0.0  rules 15  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -74,12 +74,34 @@ on `clean_b` must not flag `clean_a` as broadly anomalous. If that fails, no
   committed before the implementation.
 
 **The anomaly layer ranks; it does not detect.** Nothing is flagged as an
-outlier in either host's scenario. On host 2 the attack entity ranks **40 of 525
-(top 7.6%)**, improved from 351 of 616 on host 1 -- the change came from
-collecting a corpus the model could see and from five leakage-tested features,
-not from tuning. Detection comes from the deterministic rules; the anomaly layer
-contributes triage ranking and a measured ~5% false-positive floor on clean
-hosts.
+outlier in either host's scenario.
+
+**The anomaly layer is scoped to the original 7 families.** `FAMILY_FEATURES`
+declares feature sets for `amcache`, `browser`, `evtx.powershell`,
+`evtx.security`, `evtx.system`, `prefetch` and `registry` and for nothing
+else. **Extending it to the 31 families added by the parser work is a separate
+workstream and has not been started.** An undeclared family is skipped with
+that reason recorded, never defaulted to the full feature vocabulary (D-063).
+
+**The ablation at the current state is a BASELINE, not a ranking result**
+(D-062). It measures where the layer stands before any ML work, which is the
+only honest starting point for deciding whether that work is worth doing:
+
+    2026-09-13,  7 declared, 7 parsed     host 2:  40 of 525  (top 7.6%)
+    2026-09-18,  7 declared, 38 parsed    host 2:  81 of 443  (top 18.3%)
+                                          host 1: 298 of 1189 (top 25.1%)
+
+The percentile fell because the entity denominator grew with the event pool
+while the model stayed fitted on seven families -- dilution, not damage. A
+rank figure quoted without its pipeline version is the defect; see D-062
+before using any of these. **All of them are superseded when D-058 lands**,
+because the rules-side scoring they sit beside is what D-058 changes.
+
+**No family places the attack entity in its own top decile** -- `bam` 33%,
+`prefetch` 41%, `amcache` 89%. The combined figure of 1/894 is the RULES layer
+placing it first with the anomaly ranking appended behind it. Detection comes
+from the deterministic rules; the anomaly layer contributes triage ranking and
+a measured ~5% false-positive floor on clean hosts.
 
 **There is no accuracy figure and none can be computed** -- 4 attack events in
 2,304 is not a labelled test set, and labelling by collection would measure
