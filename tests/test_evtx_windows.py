@@ -375,6 +375,9 @@ class TestBitsCarriesTransferDetail:
         assert event.path == (
             "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
         )
+        # The job owner makes the family joinable on entity.user too, not only
+        # on exe_name. Recorded DOMAIN\user verbatim per CD-010.
+        assert event.user == "WINVM\\vboxuser"
         assert event.details["path_basename"] == "msedge.exe"
         assert event.details["jobOwner"] == "WINVM\\vboxuser"
         # Transport tuning carries no forensic claim and is dropped.
@@ -504,6 +507,41 @@ class TestBitsCarriesTransferDetail:
         assert event.details["name"] == "Font Download"
         assert event.path is None
         assert "path_basename" not in event.details
+
+    def test_an_os_owned_job_records_its_owner_and_normalises_to_no_entity(self):
+        """CD-010: the parser records what the artefact wrote. Most BITS jobs
+        are owned by NT AUTHORITY\\LOCAL SERVICE, which core/entity.py folds to
+        None through SYSTEM_CONTEXTS -- so the value is preserved on the Event
+        and still creates no entity.user. A font download should not produce a
+        principal."""
+        from dfir_triage_pipeline.core import entity
+
+        event = self._parse(
+            self._record(
+                3,
+                {
+                    "jobTitle": "Font Download",
+                    "jobId": "F9EA3536-D133-4B03-A292-32E280C75F45",
+                    "jobOwner": "NT AUTHORITY\\LOCAL SERVICE",
+                    "processPath": "C:\\Windows\\System32\\svchost.exe",
+                },
+            )
+        )
+        assert event is not None
+        assert event.user == "NT AUTHORITY\\LOCAL SERVICE"
+        assert entity.user_key(event) is None
+
+    def test_transfer_eids_carry_no_principal(self):
+        """59 and 60 name no owner, so they cannot attribute. Only the EID 3
+        that created the job can, and only via its jobId."""
+        event = self._parse(
+            self._record(
+                60,
+                {"Id": "x", "url": "http://example.invalid/x", "name": "t", "hr": "0"},
+            )
+        )
+        assert event is not None
+        assert event.user is None
 
     def test_a_generic_channel_does_not_borrow_bits_keys(self):
         """D-067. _details_for and _user_for dispatch on the EID alone, so on an

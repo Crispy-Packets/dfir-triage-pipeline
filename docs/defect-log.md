@@ -2102,6 +2102,14 @@ An EID 3 row now carries `Event.path`, the derived path fields and
 `entity.exe_name` -- so a background transfer is joinable to an execution, which
 is the part of this family that no other family can supply.
 
+`jobOwner` is also wired to `Event.user` on EIDs 3/4/5, so the family joins on
+`entity.user` as well. It was left None in the first pass of this fix, which
+would have limited every join to `exe_name` on EID 3 alone. `core/entity.py`
+already folds `NT AUTHORITY\LOCAL SERVICE` to `None` via `SYSTEM_CONTEXTS`, so
+OS-owned jobs correctly contribute no principal -- checked before wiring rather
+than after. EIDs 59/60 carry no owner at all and cannot attribute; only the
+EID 3 that created the job can, through its `jobId`.
+
 **This entry claimed a destination path that is not there.** It quoted a
 raw EID 59 record as carrying a local destination in `name`. Measured across all
 five collections, `name` is the job DISPLAY NAME: a title (`Font Download`,
@@ -2242,10 +2250,26 @@ on nothing, and is **latent, not active**.
 
 **Fixed anyway**, because the corpus is not the worst case and the next
 collection is not bound by what this one happened to contain. `details`, `user`
-and `path` are now gated on the channel being curated. Verified after the
-change: generic rows carrying any of the three = **0 of 55,294** on `clean_a`
-and **0 of 46,464** on `s1_v3`, i.e. the fix changed nothing that was working,
-exactly as the pre-measurement predicted.
+and `path` are now gated on the channel being curated.
+
+**The gate REMOVES nothing, and that needed measuring properly rather than
+asserting.** The first check called `_details_for` directly -- which bypasses
+the gate, so it measured the pre-gate world -- and covered only the seven
+BITS/RDP EIDs. The question that matters is different: a generic channel
+carrying EID 4688 with `NewProcessName` would have had a `path` before this
+change and would lose it, and **`path` is hashed into `event_id`** (CD-002), so
+that would be an unrecorded hash change.
+
+Re-measured across all five collections against **every** EID with a branch in
+`_details_for`, `_user_for` or `_path_for` (3, 4, 5, 21, 25, 59, 60, 400, 403,
+600, 800, 1102, 4104, 4624, 4625, 4688, 4720, 5861, 7045):
+
+    generic-channel rows carrying one of those EIDs   4,491
+    of those, rows the gate removes anything from         0
+
+So no generic row loses details, user or path, and **no `event_id` changes from
+this fix**. The defect was latent in the strict sense: structurally wrong,
+firing on nothing.
 
 Asserted in `TestBitsCarriesTransferDetail::
 test_a_generic_channel_does_not_borrow_bits_keys`.

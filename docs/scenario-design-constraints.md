@@ -15,6 +15,11 @@ defect log records what was measured and when; this records what the next
 scenario must do differently. Where an entry has a D-number, that entry is the
 measurement; this is the consequence.
 
+**C-05 runs the other way.** C-01 to C-04 are all the lab writing signal it
+did not intend. C-05 is the lab failing to write signal it did intend, found by
+fixing two parsers and discovering that neither unblocked the technique it was
+blocking. Both halves have to hold for a corpus to calibrate a rule.
+
 **The shared failure mode.** In C-01, C-02 and C-03 the base rate looked
 good — clean separation between scenario and clean hosts, often on a single
 field, and C-01's 9-vs-0 was the single best field-level number in the
@@ -166,6 +171,46 @@ the `services` family on all five collections** (measured 2026-09-19). A
 provisioning command in history is not a provisioned row. Firewall rules are
 untested.
 
+
+## C-05  The scenario must produce the indicator the rule set is meant to detect
+
+**Established by:** D-065 and D-055, both resolved 2026-09-19;
+`docs/technique-coverage-grid.md` T1071.001 and T1059.001.
+
+The other four constraints are about the lab writing signal it did not mean to.
+This one is the opposite and was found by fixing two parser defects that turned
+out not to unblock anything: **the lab did not write the signal it did mean
+to.**
+
+Two techniques were listed as blocked on a parser. Both parsers are now fixed --
+`evtx.bits` and `evtx.ps_classic` went from `details == {}` on every row to
+carrying a URL, a byte count, a result code and two kinds of command line -- and
+**neither technique became writable**, because the scenario never produced the
+indicator:
+
+| technique | the indicator a rule needs | what the corpus contains |
+|---|---|---|
+| **T1071.001** Web C2 / download | an attacker-controlled background transfer | **every** BITS transfer on all five collections is Microsoft or Google update infrastructure (`msedge.b.tlu.dl.delivery.mp.microsoft.com`, `g.live.com`, `oneclient.sfx.ms`, `fs.microsoft.com`, `edgedl.me.gvt1.com`). Both scenarios delivered over `WebClient.DownloadFile` |
+| **T1059.001** PowerShell, logging off | a suspicious launching command line | `-ExecutionPolicy Bypass` appears **640 times on `clean_a` and 0 times on `s1_v3`** -- it is Chocolatey and provisioning tooling. Both scenarios ran `-ExecutionPolicy Restricted` |
+
+In both cases the technique is covered in principle, the family is parsed, rich
+and joinable, and there is **no positive class to calibrate against**. The
+`Bypass` case is worse than absence: the textbook predicate is inverted, so a
+rule written from a reference catalogue would fire on the clean hosts and miss
+both scenarios.
+
+**A parser blocker and a missing positive class look identical from the
+coverage grid** until the parser is fixed. Two rows sat in `blocked` for a
+reason that was only half true.
+
+**For the next collection:** before collecting, enumerate the techniques the
+rule set is meant to cover and confirm for each that **the scenario actually
+produces its indicator** -- not merely that the family which would record it is
+parsed. Deliver over the channel the rule reads; use the flags the rule looks
+for. Where a technique is deliberately not exercised, say so in the manifest,
+so a later reader finds "not attempted" rather than inferring "attempted and
+not detected".
+
 ---
 
 ## Checklist for the next collection
@@ -178,6 +223,10 @@ untested.
       recorded with its count (C-03)
 - [ ] All lab accounts, services and tasks provisioned before the baseline
       snapshot (C-04)
+- [ ] Every technique the rule set covers has its indicator actually produced
+      by the scenario, delivered over the channel the rule reads and with the
+      flags the rule looks for; techniques deliberately not exercised are named
+      as such (C-05)
 - [ ] Manifest states which of the above were satisfied and which were not.
       An unmet constraint that is written down is a limitation; an unmet
       constraint that is not is a finding waiting to be believed

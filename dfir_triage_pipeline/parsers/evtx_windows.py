@@ -287,6 +287,17 @@ def _user_for(eid: int, data: dict[str, str]) -> str | None:
         # is that a parser records what the artifact wrote, and entity.user
         # normalisation happens in core/entity.py where it is visible.
         return data.get("User") or None
+    if eid in (3, 4, 5):
+        # The BITS job owner, DOMAIN\user verbatim per CD-010, exactly as the
+        # 21/25 branch records User. Present on 100% of EID 3/4/5 records in all
+        # five collections; without it the family is joinable only on exe_name
+        # and only on EID 3.
+        #
+        # core/entity.py folds NT AUTHORITY\LOCAL SERVICE to None through
+        # SYSTEM_CONTEXTS, so OS-owned jobs contribute no principal and only a
+        # real account becomes an entity.user. That is the correct outcome here:
+        # a font download owned by LOCAL SERVICE should not create an entity.
+        return data.get("jobOwner") or None
     if eid == 800:
         # The legacy channel's UserId, out of its key=value detail block. This
         # is what makes ps_classic joinable on entity.user, which 811/812
