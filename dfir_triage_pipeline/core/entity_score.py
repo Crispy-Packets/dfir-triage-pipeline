@@ -27,6 +27,17 @@ clamped to 100 -- indistinguishable, with the ordering destroyed at exactly the
 top of the list where it matters most. A cap that flattens the leaders is worse
 than no cap.
 
+**And the limit of that fix, which the example above concealed for four days.**
+Diminishing returns moved that pair from 100/100 to 94/94. It did not separate
+them and could not: two entities matched by the SAME rules carry the SAME
+weights, and every order-independent combination of equal inputs returns equal
+outputs. The scorer was tested against the failing case's NUMBERS rather than
+its CAUSE. `onedrive.exe` was separated on 2026-09-17 by adding a predicate to
+`R-CORR-0003` -- in the rule, where the distinction actually lives -- after
+which it scores 60 and `invoice_scan.exe` scores 94. **A tie here is a report
+that the rules did not discriminate; it is not a scoring defect to be tuned
+away.** See D-056.
+
 The combination used instead is probabilistic-style: each weight is treated as
 a fraction of the remaining headroom, so
 

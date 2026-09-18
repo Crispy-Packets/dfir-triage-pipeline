@@ -69,6 +69,48 @@ steps:
         - field: path
           op: is_user_writable
           value: true
+        # Added 2026-09-17. `is_user_writable` alone left ONE benign finding per
+        # clean host at critical severity, and this rule's expected: note named
+        # it as the honest limit: per-user OneDrive under AppData\Local, which
+        # genuinely IS a user-writable autorun. Measured, it also left
+        # `onedrive.exe` scoring 94 -- identical to `invoice_scan.exe` -- because
+        # both matched this rule and R-ATOMIC-0006, and the entity scorer
+        # combines the same two weights to the same number. No scoring change
+        # can separate two entities matched by the same rules; the separation
+        # has to exist in a rule or it does not exist.
+        #
+        # The second predicate is where software is ACQUIRED as opposed to where
+        # it is INSTALLED. A vendor installs into Program Files, a system
+        # directory, or its own versioned directory under AppData; a download
+        # lands in Downloads, Temp, Desktop or Public. An autorun pointing at an
+        # acquisition directory is the shape of the attack, and OneDrive's
+        # `AppData\Local\Microsoft\OneDrive\OneDrive.exe` is an install path
+        # that this correctly excludes while `is_user_writable` cannot.
+        #
+        # WHAT THE PATTERN MATCHES, checked against the stored value rather
+        # than described from intent: `\downloads\`, `\desktop\` and `\public\`
+        # as path segments; `\temp\` as a path segment ANYWHERE, so
+        # `C:\Temp\`, `C:\Windows\Temp\` and `D:\nested\temp\` all match, not
+        # only `AppData\Local\Temp\`; and the literal `%temp%`. The `\`
+        # anchors mean `\Documents\Temperature\` does NOT match. The wider
+        # `\temp\` reach is intended -- a temp directory is an acquisition
+        # location wherever it sits -- and is stated here because the sentence
+        # above names two of them and the pattern covers more.
+        #
+        # Still a shape, still no vendor name: the prohibition on corpus-fitting
+        # in this file's expected: note stands and is not weakened by it.
+        # Measured across all five collections: 2 of 2 payload autoruns match,
+        # 0 of 53 benign autoruns match.
+        #
+        # `\appdata\` is deliberately NOT removed from R-ATOMIC-0006, which
+        # stays broad at weight 60 as the inventory-grade rule its own
+        # false_positive_notes already calls it. An `AppData\Roaming\<random>\`
+        # payload is the canonical real-world form of this technique, and
+        # narrowing the atomic rule to improve a base rate would trade
+        # worst-case coverage for a better number on this corpus.
+        - field: path
+          op: matches
+          value: '(?i)\\(downloads|desktop|public)\\|\\(appdata\\local\\)?temp\\|%temp%'
     in_window: false
     optional: false
 
@@ -102,16 +144,96 @@ window:
     interval. details.value_count_in_key says how many siblings share it.
 
 expected:
-  clean_a: 1
-  clean_b: 1
-  s1_v2: 2
-  clean_c: 1
-  s1_v3: 2
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 1
+  clean_c: 0
+  s1_v3: 1
   note: >
-    **Remeasured 2026-09-13, after the is_user_writable condition was added to
-    the persistence step.** All five figures above are post-change. The
-    pre-change measurement is retained below because the change is only
-    defensible against it.
+    **Remeasured 2026-09-17, after the acquisition-directory predicate was
+    added to the persistence step. Zero on every clean host; one on each
+    scenario host, and on both it is `invoice_scan.exe`.**
+
+    The two earlier measurements are retained below, because each change is
+    only defensible against the one before it.
+
+    AS MEASURED 2026-09-13 (is_user_writable only): 1, 1, 2, 1, 2.
+
+    WHY IT CHANGED AGAIN. The 2026-09-13 note named its own residual honestly:
+    one benign finding per clean host at critical severity, per-user OneDrive
+    under AppData\Local, "identical in structure to the attack". Measured on
+    2026-09-17 that residual was doing more damage than the count suggested.
+    In the s1_v3 entity table `onedrive.exe` scored **94 -- the same as
+    `invoice_scan.exe`** -- because both matched this rule (85) and
+    R-ATOMIC-0006 (60), and two entities matched by the same rules combine to
+    the same score by construction. `entity_score.py` had already been
+    rewritten once to separate exactly this pair, replacing a clamped sum with
+    diminishing returns; it separated 145-clamped-to-100 from 145, and it could
+    never separate 85+60 from 85+60. **No scoring change can distinguish two
+    entities that the rules do not distinguish.** See D-056.
+
+    WHAT THE NEW PREDICATE IS. Where software is ACQUIRED rather than where it
+    is INSTALLED. A vendor installs into Program Files, a system directory, or
+    its own versioned directory under AppData; a download lands in Downloads,
+    Desktop, Temp or Public. `is_user_writable` cannot make that distinction,
+    because OneDrive's `AppData\Local\Microsoft\OneDrive\OneDrive.exe`
+    genuinely is user-writable. Both predicates are now required, and the
+    second is still a shape with no vendor name in it, so this file's standing
+    rejection of name-based suppression is intact.
+
+    MEASURED ON THE FULL AUTORUN POPULATION, not only on this rule's findings:
+    55 autorun values across the five collections. The predicate matches 2 of
+    2 payload values (`SecurityUpdate` -> `C:\Users\<user>\Downloads\
+    invoice_scan.exe`, on s1_v2 and s1_v3) and **0 of 53 benign values**. The
+    benign population is OneDrive, OneDriveSetup, MicrosoftEdgeAutoLaunch,
+    SecurityHealth, VBoxTray and OneDrive's own cmd.exe cleanup entries, and
+    every one of them points into Program Files, a system directory, or a
+    vendor install directory.
+
+    EFFECT ON THE ENTITY TABLE. s1_v3: `invoice_scan.exe` 94 critical and the
+    only critical entity; `onedrive.exe` 60 high, fifth. s1_v2:
+    `invoice_scan.exe` 98 critical, top. The clean hosts lose their critical
+    finding entirely.
+
+    WHAT THIS RULE NO LONGER COVERS -- read this before assuming it is still
+    the general autorun-persistence chain. The persistence step now requires
+    BOTH `is_user_writable` AND the acquisition predicate. **A payload
+    resident in `AppData\Roaming\<random>\` with a Run key pointing at it --
+    the canonical real-world form of T1547.001 -- fires R-ATOMIC-0006 at
+    weight 60 and does NOT fire this rule.** Verified against the stored
+    pattern: `C:\Users\v\AppData\Roaming\evil\payload.exe` does not match.
+    That shape is therefore inventory-grade in this pipeline, present in
+    `findings.csv` at high severity, and it will not reach the top of the
+    entity table.
+
+    That is a deliberate trade, not an oversight. Recovering it would need a
+    THIRD predicate separating OneDrive's
+    `AppData\Local\Microsoft\OneDrive\OneDrive.exe` from a malicious
+    `AppData\Roaming\<random>\payload.exe`, derived from the same five
+    collections that produced the first two -- which is corpus-fitting under
+    another name, and this file rejects that on principle rather than on
+    conscience. The honest position is a narrower critical-severity rule plus
+    a broad high-severity one, with the boundary written down here.
+
+    R-ATOMIC-0006 still matches `\appdata\` and still fires 8/8/4/1/2 --
+    unchanged by this edit, and deliberately so. It remains the broad
+    inventory-grade rule at weight 60; this is the precise one at 85.
+
+    LIMITS OF THE MEASUREMENT ABOVE, stated so the numbers are not read as
+    stronger than they are:
+
+    * **The positive class is two rows.** 2 of 2 payload autoruns matching is
+      a clean calibration, NOT a validated discriminator. Two positives from
+      one scenario, staged by one operator, cannot establish that the shape
+      generalises to payloads this project has never seen.
+    * **No held-out collection.** All five collections were used both to
+      derive the predicate and to evaluate it. Held-out validation waits on a
+      sixth collection; until then the 0-of-53 figure describes the corpus the
+      rule was fitted against.
+    * **English directory names.** `downloads`, `desktop`, `public` and `temp`
+      are matched as literals. A non-English Windows install writes localised
+      shell folder names and would not match. This is a scope statement, like
+      the ⛔ markers in the attestation matrix, rather than a defect.
 
     AS ORIGINALLY MEASURED 2026-08-30: clean_a 5, clean_b 5, s1_v2 5.
 
