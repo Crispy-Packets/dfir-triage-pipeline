@@ -105,7 +105,7 @@ qualifier is genuinely needed it belongs in the note, not in a new bucket.
 | **T1546.003** WMI Event Subscription | disk-resident | writable-now | `covered` (untested) | R-ATOMIC-0007 — 0 on all five. `CommandLineEventConsumer` is execution-capable by definition; the zero is structural |
 | **T1021.001** RDP | disk-resident | writable-now | `covered` (untested) | R-ATOMIC-0005, R-ATOMIC-0008 — 0 on all five. No RDP in either lab |
 | **T1110** Brute Force | disk-resident | writable-now | `covered` | R-CORR-0002, 2/2/0/0/0 |
-| **T1070.004** Indicator Removal — File Deletion | disk-resident | writable-now | `covered` **(new 2026-09-18)** | **R-CORR-0006, 0/0/1/0/1** — an autorun-registered executable deleted to the Recycle Bin. Zero on every clean host, `invoice_scan.exe` on both scenario hosts. **Two predicates were measured and rejected first**: "executed then deleted" (4 of 5 benign `clean_b` deletions match it — installing software looks exactly like this) and "deleted file ≤ 512 KB" (10 payload vs 2 benign, rejected as corpus-fitting: it separates a copied `notepad.exe` from installers, not malware from software). The SID and the 9x repetition were also rejected — see §3.5. Caveats as R-CORR-0003: two findings, one operator, no held-out collection, and `recyclebin` is empty on two of three clean hosts so only `clean_b` is a real negative |
+| **T1070.004** Indicator Removal — File Deletion | disk-resident | writable-now | `covered` **(new 2026-09-18)** | **R-CORR-0006, 0/0/1/0/1** — an autorun-registered executable deleted to the Recycle Bin. Zero on every clean host, `invoice_scan.exe` on both scenario hosts. **Two predicates were measured and rejected first**: "executed then deleted" (4 of 5 benign `clean_b` deletions match it — installing software looks exactly like this) and "deleted file ≤ 512 KB" (10 payload vs 2 benign, rejected as corpus-fitting: it separates a copied `notepad.exe` from installers, not malware from software). The SID and the 9x repetition were also rejected — see §3.4. Caveats as R-CORR-0003: two findings, one operator, no held-out collection, and `recyclebin` is empty on two of three clean hosts so only `clean_b` is a real negative |
 
 ### 2.2 Observable and unwritten — the real backlog
 
@@ -115,12 +115,12 @@ to it. These are the only rows where "write a rule" is the correct next action.
 | Technique | Evidence class | Writability | State | Family and note |
 |---|---|---|---|---|
 | ~~**T1070.004** File Deletion~~ | — | — | **moved to §2.1 — `covered` by R-CORR-0006, 2026-09-18** | See the row in §2.1 and `docs/evidence/recyclebin-predicate-2026-09-18.md` |
-| **T1053.005** Scheduled Task | disk-resident | writable-now | `observable-unwritten` | `scheduled_task`, 222 rows on s1_v3 — needs a user-writable shape predicate, not a name list (D-040) |
-| **T1027** Obfuscated Files | disk-resident | writable-now | `observable-unwritten` | `evtx.powershell` 4104 already parsed; R-ATOMIC-0003's encoded-command branch matches 0 corpus-wide but is the canonical form. **`ps_history` must NOT be used to widen this** — see the leakage note in §2.6 |
+| ~~**T1053.005** Scheduled Task~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | The user-writable shape predicate was measured and finds **exactly the same 5 tasks on all five collections**: four Windows Defender `MpCmdRun.exe` entries under `C:\ProgramData\Microsoft\Windows Defender\platform\` and one `OneDriveLauncher.exe` under `AppData\Local`. Microsoft ships both. 5/5/5/5/5 — the predicate identifies vendors that install outside Program Files, and no other discriminator is available: `<Date>` is absent from most tasks and `<Author>` is self-declared |
+| ~~**T1027** Obfuscated Files~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | Re-measured across 4,393 script blocks. `-EncodedCommand` with a substantial payload: **0 on all five collections** — R-ATOMIC-0003 already carries that branch and it is correctly a zero-base-rate pattern. `FromBase64String`: **123 / 123 / 67 / 0 / 0** — nearly twice as high on the CLEAN hosts, which R-ATOMIC-0003's `note_on_excluded_patterns` already recorded and rejected. Compression-stream markers: 0 everywhere. **No obfuscation indicator in this corpus points the right way**; the technique is covered as far as it can be by R-ATOMIC-0003's existing encoded branch |
 | **T1074.001** Local Data Staging | disk-resident | writable-now | `observable-unwritten` | `usn`/`mft` — archive creation in a temp/download directory |
 | ~~**T1052.001** Exfiltration over USB~~ | disk-resident | writable-now | **`not-observable` in this corpus (D-064)** — moved out of the backlog 2026-09-18 on inspection | The capability is real: `lnk` and `jumplist` record a removable volume's serial and label, surviving the device's removal, and CD-013's point stands. **But this corpus's only removable-media activity is the operator's own.** `drive_type` measures 9 removable rows on `s1_v2` and 0 on the other four — apparently the best single-field base rate in the project — and the rows are `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`, `E:\handoff` and personal media from 2020/2024. **It is the USB stick the collections were carried off on**, browsed on 2026-08-20, before the `s1` directory existed. A rule here detects the evidence-handling procedure. `s1_v3` has zero removable rows |
-| **T1071.001** Web C2 / download | disk-resident | writable-now | `observable-unwritten` | `webcache` `background_transfer` (20 rows s1_v3) + `evtx.bits`. A BITS transfer leaves NO browser history |
-| **T1078.003** Valid Accounts — Local | disk-resident | writable-now | `observable-unwritten` | `sam` standalone shape rule, no join needed. **The predicate must be read off the real `details` first — see §3.3**: `password_not_required` is a token inside `account_flags`, and on its own it matches Guest and DefaultAccount on every host. Requires `rid >= 1000` plus `well_known` absent. Full population is 7 accounts per host, so the base rate is the whole population rather than a sample |
+| **T1071.001** Web C2 / download | disk-resident | writable-now | **`blocked` — D-065** | Both candidate families fail today for different reasons. **`evtx.bits` emits `details == {}` on every row in every collection** while its raw records carry `url`, the destination `name`, `bytesTotal`, `jobOwner` and `processPath` — a more complete download record than the `browser` family produces, entirely discarded (D-065, the third instance after D-055 and D-057). **`webcache` `background_transfer`'s `url` field holds a cache-entry GUID, not a URL**, and every row's `cache_directory` sits under a Store or ContentDeliveryManager app package — OS app-content fetches, not user downloads. `blocked` rather than `not-observable`: the evidence is rich and a parser change makes it writable |
+| ~~**T1078.003** Valid Accounts — Local~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | The corrected predicate (`rid >= 1000`, `well_known` absent, and `password_not_required` or `logon_count: 0`) matches **zero accounts on all five collections**. The full population is 7 accounts per host on host 1 and 5 on host 2, so this is the whole set and not a sample: every RID ≥ 1000 account has non-zero logons, and every `password_not_required` account is a disabled well-known built-in (Guest, DefaultAccount). A staged account is exactly what the shape would catch and this corpus contains none — `testuser` was created on `clean_b` and is **absent from SAM entirely** (§1). Zero is the correct result, not a miss |
 
 ### 2.3 Blocked — parsed, but something specific prevents a rule
 
@@ -306,7 +306,7 @@ from SAM entirely** (§1 records this). A rule on account shape cannot see an
 account the hive no longer holds, which is the standing limit of the family
 rather than of the rule.
 
-### 3.5 The discriminator was not in the family that carried the signal
+### 3.4 The discriminator was not in the family that carried the signal
 
 R-CORR-0006 is the first rule of the coverage phase and the clearest
 illustration of §3.2's lesson, because the family survey pointed at the right
@@ -333,34 +333,49 @@ has 5 autoruns and 4 deleted executables and **zero** joins between them.
 The pattern across §3.2, §3.3 and this section: **the family that carries the
 signal and the property that discriminates are rarely the same thing.**
 
-### 3.6 The backlog is five rows, not two hundred — and it shrinks on contact
+### 3.5 The backlog emptied, and only one row became a rule
 
-§2.2 started at seven writable-now unwritten rows. **Two have since left it by
-being measured**, and the remaining five are T1053.005, T1027, T1074.001
-(now covered by R-CORR-0006), T1071.001 and T1078.003.
+§2.2 began as seven writable-now unwritten rows. **All seven have now been
+measured, and the backlog is empty.** One became a rule; two were blocked on
+named parser defects; four measured as non-discriminating.
 
-**Three of the original seven changed shape the moment they were measured
-rather than reasoned about**, which is why §4 says `observable-unwritten` is a
-statement about evidence and join keys, never a promise that a rule will
-discriminate:
+| row | outcome |
+|---|---|
+| **T1070.004** File Deletion | **→ R-CORR-0006**, 0/0/1/0/1 |
+| T1052.001 USB exfiltration | → `not-observable` (D-064) |
+| T1071.001 Web C2 / download | → `blocked` (D-065) |
+| T1053.005 Scheduled Task | → `measured-no-discriminator` |
+| T1027 Obfuscated Files | → `measured-no-discriminator` |
+| T1078.003 Valid Accounts | → `measured-no-discriminator` |
+| T1136.001 Create Account | → `observable-unwritten`, anchored wrong (§3.3) |
 
-* **T1070.004** — the obvious form (execution followed by deletion of the same
-  name) fires hardest on `clean_b`, which has 293 `.exe` deletions against
-  `s1_v3`'s 16. The writable version anchors on `recyclebin` instead, and is
-  now R-CORR-0006 at 0/0/1/0/1.
-* **T1052.001 (USB exfiltration) — removed from the backlog entirely.** Its
-  base rate looked like the best in the project: 9 removable rows on `s1_v2`,
-  zero on all four other collections. The rows are
-  `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`,
-  `E:\handoff` — **the USB stick this project's own evidence was carried off
-  on**, browsed before the `s1` collection existed. D-064.
-* **Prefetch deletion** — 125 rows on `s1_v2`, zero on the other scenario
-  host, and the names are Windows aging its own cache.
+**One rule from seven candidates is the honest yield**, and the six negatives
+are the output of the phase rather than its failure. Each carries a figure:
 
-The pattern D-051 and the firewall EID established holds three more times: **a
-shape that is sound in the abstract is not a rule until its base rate is
-known, and a base rate that looks excellent still has to be read row by row.**
-Two of these three had clean numbers and the wrong meaning.
+* **T1053.005** — the user-writable predicate finds the *same five tasks on
+  every collection*: four Defender `MpCmdRun.exe` under `ProgramData`, one
+  `OneDriveLauncher.exe` under `AppData`. 5/5/5/5/5. The shape identifies
+  vendors who install outside Program Files.
+* **T1027** — `-EncodedCommand` is 0 everywhere; `FromBase64String` is
+  123/123/67/0/0, **higher on clean hosts**, already rejected once in
+  R-ATOMIC-0003's notes.
+* **T1078.003** — zero matches in a population of 7 accounts per host. Every
+  RID ≥ 1000 account has non-zero logons; every `password_not_required`
+  account is a disabled built-in.
+* **T1052.001** — the best base rate in the project, 9 vs 0, and the rows are
+  the USB stick the evidence was carried off on (D-064).
+* **T1071.001** — the evidence is richer than the `browser` family's and the
+  parser discards all of it (D-065).
+
+**Three of the seven had clean numbers and the wrong meaning** — T1052.001,
+T1027's base64 branch, and the "executed then deleted" form of T1070.004. That
+is the finding this phase produces: *a base rate that looks excellent is a
+reason to read the rows, not a reason to write the rule.* D-051 and the
+firewall EID established it; these three confirm it on a larger sample.
+
+**What is left is not more rules but two parser defects** (D-065 for BITS,
+D-055 for `ps_classic` 400/403/600), one re-anchoring (T1136.001), and the
+D-058 implementation. None of those is a rule-authoring task.
 
 ---
 

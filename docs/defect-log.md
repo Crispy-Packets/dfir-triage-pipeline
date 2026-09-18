@@ -1978,3 +1978,64 @@ for something other than evidence transport, and where the collections are not
 staged through the volume being measured. That is a collection-design
 constraint worth recording for any future scenario: **the evidence must not
 leave the host by a route the pipeline parses.**
+
+## D-065  `evtx.bits` records a complete download and the parser keeps only the timestamp
+
+Found 2026-09-18, measuring the T1071.001 backlog row.
+
+`docs/artifact-attestation-matrix.md` credits this family with the one thing no
+other family can supply:
+
+> `evtx.bits` matters because a background transfer is a download that leaves
+> NO BROWSER HISTORY -- the browser family cannot see it at all.
+
+**Measured: `details == {}` on every `evtx.bits` row, in every collection.**
+The family emits an `event_type`, a timestamp, and nothing else. It cannot
+name a URL, a destination, a size or an owner.
+
+**The raw records carry all of it.** EID 59 (transfer started) on `s1_v3`:
+
+    name          C:\Users\vboxuser\AppData\Local\Temp\{...}-MicrosoftEdgeUpdateSetup_X86_1.3.265.7.exe
+    url           http://msedge.b.tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/1c7f...
+    bytesTotal    1781080
+    fileTime      2026-08-28T17:51:09Z
+    transferId    722D5450-63C7-41F2-A871-B1CBA9E7BCBC
+
+EID 60 adds `hr` (the result code) and `bytesTransferred`; EID 3 carries
+`jobTitle`, `jobOwner` and **`processPath`** -- the process that created the
+job; EID 4 carries `bytesTransferred` and `fileCount`.
+
+A source URL, a local destination path, a byte count and the responsible
+process. That is a more complete download record than the `browser` family
+produces, and all of it is discarded.
+
+**Third instance of the same defect** -- D-055 (`evtx.ps_classic` 400/403/600),
+D-057 (`evtx.winlogon` 811/812), and now this. In each case a channel was
+added to `_CHANNELS` with an EID map and **no matching branch in
+`_details_for`**, so the family appears in the timeline carrying nothing. The
+pattern is now established beyond doubt: adding a channel is two edits and
+nothing forces the second.
+
+Unlike the other two, these records use `<Data Name="...">` attributes, so
+`_event_data` reaches them already -- the fields are sitting in the `data`
+dict and `_details_for` simply has no `elif` for 3/4/59/60. This one is a
+`keep` tuple and a details-schema declaration, not a new reader.
+
+**The consequence for the backlog.** T1071.001 was listed as
+`observable-unwritten` on the strength of this family plus `webcache`
+`background_transfer`. Measured, neither can currently support a rule:
+
+* `evtx.bits` -- 254/288/351/95/111 rows, no fields at all.
+* `webcache` `background_transfer` -- 38/50/71/5/20 rows, and the `url`
+  field holds a **cache-entry GUID**, not a URL. Every row's
+  `cache_directory` is under a Store or ContentDeliveryManager app package:
+  these are OS app-content fetches, not user-attributable downloads.
+
+T1071.001 therefore moves to `blocked` with this defect named, not to
+`not-observable`: the evidence is present and rich, and a parser change makes
+it writable.
+
+**Not fixed here.** A `keep` tuple for 3/4/59/60 needs its details keys
+declared under CD-012 first, and `url`/`name` need a decision about whether
+they are carried verbatim or capped like `script_block_text`. It is parser
+work, and the rules-layer sequencing puts it after the current pass.
