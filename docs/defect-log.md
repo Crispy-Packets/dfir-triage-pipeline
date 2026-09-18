@@ -1360,3 +1360,115 @@ and it lands in the parser layer rather than in the rules work this was found
 during. Recorded so the attestation matrix stops crediting `ps_classic` with a
 capability the code does not have: its row in Section 1 and Section 6.3 of
 `docs/artifact-attestation-matrix.md` both now say so.
+
+## D-056  A benign autorun scored identically to the payload, and the scorer could never have fixed it
+
+Found 2026-09-17, by running the pipeline end to end on `s1_v3` and reading the
+entity table rather than the finding list.
+
+    94 (from 145 across 2 rules)  [critical] entity.exe_name=invoice_scan.exe
+    94 (from 145 across 2 rules)  [critical] entity.exe_name=onedrive.exe
+
+Both matched `R-CORR-0003` (weight 85) and `R-ATOMIC-0006` (weight 60). The
+entity scorer combines distinct rule weights with diminishing returns, so both
+combined to 94. **OneDrive was reported as a critical entity, tied with the
+payload, at the top of the table.**
+
+**The trap is that this had already been "fixed" once.** `entity_score.py`'s
+docstring cites this exact pair as the case that justified replacing a clamped
+sum with diminishing returns: under the old scheme both scored 145 clamped to
+100, and the fix moved them to 94. The pair was used as the worked example of
+a solved problem. It was not solved -- it went from indistinguishable at 100 to
+indistinguishable at 94.
+
+No combination function could have solved it. Both entities matched the same
+two rules, so both carried the same two weights, and any order-independent
+function of equal inputs returns equal outputs. **The scorer was validated
+against the failing case's numbers instead of its cause.**
+
+**The cause was in the rules.** `R-CORR-0003`'s persistence step required
+`is_user_writable`, and OneDrive's per-user install at
+`AppData\Local\Microsoft\OneDrive\OneDrive.exe` genuinely satisfies it. The
+rule's own `expected:` note had recorded that residual on 2026-09-13 and
+called it "the honest limit of this indicator" -- correctly, as a base-rate
+observation, and without noticing that the same residual was putting a benign
+binary level with the payload in the ranked output an analyst actually reads.
+
+**Fix:** a second shape predicate on the same step, separating where software
+is ACQUIRED (Downloads, Desktop, Temp, Public) from where it is INSTALLED
+(Program Files, a system directory, a vendor's own versioned directory under
+AppData). Measured against the full autorun population across all five
+collections -- 55 values -- it matches **2 of 2 payload values and 0 of 53
+benign ones**.
+
+    R-CORR-0003   before  1 1 2 1 2     after  0 0 1 0 1
+    s1_v3 entity table:  invoice_scan.exe 94 critical (sole critical)
+                         onedrive.exe     60 high (fifth)
+    s1_v2 entity table:  invoice_scan.exe 98 critical (top)
+
+`R-ATOMIC-0006` was deliberately left broad and still fires 8/8/4/1/2.
+Narrowing it identically would have improved its base rate while removing the
+pipeline's ability to see an `AppData\Roaming\<random>\` payload, which is the
+canonical real-world form of this technique and a shape this corpus happens not
+to contain. Trading worst-case coverage for a better number on this corpus is
+the corpus-fitting both rules' notes already reject.
+
+**Same family as D-051 and D-055, and the sharpest instance of it.** D-051 was
+a derived signal asserted without measuring; D-055 was a channel taken for a
+field nothing extracts; this was a fix verified against the symptom it was
+supposed to remove. All three produce output that looks correct. The specific
+lesson: **an entity-score tie is a report that the rules did not discriminate.
+It is evidence about the rule set, not a defect in the scorer.**
+
+## D-057  Winlogon 811/812 drop the only field that distinguishes them, and two EIDs are discarded unseen
+
+Found 2026-09-18 by the family signal survey, which flagged `evtx.winlogon` as
+having `details == {}` on **all 1,913 rows across four collections** — and by
+then checking the raw records rather than concluding the artefact was empty.
+
+**The records are not empty.** Every 811 and 812 carries two named fields:
+
+    <EventData>
+      <Data Name="Event">0</Data>
+      <Data Name="SubscriberName">GPClient</Data>
+    </EventData>
+
+`_details_for()` has no branch for 811 or 812, so `keep` falls through to the
+empty tuple and both fields are dropped. **Structurally identical to D-055**
+(`evtx.ps_classic` 400/403/600), found in a different family three weeks of
+parser work apart, which is what makes it a pattern rather than an oversight:
+a channel gets an entry in `_CHANNELS` and an EID map, and the corresponding
+`_details_for` branch is a separate edit nothing forces.
+
+`SubscriberName` is the field that makes the row mean anything. 811/812 are a
+notification dispatched to a subscriber and its completion; the subscriber
+named is what says WHICH subsystem was notified. Without it the family emits
+1,913 rows that differ only in timestamp.
+
+**Two EIDs are discarded without ever being seen.** The same raw read found:
+
+    EventID counts on clean_b: {1: 21, 2: 21, 811: 158, 812: 158}
+
+EIDs 1 and 2 are not in `WINLOGON_EIDS`, so `_artifact_for()` maps them
+nowhere and they are dropped. Unlike the generic `evtx.x.*` fallback — which
+exists precisely so an unstudied channel still lands somewhere — an unmapped
+EID inside a CURATED channel is silently lost. **The generic fallback does not
+protect curated channels**, and nothing measures what a curated map omits.
+
+**A separate claim this corrects.** `docs/artifact-attestation-matrix.md`
+records that 811/812 "do not name a principal at all". The record carries
+`<Security UserID="S-1-5-18">`. The matrix's CONCLUSION stands — S-1-5-18 is
+SYSTEM, the service dispatching the notification, not the account logging on —
+but its stated reason was wrong, and the corrected reason is stronger: the
+channel names a principal and that principal is never the user.
+
+**Not fixed here.** Extracting `SubscriberName` needs a `details` key declared
+under CD-012 first, and deciding what EIDs 1 and 2 attest to is a curation
+question, not a bug fix. Recorded so that:
+
+* the family survey's verdict reads `parser-blocked`, not `no discriminator` —
+  a family cannot be said to lack discriminating content while its content is
+  being discarded;
+* the audit that should exist — every curated channel's EID map compared
+  against the EIDs actually present in the evidence — is written down as
+  missing rather than assumed done.

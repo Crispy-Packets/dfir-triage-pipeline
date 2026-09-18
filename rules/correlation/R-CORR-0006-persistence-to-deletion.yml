@@ -1,0 +1,197 @@
+# Correlation chain 6. Added 2026-09-18, the first rule of the coverage phase.
+#
+# Read the `expected:` note before changing anything: two other predicates were
+# measured and REJECTED before this one, and the reasons are the substance.
+
+schema_version: "1.3.0"
+id: R-CORR-0006
+type: correlation
+title: An autorun-registered executable was deleted to the Recycle Bin
+enabled: true
+
+description: >
+  Joins a Run or RunOnce value to a Recycle Bin deletion of the same
+  executable name. Claims that a binary registered to run at logon was also
+  deleted, and names both records. **Reports no interval between them,
+  deliberately** - the registry step carries no time of its own that can be
+  ordered against the deletion. Claims nothing about who deleted it, nor that
+  the autorun still points at a file that exists.
+
+severity: critical
+weight: 80
+
+attack:
+  technique: T1070.004
+  name: Indicator Removal - File Deletion
+
+select:
+  event_type: [file_deleted]
+  source_artifact: [recyclebin]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_deleted
+
+steps:
+  - name: persistence
+    select:
+      event_type: [persistence_autorun]
+      source_artifact: [registry]
+    conditions:
+      all:
+        - field: details.value_name
+          op: present
+        - field: path
+          op: present
+    # presence-typed: the timestamp is the containing key's last write, shared
+    # with every sibling value, so it cannot be ordered against the deletion.
+    # Same clause as R-CORR-0003; see the window justification below.
+    in_window: false
+    optional: false
+
+  - name: deletion
+    select:
+      event_type: [file_deleted]
+      source_artifact: [recyclebin]
+    conditions:
+      all:
+        - field: details.original_path
+          op: present
+        - field: details.deleted_size
+          op: present
+    in_window: true
+    optional: false
+
+join:
+  on: [entity.exe_name]
+
+window:
+  from: deletion
+  to: deletion
+  min: PT0S
+  max: PT1S
+  justification: >
+    Degenerate on purpose, for the reason R-CORR-0003 sets out at length and
+    D-027 established: a Run value's timestamp is the containing KEY's
+    last-write time, shared by every sibling value under it. It is not the
+    time the value was written and cannot be ordered against anything.
+
+    The window therefore spans the deletion step alone, the persistence step
+    is excluded from it, and the finding reports no interval. Measured here:
+    on s1_v2 the SecurityUpdate key's last write is 2026-08-21T01:34:07Z while
+    the deletions it joins to run from 2026-08-20T15:51:41Z to
+    2026-08-23T21:33:04Z - the persistence timestamp sits in the MIDDLE of the
+    deletion sequence, so any ordering claim would be wrong in one direction
+    or the other depending on which deletion was chosen.
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 1
+  clean_c: 0
+  s1_v3: 1
+  note: >
+    Measured 2026-09-18 across all five collections. Zero on every clean host;
+    one finding on each scenario host, and on both it is `invoice_scan.exe`.
+
+    THE SHAPE, and why it is derivable without this corpus. An installer is
+    downloaded, run once, and deleted - that is how software gets installed,
+    and it is the modal benign pattern in this evidence. It does NOT register
+    itself to run at logon. **Persistence pointing at a file that has been
+    deleted is anti-forensic by construction**: the autorun survives to run
+    whatever later occupies that path, and the file that would explain it is
+    gone. An examiner who had never seen these collections could derive this
+    from the technique.
+
+    THE CONTROL that shows the mechanism rather than the outcome. Of the four
+    benign executables deleted to the Recycle Bin on `clean_b` - SQL2025,
+    SSMS-Setup, VSCodeUserSetup, vs_community - **all four were also executed**
+    (shimcache, userassist, and for SSMS also amcache and prefetch), and
+    **none is autorun-registered**. They fall out of this rule for exactly the
+    reason the shape argument predicts, not because a threshold excluded them.
+
+    TWO PREDICATES WERE MEASURED AND REJECTED FIRST, and the rejections matter
+    more than the acceptance.
+
+    (1) "Executed, then deleted" - REJECTED. It is the modal benign pattern
+    above: 4 of the 5 `clean_b` deletions match it. Anchoring on the deletion
+    and adding execution does not narrow anything, because installing software
+    looks exactly like this.
+
+    (2) "Deleted file smaller than 512 KB" - REJECTED as corpus-fitting, and
+    it measured WELL: 10 payload rows against 2 benign across all five
+    collections. It works only because this lab's payload is a copied
+    `notepad.exe` of 4,608-360,448 bytes while this lab's benign deletions
+    happen to be installers of 1.6 MB to 495 MB. A real payload can be 50 MB
+    and a real user deletes small files constantly. The test this fails is the
+    one R-CORR-0003's note applies to vendor names, applied to a number: could
+    an examiner derive the threshold from the technique, or only from reading
+    these five collections? Only the second. D-040's rule, and it is easier to
+    break with a number than with a name because the number looks principled.
+
+    ALSO DELIBERATELY NOT USED: the SID. On `s1_v2` every payload deletion
+    belongs to `...-1002` (janed) and every benign one to `...-1000`
+    (Youssef), which separates perfectly on this corpus and would learn the
+    lab. janed is the scenario user; on another estate the attacker and a
+    benign user may share an account.
+
+    AND NOT USED: the repetition. `invoice_scan.exe` is deleted NINE times on
+    `s1_v2` at three different sizes over four days, which is the operator
+    retrying the scenario rather than an attacker's behaviour - `s1_v3`, the
+    other scenario host, holds exactly ONE deletion. Repetition count and
+    `deleted_size` are recorded as excluded in `docs/feature-decisions.md`
+    beside the `ps_history` leakage, for the same reason.
+
+    LIMITS OF THIS MEASUREMENT, stated so the figures are not read as stronger
+    than they are:
+
+    * **The positive class is two findings**, one per scenario host, from one
+      staged scenario by one operator. A clean calibration, not a validated
+      discriminator.
+    * **No held-out collection.** All five were used to derive the shape and
+      to evaluate it. Held-out validation waits on a sixth.
+    * **`recyclebin` is empty on two of the three clean hosts** (`clean_a` and
+      `clean_c` hold zero rows). The zero on those two collections says the
+      family was empty, NOT that the rule discriminated there. Only `clean_b`,
+      with 4 deleted executables and 5 autoruns and no join between them, is a
+      real negative.
+
+notes: >
+  This rule fires on the entity R-CORR-0003 and R-ATOMIC-0006 already name, so
+  on both scenario hosts it raises `invoice_scan.exe` rather than surfacing a
+  new one. That is the intended behaviour of independent corroboration and not
+  a duplicate finding: the claims differ. R-ATOMIC-0006 says an autorun points
+  somewhere user-writable, R-CORR-0003 says a binary that ran is registered to
+  run again, and this says the file behind that registration was deleted.
+
+  A deletion that never reached the Recycle Bin is invisible here. `usn` sees
+  those and is deliberately NOT selected: its deletion volume moves in opposite
+  directions on the two hosts (2.32x on host 1, 0.59x on host 2, measured
+  2026-09-18), so it carries no signal at collection level, and joining it here
+  would add rows without adding a claim. `recyclebin` also carries the original
+  full path, which the journal cannot supply.
+
+false_positive_notes: >
+  An uninstaller that removes a program's autorun and its binary in the same
+  operation would produce this shape legitimately. None appears in this corpus,
+  and the rule cannot distinguish that case from an actor removing a payload:
+  both leave a Run value and a deleted file of the same name. An analyst must
+  read the value name and the deletion time before treating a finding as
+  malicious.
+
+  The rule says nothing about whether the autorun still resolves. A Run value
+  pointing at a deleted file is inert until something recreates the path, and
+  this pipeline cannot tell whether that happened.
+
+references:
+  - "docs/evidence/family-signal-survey-2026-09-18.md"
+  - "docs/evidence/recyclebin-predicate-2026-09-18.md"
+  - "docs/defect-log.md D-027, D-040, D-056"
+  - "docs/contract-decisions.md CD-007, CD-019"
+
+# `any`, not `strict`: the persistence step is presence-typed and carries no
+# time that can be ordered against the deletion (see the window justification).
+# Demanding an order would assert a sequence D-027 proves is not there.
+order: any

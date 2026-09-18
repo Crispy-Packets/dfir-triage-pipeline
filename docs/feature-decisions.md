@@ -47,6 +47,71 @@ collections perfectly and detect nothing.
 the original plan's exclusion list. The plan proposed hour-of-day and
 weekday/weekend as features. They are excluded on evidence.
 
+### `ps_history` content is excluded from BOTH layers (2026-09-18)
+
+Found by the family signal survey
+(`docs/evidence/family-signal-survey-2026-09-18.md`), not by a feature
+measurement, and recorded here because it is the same class of defect as
+`hour_of_day` and affects rule authorship as well as the model.
+
+PSReadLine history normalises to 3.4x and 2.95x more commands on the scenario
+hosts than the clean ones — a strong ratio, on both hosts, in the same
+direction. **Reading the rows shows the extra commands are the operator
+building the scenario**, not an intruder acting:
+
+    Copy-Item -Path C:\Windows\System32\notepad.exe -Destination Z:\invoice_scan.exe
+    Test-Path Z:\invoice_scan.exe
+    python -m http.server 8000
+    sc.exe create DummyLabSvc binPath= "C:\Windows\System32\svchost.exe"
+
+And the decisive case — **`clean_c`, a CLEAN collection, names the payload**:
+
+    Get-Item C:\staging\invoice_scan.exe | Select-Object Name, Length
+    Get-FileHash C:\staging\invoice_scan.exe
+    $p = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+
+A model or rule keyed on this content learns the shape of lab construction and
+would score a clean collection as compromised on the strength of the string
+`invoice_scan.exe` appearing in a shell history. `clean_b` carries a milder
+form: `net user testuser temppass1123 /addddddddddddddddddddddddddd`, a
+typo'd command retried.
+
+**The family stays parsed and stays in the timeline** — it is genuine evidence
+of what was typed, and it survives when script-block logging is off, which is
+the reason it was written. It is excluded from being a rule anchor and from
+supplying model features. The distinction matters: the artefact is sound, the
+corpus is contaminated, and only the second fact restricts what may be built
+on it.
+
+### `recyclebin` deleted_size and repetition count are excluded (2026-09-18)
+
+Same category, found while choosing the predicate for R-CORR-0006
+(`docs/evidence/recyclebin-predicate-2026-09-18.md`).
+
+**`deleted_size` separates this corpus well and must not be used.** A
+threshold of 512 KB matches 10 payload deletions against 2 benign across all
+five collections. It works because this lab's payload is a copied
+`notepad.exe` of 4,608-360,448 bytes while this lab's benign deletions are
+software installers of 1.6 MB to 495 MB. It is `hour_of_day` in a different
+coordinate: a real property of the data that encodes how the lab was built
+rather than what an attack looks like. A real payload can be 50 MB, and a real
+user deletes small files constantly.
+
+**Repetition count is scenario construction.** `invoice_scan.exe` is deleted
+**nine times** on `s1_v2`, at three different sizes (201,216 → 360,448 →
+4,608) across four days — the operator retrying. `s1_v3`, the other scenario
+host, holds exactly **one** deletion. Any feature or rule keyed on how often a
+name recurs in the bin fires on host 1 and misses host 2.
+
+**The deleting SID is excluded for the third time in this document's logic.**
+On `s1_v2` every payload deletion belongs to `S-1-5-21-…-1002` (janed) and
+every benign one to `…-1000` (Youssef). It separates perfectly and it is the
+scenario user's account, not a property of attacks.
+
+A numeric threshold deserves more suspicion than a name list, not less,
+because it presents as principled. The test is the same one: could the value
+be derived from the technique, or only from reading these collections?
+
 ---
 
 ## 3. Features retained
