@@ -14,6 +14,20 @@ a test rather than another read-through.
 deliberate selection and most EIDs in a channel are noise. It requires every
 EID to be a DECISION: either in the map, or named in `UNMAPPED_BY_DESIGN`
 below with the reason. An EID that is in neither is one nobody has looked at.
+
+SCOPE -- what this audit cannot do (D-059, amended 2026-09-19):
+
+  * It finds EIDs ABSENT from a curated map. It does NOT verify that a
+    mapped EID is mapped CORRECTLY. A wrong label looks identical to a
+    right one from here: both are in `_mapped_eids`, both produce rows.
+    D-066 is the instance -- evtx.bits EID 4 was mapped to
+    `bits_job_cancelled` and is the job COMPLETION summary. It was
+    present in the map on every run of this test.
+  * The count check is PER COLLECTION, so an EID significant only in
+    aggregate across all five never reaches SIGNIFICANT_ROWS here.
+
+A green result from this file means 'nothing unaccounted for', never
+'everything correctly accounted for'.
 """
 
 from __future__ import annotations

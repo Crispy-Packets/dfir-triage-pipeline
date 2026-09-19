@@ -40,12 +40,17 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from . import entity_score
 from .entity_score import ScoredEntity
 from .findings import Finding
 
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
-RUN_JSON_VERSION = "1.0.0"
+#: Bumped to 1.1.0 on 2026-09-19 for D-058. ADDITIVE: `entities` keeps its
+#: name, its shape and its worst-first ordering, so an existing consumer is
+#: unaffected -- but it no longer contains `entity.host` rows, because the host
+#: is no longer scored. `entities_by_kind` is new. See entity_score.py.
+RUN_JSON_VERSION = "1.1.0"
 
 #: Events either side of a finding's first timestamp. Five minutes because the
 #: scenario's own tightest interval is 2m32s, so a window that narrow would cut
@@ -205,6 +210,23 @@ def _finding_json(
     return out
 
 
+def _by_kind(
+    entities: Sequence[ScoredEntity],
+) -> dict[str, list[ScoredEntity]]:
+    """Split an already-ranked entity list into one table per kind (D-058).
+
+    Takes the ranked list rather than re-aggregating, so the two views cannot
+    disagree: `entities_by_kind` is exactly `entities` partitioned, preserving
+    the worst-first order within each kind.
+    """
+    tables: dict[str, list[ScoredEntity]] = {
+        kind: [] for kind in entity_score.KIND_ORDER
+    }
+    for entity in entities:
+        tables.setdefault(entity.key, []).append(entity)
+    return tables
+
+
 def build(
     *,
     collection: Path,
@@ -254,6 +276,30 @@ def build(
             }
             for e in entities
         ],
+        # D-058: one ranked table per entity kind. A user's 97 and a binary's
+        # 99 do not measure the same thing, and ranking them together concealed
+        # that binaries separate cleanly (clean 86/86/75 high, scenario 99/99
+        # critical). `entity.host` appears in NEITHER table: there is one host
+        # per collection, so a host ranking is a single row, and a host entity
+        # aggregates every finding in the run. The host is reported as
+        # collection metadata instead -- see `collection` above.
+        "entities_by_kind": {
+            kind: [
+                {
+                    "key": e.key,
+                    "value": e.value,
+                    "score": e.score,
+                    "raw_sum": e.raw_sum,
+                    "severity": e.severity,
+                    "rule_ids": list(e.rule_ids),
+                    "techniques": list(e.techniques),
+                    "finding_count": e.finding_count,
+                    "finding_ids": [f.finding_id for f in e.findings],
+                }
+                for e in rows
+            ]
+            for kind, rows in _by_kind(entities).items()
+        },
         # The prioritisation panel's data, kept SEPARATE from findings. The
         # report shows them in different panels for the same reason: a ranking
         # and a verdict are different claims and must not share a column.

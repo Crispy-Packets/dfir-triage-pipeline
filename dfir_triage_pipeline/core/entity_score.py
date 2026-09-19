@@ -20,6 +20,26 @@ entity contributes its weight once. Otherwise `R-CORR-0003` firing on five
 autorun values would score an entity 425, and the count would measure how many
 registry values a program registered rather than how suspicious it is.
 
+**Entity kinds are ranked separately, and `entity.host` is not ranked at all
+(D-058, 2026-09-19).** A user's 97 and a binary's 99 do not measure the same
+thing: `entity.user=youssef` scored 97 on a collection containing no attack,
+from five rules that individually are reasonable and jointly describe an
+ordinary person using an ordinary computer. Mixing the kinds in one table
+invited that comparison and concealed a discriminator that was there all along
+-- restricted to binaries, the clean hosts top out at 86/86/75 `high` and the
+scenario hosts reach 99 `critical`, and **no clean collection produces a
+critical binary at all**.
+
+`entity.host` is excluded from scoring outright rather than given its own
+table. There is exactly ONE host per collection, so a host ranking is a table
+of one row, which is not a ranking; and a host entity aggregates every finding
+in the run, which makes its score a count of unrelated evidence attached to a
+label that cannot discriminate by construction. `core/entity.py` already
+records that `host_key` is "defined for reporting; not joinable (schema 4.5)"
+-- it was excluded from JOINS and not from SCORING, and nothing stated why
+those should differ. Now they agree. The host is still reported: it is
+collection metadata, which is where a single-valued fact belongs.
+
 **Why not a plain sum with a cap.** That was the first implementation and it
 was measurably wrong: on `s1_v3` both `invoice_scan.exe` and `onedrive.exe`
 matched `R-CORR-0003` (85) and `R-ATOMIC-0006` (60), summed to 145, and both
@@ -144,6 +164,17 @@ def _severity_rank(severity: str) -> int:
         return len(_SEVERITY_ORDER)
 
 
+#: Entity kinds that are SCORED and ranked. `entity.host` is deliberately
+#: absent -- see the module docstring and D-058. One host per collection means
+#: a host table is one row, and a host aggregates every finding in the run.
+SCORED_ENTITY_KINDS: tuple[str, ...] = ("entity.exe_name", "entity.user")
+
+#: Ranking order for the per-kind tables. Binaries first: that is the kind the
+#: corpus shows separating cleanly (86/86/75 high vs 99/99 critical), and the
+#: kind an analyst triages first.
+KIND_ORDER: tuple[str, ...] = ("entity.exe_name", "entity.user")
+
+
 def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
     """Group findings by entity key and score each entity.
 
@@ -155,10 +186,18 @@ def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
     placeholder. `R-ATOMIC-0002` keys on `entity.host`, which is deliberately
     not joinable, so a log-clear finding has nothing to aggregate on -- it is
     still reported as a finding, just not as an entity.
+
+    **`entity.host` is not scored** (D-058). It is excluded here rather than
+    filtered by the caller, so every consumer gets the same answer and no
+    report can reintroduce it by accident. `aggregate_by_kind` splits what
+    remains into one ranked table per kind; this flat list is retained for
+    callers that want a single worst-first ordering.
     """
     buckets: dict[tuple[str, str], list[Finding]] = {}
     for finding in findings:
         for key, value in finding.entity_keys:
+            if key not in SCORED_ENTITY_KINDS:
+                continue
             buckets.setdefault((key, value), []).append(finding)
 
     scored: list[ScoredEntity] = []
@@ -187,6 +226,26 @@ def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
     return scored
 
 
+def aggregate_by_kind(
+    findings: Iterable[Finding],
+) -> dict[str, list[ScoredEntity]]:
+    """One ranked table per entity kind, worst first within each (D-058).
+
+    Kinds are not comparable: a user aggregating five inventory-ish rules
+    reaches 97 on a clean host, and a binary reaching 99 on a scenario host
+    means something else entirely. Ranking them in one table invites exactly
+    that comparison.
+
+    Every kind in `SCORED_ENTITY_KINDS` is present as a key, even when empty,
+    so a consumer never has to distinguish "no such kind" from "none found".
+    `entity.host` never appears -- it is not scored.
+    """
+    tables: dict[str, list[ScoredEntity]] = {kind: [] for kind in KIND_ORDER}
+    for entity in aggregate(findings):
+        tables.setdefault(entity.key, []).append(entity)
+    return tables
+
+
 def summary_lines(entities: Sequence[ScoredEntity], limit: int = 10) -> list[str]:
     """The entity table, for the run summary. Every number is checkable."""
     if not entities:
@@ -201,4 +260,39 @@ def summary_lines(entities: Sequence[ScoredEntity], limit: int = 10) -> list[str
         )
     if len(entities) > limit:
         lines.append(f"  ... {len(entities) - limit} more")
+    return lines
+
+
+def summary_lines_by_kind(
+    tables: dict[str, list[ScoredEntity]], limit: int = 5
+) -> list[str]:
+    """The per-kind entity tables, for the run summary (D-058).
+
+    Each kind is headed and counted separately so that no two kinds appear as
+    neighbouring rows of one ranking.
+    """
+    total = sum(len(rows) for rows in tables.values())
+    if not total:
+        return ["Entities   : none (no finding carried a scored entity key)"]
+
+    lines = [f"Entities   : {total} scored, ranked separately per kind"]
+    for kind in KIND_ORDER:
+        rows = tables.get(kind, [])
+        label = kind.split(".", 1)[-1]
+        if not rows:
+            lines.append(f"  {label}: none")
+            continue
+        lines.append(f"  {label}: {len(rows)} scored, worst first")
+        for e in rows[:limit]:
+            combined = (
+                f" (from {e.raw_sum} across {len(e.rule_ids)} rules)"
+                if e.was_combined
+                else ""
+            )
+            lines.append(
+                f"    {e.score:>3}{combined}  [{e.severity}] {e.value}  "
+                f"{e.finding_count} finding(s) from {', '.join(e.rule_ids)}"
+            )
+        if len(rows) > limit:
+            lines.append(f"    ... {len(rows) - limit} more")
     return lines

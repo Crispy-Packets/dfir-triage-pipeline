@@ -12,7 +12,8 @@ from .core import report_html as report_html_mod
 from .core import run_json as run_json_mod
 from .core.engine import run as run_rules
 from .core.entity_score import aggregate as aggregate_entities
-from .core.entity_score import summary_lines as entity_summary_lines
+from .core.entity_score import aggregate_by_kind as aggregate_entities_by_kind
+from .core.entity_score import summary_lines_by_kind as entity_summary_lines
 from .core.report import summary_lines, write_findings_csv
 from .core.ruleset import RuleError, load_rules
 from .ingest import collect_events
@@ -107,8 +108,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # Entity view. An analyst triages entities rather than rule matches, and one
     # binary can be named by several rules -- see core/entity_score.py.
+    #
+    # Ranked per KIND (D-058): a user's score and a binary's score do not
+    # measure the same thing, and printing them as neighbouring rows of one
+    # table invited the comparison. entity.host is not scored at all.
     print()
-    for line in entity_summary_lines(aggregate_entities(findings)):
+    for line in entity_summary_lines(aggregate_entities_by_kind(findings)):
         print(line)
 
     if args.findings:

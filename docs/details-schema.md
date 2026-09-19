@@ -733,15 +733,27 @@ be written on its presence. It is taken for the field, not the count.
 | `host_application_bytes` | str(int) | `evtx.ps_classic` | Full UTF-8 byte length of `HostApplication` **before** truncation, always the real length. |
 | `host_application_truncated` | str | `evtx.ps_classic` | Present and `"true"` only when `host_application` was cut at the cap. Absent otherwise, so truncation is measurable rather than silent. |
 
-**A warning about `host_application` as a rule predicate.** The obvious
-reading — `-ExecutionPolicy Bypass` is suspicious — is **inverted in this
-corpus**. Measured after the D-055 fix: `Bypass` appears in
-**640 rows on `clean_a` and 0 rows on `s1_v3`**. On host 1 it is Chocolatey and
-other provisioning tooling; the scenario's own PowerShell ran with
-`-ExecutionPolicy Restricted`. A rule keyed on `Bypass` would fire on the clean
-host and miss both scenarios — the same shape as T1136.001 (see
-`docs/scenario-design-constraints.md` C-04). The field is declared because it is
-real evidence, not because a predicate on it is calibrated.
+**A warning about `host_application` as a rule predicate. No flag in this
+corpus discriminates.** Measured across all five collections after the D-055
+fix (`docs/evidence/t1059-predicate-2026-09-19.md`):
+
+    token        clean_a  clean_b   s1_v2  clean_c   s1_v3
+    restricted        56       56      72      104     138
+    bypass           640      640     460        0       0
+    -enc               0        0       0        0       0
+
+`bypass` is a HOST artifact — host 1 only, clean and scenario alike, from
+Chocolatey and the project's own provisioning scripts. `restricted` fires on
+every collection and most on `clean_c`, which is clean; both of its two
+distinct values are byte-identical Windows servicing scripts present
+everywhere. `-enc` does not occur at all.
+
+**And the scenario's PowerShell carried no flags**: it was interactive, bare
+`powershell.exe`, matching the typed commands in `ps_history`. A flag predicate
+cannot detect a session that launched without flags.
+
+The field is declared because it is real evidence, not because a predicate on
+it is calibrated. See C-05 in `docs/scenario-design-constraints.md`.
 
 ## `evtx.bits` — BITS background transfers
 

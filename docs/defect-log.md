@@ -8,6 +8,56 @@ Referenced from `docs/contract-decisions.md` as "the challenges log".
 
 ---
 
+## Pattern: a verification that cannot fail on the thing it checks
+
+Not a defect entry. A class this project has now hit four times, recorded here
+because the individual entries do not look alike and the class does.
+
+A check is written, it passes, and its passing is taken as evidence. The check
+never had the power to fail on the claim being made. The result is worse than
+no check, because a green result is read as a measurement.
+
+**Four forms, each with its instance here:**
+
+| form | the check examines | instance |
+|---|---|---|
+| **vacuous** | nothing at all | **D-061** — four grammar-invariant tests that would have passed on an empty rule set. **D-059's own audit, v1** — matched `_CHANNELS` fragments against `path.name`, found zero curated files, passed in 0.10s |
+| **partial** | some of the population, silently skipping the rest | **D-054** — the CD-007 loader's regex read 30 of 58 event types, because a multi-value line matched once. The vocabulary looked complete |
+| **wrong target** | something adjacent to the claim | **D-067's first check** — called `_details_for` directly, which BYPASSES the gate it was meant to verify, and covered 7 of the 19 relevant EIDs. It measured the pre-gate world and reported on the post-gate one |
+| **out of scope** | correctly, but the claim is outside what it can see | **D-066** — the D-059 audit finds EIDs *absent* from a curated map. EID 4 was present and mapped to the wrong meaning. A wrong label is invisible to a coverage audit |
+
+**The discipline.** A check earns trust only once it has been shown capable of
+failing. In practice, one of:
+
+1. **Run it against a known-bad input** and watch it fail before trusting a
+   pass.
+2. **Assert a minimum amount of work done** — `test_curated_eid_coverage.py`
+   asserts `audited >= 5` for exactly this reason, and
+   `test_ruleset_agrees_with_validator.py` asserts `len(rules) >= 10`.
+3. **Route the check through the same code path the claim is about.** D-067's
+   second attempt called `record_to_event`'s real gate rather than the helper
+   beneath it, and could therefore have come back non-zero.
+4. **State the scope the check does NOT cover**, so the next person does not
+   read it as broader than it is. D-059 now says in both the entry and the
+   test's docstring that it cannot verify a mapping is *correct*.
+
+**The same failure occurs in prose, not only in tests.** On 2026-09-19 the
+claim *"both scenarios ran PowerShell with `-ExecutionPolicy Restricted`"* was
+written into six documents and two commit messages. It had been inferred from
+one screenful — `Bypass` counted zero on `s1_v3`, and the top values there were
+`Restricted` — with no row ever joined to the attack. Measured, the two
+`Restricted` strings are byte-identical Windows servicing scripts present on
+all five collections, and the scenario's PowerShell was interactive with no
+flags at all. A reading in the right direction is not a measurement, and the
+check for prose is the same: *what command established this, and could it have
+come back the other way?*
+
+Related: **D-060** (a stated gap outliving the work that closed it) is the
+same disease in the documentation layer — a claim that was true when written
+and that nothing re-checked.
+
+---
+
 ## D-013 -- Prefetch naive timestamps: UTC or host-local?
 
 **Status: CLOSED 2026-08-27 -- library returns UTC. No correction applied.**
@@ -1397,10 +1447,31 @@ The obvious predicate on this field -- `-ExecutionPolicy Bypass` is suspicious
 | clean_a | **640** |
 | s1_v3 | **0** |
 
-On host 1 the `Bypass` invocations are Chocolatey and other provisioning
-tooling. **Both scenarios ran PowerShell with `-ExecutionPolicy Restricted`**,
-so the scenario's own PowerShell does not match the predicate that is supposed
-to catch it.
+On host 1 the `Bypass` invocations are Chocolatey, VS Code and the project's
+own `day1-install.ps1` / `02-clean-b.ps1` provisioning scripts. It is a HOST
+artifact, not a scenario one: 640/640/460 on host 1 and **zero on both host 2
+collections**, clean and scenario alike.
+
+**Correction, 2026-09-19.** This entry first said *"both scenarios ran
+PowerShell with `-ExecutionPolicy Restricted`"*. **That was never measured** --
+it was inferred from `Bypass` counting 0 on `s1_v3` while the top
+`host_application` values there were `Restricted`, with no row ever joined to
+the attack. Measured properly (`docs/evidence/t1059-predicate-2026-09-19.md`):
+
+* there are exactly **two** `Restricted` strings in the corpus and both are
+  **byte-identical on all five collections** -- `Write-Host 'Final result: 1'`
+  and an `$InboxIMEs` inventory block, both Windows servicing scripts;
+* `restricted` fires 56/56/72/**104**/**138**, i.e. on every collection and
+  MOST on `clean_c`, which is clean. It is not a corpus-fitted predicate, it
+  is a non-discriminator;
+* the scenario's PowerShell was **interactive** -- bare `powershell.exe` with
+  no flags, 149 rows on `s1_v2` and 65 on `s1_v3`, matching the 180 and 90
+  typed commands in `ps_history`. An interactive session carries no launch
+  flags, so **no flag-based predicate can detect this scenario at all**.
+
+The finding stands and is stronger than stated: not "the textbook predicate is
+inverted" but "neither candidate flag discriminates, and the scenario produced
+no flag to match.
 
 This is the fourth technique in the project whose textbook indicator fires on
 the clean hosts and not the attack -- after T1136.001 (account creation),
@@ -1615,8 +1686,67 @@ kinds stops that contaminating the binary ranking; it does not make the user
 score meaningful. Whether a user entity should aggregate rule weights at all
 is a further question.
 
-**Not implemented in this session.** `run.json`'s shape is Person A's report
-surface, and the ablation must be re-run after it lands (see above).
+### Landed 2026-09-19 — Option B, with `entity.host` excluded rather than tabled
+
+**The host table question was decided by its row count.** Option B as written
+gave every kind its own ranked table, `entity.host` included. There is exactly
+ONE host per collection — `windows10`, `windows10`, `windows10`,
+`win-l0cdivojagf`, `winvm` — so a host table is a single row, which is not a
+ranking. Combined with the fact that a host entity aggregates every finding in
+the run, the honest treatment is to stop scoring it: `core/entity.py` already
+said `host_key` is "defined for reporting; not joinable", and this entry
+already noted that nothing stated why joins and scoring should differ. Now
+they agree. The host is still reported, as collection metadata, which is where
+a single-valued fact belongs.
+
+**Implementation.**
+
+* `entity_score.SCORED_ENTITY_KINDS` — `entity.exe_name`, `entity.user`.
+  `aggregate()` filters on it, so exclusion happens once and no consumer can
+  reintroduce the host by accident.
+* `entity_score.aggregate_by_kind()` — one worst-first table per kind, every
+  declared kind present even when empty, so a consumer never distinguishes
+  "no such kind" from "none found".
+* `entity_score.summary_lines_by_kind()` — the terminal summary, headed per
+  kind.
+* `run.json` **1.0.0 → 1.1.0**, additively: `entities` keeps its name, shape
+  and ordering (it simply no longer contains host rows, because they are no
+  longer scored) and `entities_by_kind` is new. `_by_kind` partitions the
+  already-ranked list rather than re-aggregating, so the two views cannot
+  disagree.
+
+**Verified against all five collections, and the claim this change was made
+for reproduces exactly:**
+
+| collection | top binary | score | severity | top user | score |
+|---|---|---|---|---|---|
+| clean_a | `cursorusersetup-x64-3.15.6.exe` | 86 | high | youssef | 97 |
+| clean_b | `7z2602-x64.exe` | 86 | high | youssef | 97 |
+| clean_c | `npp.8.9.8.installer.x64.exe` | 75 | high | vboxuser | 92 |
+| s1_v2 | `invoice_scan.exe` | **99** | **critical** | admin_local | 93 |
+| s1_v3 | `invoice_scan.exe` | **99** | **critical** | vboxuser | 88 |
+
+Thirteen points of separation, and **no clean collection produces a critical
+binary**. Scored host entities: **0** on every collection.
+
+**What this does NOT fix, restated because it is easy to lose.** `youssef`
+still scores 97 among users. Separating the kinds stops that contaminating the
+binary ranking; it does not make the user score meaningful. Whether a user
+entity should aggregate rule weights at all remains open.
+
+Asserted in `TestEntityKindsAreRankedSeparately` (6 tests), including that a
+finding naming both a host and a binary keeps the binary — excluding a kind
+must not discard a finding's other entities.
+
+**Consequence discharged:** `docs/evidence/layer-ablation-2026-09-18.md` now
+carries a SUPERSEDED banner with the post-change binary figures, because every
+rules-side rank in it was measured against pre-D-058 scoring. A re-measured
+ablation remains outstanding (D-062).
+
+**For Person A:** `run.json` is 1.1.0. The change is additive and the existing
+`entities` array is unchanged in name, shape and order, so a consumer that
+ignores `entities_by_kind` keeps working — with the one behavioural
+difference that host rows no longer appear, which is the fix itself.
 
 **The immediate consequence, and the reason this is logged before the layer
 ablation rather than after:** the ablation reports where the attack entity
@@ -1689,6 +1819,28 @@ Three of the dropped EIDs are not noise:
 channel to be either mapped or listed in `UNMAPPED_BY_DESIGN` with a reason.
 Selectivity survives; silence does not. Mapping any particular EID remains a
 separate decision needing a CD-007 entry and a details-key declaration.
+
+### What this audit does NOT verify (scope, added 2026-09-19)
+
+**It finds EIDs that are ABSENT from a curated map. It cannot tell whether a
+mapped EID is mapped CORRECTLY.** A wrong label and a right one are
+indistinguishable from outside the parser: both appear in `_mapped_eids`, both
+produce rows, and the audit's question -- "is this EID accounted for?" -- is
+answered "yes" either way.
+
+**D-066 is the instance.** `evtx.bits` EID 4 was mapped to
+`bits_job_cancelled` and is the job COMPLETION summary. It was present in the
+evidence and present in the map, so this audit passed over it on every run.
+Finding it needed a different question -- reading the records against each
+other -- which no coverage audit asks.
+
+A second scope limit, already noted in the code: the check is **per
+collection**, so an EID significant only in aggregate across all five does not
+trip the `SIGNIFICANT_ROWS` threshold.
+
+Both limits are now stated in the test's own docstring, so the next reader
+meets them where the green result is produced. See the **verification-coverage
+pattern** at the top of this log: this is its "out of scope" form.
 
 **The test itself had this defect first, which is why it asserts it cannot
 pass vacuously.** Its first version matched `_CHANNELS` fragments against
@@ -2275,7 +2427,6 @@ Asserted in `TestBitsCarriesTransferDetail::
 test_a_generic_channel_does_not_borrow_bits_keys`.
 
 
-**Not fixed here.** A `keep` tuple for 3/4/59/60 needs its details keys
-declared under CD-012 first, and `url`/`name` need a decision about whether
-they are carried verbatim or capped like `script_block_text`. It is parser
-work, and the rules-layer sequencing puts it after the current pass.
+**Was "not fixed here" until 2026-09-19**, on the grounds that a `keep` tuple
+needed its details keys declared under CD-012 first. Both happened the same
+day; see the resolution recorded under D-065 above.

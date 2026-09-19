@@ -12,11 +12,41 @@ entity denominator grew with the event pool while the model stayed where it
 was, so the attack entity's percentile fell without anything about the model
 changing. Dilution, not damage. See D-062.
 
-**Superseded when D-058 lands.** The rules-side ranks below were measured
-against the current entity scoring, in which a clean-host user scores 97
-against the attack binary's 99. Any of D-058's candidate fixes changes what
-"rank 1 of 5" means, so these figures describe pre-D-058 scoring and must be
-re-measured after that decision.
+> ## SUPERSEDED 2026-09-19 — D-058 landed
+>
+> **Every rules-side rank in this document was measured against pre-D-058
+> entity scoring and no longer describes the pipeline.** Do not quote a figure
+> from here without that sentence attached.
+>
+> What changed: `entity.host` is no longer scored at all, and the remaining
+> kinds are ranked in separate tables. Both alter the denominator a rank is
+> taken against, and the second means "rank 1 of N" is now a claim about one
+> KIND rather than about a mixed table.
+>
+> Measured after the change, binaries only:
+>
+> | collection | top binary | score | severity |
+> |---|---|---|---|
+> | clean_a | `cursorusersetup-x64-3.15.6.exe` | 86 | high |
+> | clean_b | `7z2602-x64.exe` | 86 | high |
+> | clean_c | `npp.8.9.8.installer.x64.exe` | 75 | high |
+> | s1_v2 | `invoice_scan.exe` | **99** | **critical** |
+> | s1_v3 | `invoice_scan.exe` | **99** | **critical** |
+>
+> The ANOMALY-side figures (7 declared families, 38 parsed, the 40/525 and
+> 81/443 percentiles) are unaffected: D-058 changes entity scoring, not the
+> model, and the ML workstream has still not been started.
+>
+> A re-measured ablation is outstanding work, recorded in D-062. This banner
+> exists because the alternative — leaving the numbers unmarked until someone
+> re-runs them — is the stale-claim class this project has now hit four times
+> (see the verification-coverage pattern at the top of `docs/defect-log.md`).
+
+**The original note, kept because it correctly predicted this.** The
+rules-side ranks below were measured against the entity scoring in which a
+clean-host user scores 97 against the attack binary's 99. Any of D-058's
+candidate fixes changes what "rank 1 of 5" means, so these figures describe
+pre-D-058 scoring and must be re-measured after that decision.
 
 ---
 

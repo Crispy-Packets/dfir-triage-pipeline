@@ -535,3 +535,135 @@ class TestValidatorAgreesWithEngine:
 
     def test_validator_has_an_aggregate_check(self):
         assert hasattr(self._validator(), "check_aggregate")
+
+
+def _finding_keys(rule_id, weight, keys, severity="high", technique="T1000"):
+    """Like `_finding`, but the caller chooses the entity keys. D-058 is about
+    which KINDS are scored, so the keys cannot be hardcoded."""
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1",
+        schema_version="1",
+        title=rule_id,
+        severity=severity,
+        weight=weight,
+        attack_technique=technique,
+        matched=(
+            MatchedEvent(
+                event_id="e",
+                timestamp=BASE,
+                timestamp_type="recorded",
+                source_artifact="prefetch",
+                event_type="process_exec",
+                source_file="f",
+                source_locator="l",
+            ),
+        ),
+        entity_keys=tuple(keys),
+        time_claim="observed_occurrence",
+        reason="r",
+    )
+
+
+class TestEntityKindsAreRankedSeparately:
+    """D-058.
+
+    `entity.user=youssef` scored 97 on a collection containing no attack, two
+    points below the payload's 99, on a scale that mixed entity kinds. A user's
+    97 and a binary's 99 do not measure the same thing, and one table invited
+    exactly that comparison -- while concealing that binaries separate cleanly
+    on their own (clean 86/86/75 high, scenario 99/99 critical).
+    """
+
+    def test_host_entities_are_not_scored_at_all(self):
+        """One host per collection, so a host ranking is a table of one row;
+        and a host aggregates every finding in the run. It was already excluded
+        from JOINS, and nothing stated why scoring should differ."""
+        findings = [
+            _finding_keys("R-A", 60, [("entity.host", "windows10")]),
+            _finding_keys("R-B", 70, [("entity.host", "windows10")]),
+        ]
+        assert entity_score.aggregate(findings) == []
+        tables = entity_score.aggregate_by_kind(findings)
+        assert "entity.host" not in tables
+        assert all(not rows for rows in tables.values())
+
+    def test_a_finding_naming_a_host_and_a_binary_keeps_the_binary(self):
+        """Excluding the host must not discard a finding's other entities."""
+        findings = [
+            _finding_keys(
+                "R-A",
+                90,
+                [("entity.host", "windows10"), ("entity.exe_name", "payload.exe")],
+            )
+        ]
+        scored = entity_score.aggregate(findings)
+        assert [(e.key, e.value) for e in scored] == [
+            ("entity.exe_name", "payload.exe")
+        ]
+
+    def test_each_kind_gets_its_own_worst_first_table(self):
+        findings = [
+            _finding_keys("R-A", 40, [("entity.exe_name", "low.exe")]),
+            _finding_keys("R-B", 90, [("entity.exe_name", "high.exe")]),
+            _finding_keys("R-C", 70, [("entity.user", "someone")]),
+        ]
+        tables = entity_score.aggregate_by_kind(findings)
+        assert [e.value for e in tables["entity.exe_name"]] == ["high.exe", "low.exe"]
+        assert [e.value for e in tables["entity.user"]] == ["someone"]
+
+    def test_every_scored_kind_is_present_even_when_empty(self):
+        """A consumer must never have to tell 'no such kind' from 'none found'."""
+        tables = entity_score.aggregate_by_kind([])
+        assert set(tables) == set(entity_score.KIND_ORDER)
+        assert all(rows == [] for rows in tables.values())
+
+    def test_a_user_and_a_binary_no_longer_share_a_ranking(self):
+        """The defect in one assertion. Separating the kinds does not make the
+        user score meaningful -- it stops it contaminating the binary table."""
+        findings = [
+            _finding_keys("R-1", 85, [("entity.user", "youssef")]),
+            _finding_keys("R-2", 60, [("entity.user", "youssef")]),
+            _finding_keys("R-3", 40, [("entity.user", "youssef")]),
+            _finding_keys(
+                "R-4", 95, [("entity.exe_name", "payload.exe")], severity="critical"
+            ),
+        ]
+        tables = entity_score.aggregate_by_kind(findings)
+        users, exes = tables["entity.user"], tables["entity.exe_name"]
+        assert len(users) == 1 and len(exes) == 1
+        assert users[0].score > 90
+        assert all(e.key == "entity.user" for e in users)
+        assert all(e.key == "entity.exe_name" for e in exes)
+
+    def test_run_json_carries_both_views_and_no_host(self):
+        """The shape Person A's report consumes. `entities` keeps its name,
+        shape and ordering; `entities_by_kind` is additive."""
+        from pathlib import Path
+
+        from dfir_triage_pipeline.core import run_json
+
+        findings = [
+            _finding_keys(
+                "R-A",
+                95,
+                [("entity.exe_name", "payload.exe"), ("entity.host", "windows10")],
+                severity="critical",
+            ),
+            _finding_keys("R-B", 70, [("entity.user", "janed")]),
+        ]
+        doc = run_json.build(
+            collection=Path("collection_x"),
+            events=[],
+            findings=findings,
+            entities=entity_score.aggregate(findings),
+        )
+        assert doc["run_json_version"] == "1.1.0"
+        kinds = doc["entities_by_kind"]
+        assert set(kinds) == set(entity_score.KIND_ORDER)
+        assert [e["value"] for e in kinds["entity.exe_name"]] == ["payload.exe"]
+        assert [e["value"] for e in kinds["entity.user"]] == ["janed"]
+        assert all(e["key"] != "entity.host" for e in doc["entities"])
+        assert "entity.host" not in kinds
+        # The flat view is exactly the union of the per-kind tables.
+        assert sum(len(v) for v in kinds.values()) == len(doc["entities"])

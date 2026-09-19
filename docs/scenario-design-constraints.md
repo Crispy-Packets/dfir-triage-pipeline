@@ -191,7 +191,7 @@ indicator:
 | technique | the indicator a rule needs | what the corpus contains |
 |---|---|---|
 | **T1071.001** Web C2 / download | an attacker-controlled background transfer | **every** BITS transfer on all five collections is Microsoft or Google update infrastructure (`msedge.b.tlu.dl.delivery.mp.microsoft.com`, `g.live.com`, `oneclient.sfx.ms`, `fs.microsoft.com`, `edgedl.me.gvt1.com`). Both scenarios delivered over `WebClient.DownloadFile` |
-| **T1059.001** PowerShell, logging off | a suspicious launching command line | `-ExecutionPolicy Bypass` appears **640 times on `clean_a` and 0 times on `s1_v3`** -- it is Chocolatey and provisioning tooling. Both scenarios ran `-ExecutionPolicy Restricted` |
+| **T1059.001** PowerShell *with logging off* | PowerShell running while script-block logging is OFF, launched with a flag a rule can read | **the precondition never held**: 4104 rows are 982/997/1270/470/644, so logging was ON everywhere. And the scenario's PowerShell was **interactive** -- bare `powershell.exe`, no flags to match. Neither candidate flag discriminates: `bypass` is host-1-only (640/640/460/0/0), `restricted` fires on all five and most on clean_c (56/56/72/104/138) |
 
 In both cases the technique is covered in principle, the family is parsed, rich
 and joinable, and there is **no positive class to calibrate against**. The
