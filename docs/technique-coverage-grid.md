@@ -73,8 +73,10 @@ so that "cannot today" and "cannot ever" stay distinguishable:
 
 | State | Meaning |
 |---|---|
-| `covered` | Rule exists, measured, discriminates |
-| `observable-unwritten` | Parsed, joinable, no rule that discriminates yet — the backlog |
+| `covered` | **Class 1, corpus-validated.** Rule exists, fires on the scenario and not on clean, and carries measured `expected:` figures |
+| `covered-known-behavior` | **Class 2.** Rule exists and expresses a real intrusion behaviour with defensible logic, but this corpus does not exercise it, so there is no positive instance to validate against. Ships a documented **false-positive profile** in place of a detection rate; `expected:` carries measured figures where they exist and the literal `unmeasured` where they do not (added 2026-09-20) |
+| `observable-unwritten` | Parsed, joinable, no rule that discriminates yet — the backlog. **Emptied 2026-09-20** |
+| `measured, not exercised` | Measured, and this scenario simply did not perform the behaviour. A fact about the corpus, **not a rejection of the family** — a Class 2 rule may still be written (§3.9) |
 | `measured-no-discriminator` | Measured; clean and scenario indistinguishable, and the REASON is stated. Deliberately not written |
 | `not-observable` | Per evidence class, with the specific blocker named |
 | `blocked` | Parsed but something specific prevents a rule; the blocker is named |
@@ -118,7 +120,7 @@ to it. These are the only rows where "write a rule" is the correct next action.
 | ~~**T1053.005** Scheduled Task~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | The user-writable shape predicate was measured and finds **exactly the same 5 tasks on all five collections**: four Windows Defender `MpCmdRun.exe` entries under `C:\ProgramData\Microsoft\Windows Defender\platform\` and one `OneDriveLauncher.exe` under `AppData\Local`. Microsoft ships both. 5/5/5/5/5 — the predicate identifies vendors that install outside Program Files, and no other discriminator is available: `<Date>` is absent from most tasks and `<Author>` is self-declared |
 | ~~**T1027** Obfuscated Files~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | Re-measured across 4,393 script blocks. `-EncodedCommand` with a substantial payload: **0 on all five collections** — R-ATOMIC-0003 already carries that branch and it is correctly a zero-base-rate pattern. `FromBase64String`: **123 / 123 / 0 / 67 / 0** in collection order (clean_a, clean_b, clean_c, s1_v2, s1_v3) — nearly twice as high on the CLEAN host-1 collections as on the scenario, which R-ATOMIC-0003's `note_on_excluded_patterns` already recorded and rejected. Compression-stream markers: 0 everywhere. **No obfuscation indicator in this corpus points the right way**; the technique is covered as far as it can be by R-ATOMIC-0003's existing encoded branch. **Re-verified 2026-09-20 against raw EVTX** — see the reading-method note below |
 | **T1074.001** Local Data Staging | disk-resident | writable-now | `observable-unwritten` | `usn`/`mft` — archive creation in a temp/download directory |
-| ~~**T1052.001** Exfiltration over USB~~ | disk-resident | writable-now | **`not-observable` in this corpus (D-064)** — moved out of the backlog 2026-09-18 on inspection | The capability is real: `lnk` and `jumplist` record a removable volume's serial and label, surviving the device's removal, and CD-013's point stands. **But this corpus's only removable-media activity is the operator's own.** `drive_type` measures 9 removable rows on `s1_v2` and 0 on the other four — apparently the best single-field base rate in the project — and the rows are `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`, `E:\handoff` and personal media from 2020/2024. **It is the USB stick the collections were carried off on**, browsed on 2026-08-20, before the `s1` directory existed. A rule here detects the evidence-handling procedure. `s1_v3` has zero removable rows |
+| ~~**T1052.001** Exfiltration over USB~~ | disk-resident | writable-now | **`covered-known-behavior` (Class 2) 2026-09-20 — R-ATOMIC-0010**; was `not-observable` (D-064) | The capability is real: `lnk` and `jumplist` record a removable volume's serial and label, surviving the device's removal, and CD-013's point stands. **But this corpus's only removable-media activity is the operator's own.** `drive_type` measures 9 removable rows on `s1_v2` and 0 on the other four — apparently the best single-field base rate in the project — and the rows are `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`, `E:\handoff` and personal media from 2020/2024. **It is the USB stick the collections were carried off on**, browsed on 2026-08-20, before the `s1` directory existed. A rule here detects the evidence-handling procedure. `s1_v3` has zero removable rows |
 | ~~**T1071.001** Web C2 / download~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-19) — was `blocked (D-065)`; the parser defect is fixed and the technique is still unwritable | **The parser fix landed and did not unblock it.** `evtx.bits` now carries `url`, size, `hr`, `jobOwner` and a joinable `entity.exe_name` from EID 3's `processPath` (D-065 resolved; D-066 corrected EID 4/5). **But every BITS transfer in the corpus is vendor update traffic** — host counts sum to the full transfer count on all five collections: `msedge.b.tlu.dl.delivery.mp.microsoft.com`, `g.live.com`, `oneclient.sfx.ms`, `fs.microsoft.com`, `edgedl.me.gvt1.com`. Both scenarios delivered over `WebClient.DownloadFile`, not BITS, so **there is no positive class**. A rule here would encode two vendors' update endpoints. `webcache` `background_transfer` fails separately: its `url` holds a cache-entry GUID and every `cache_directory` is a Store/ContentDeliveryManager package |
 | ~~**T1078.003** Valid Accounts — Local~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | The corrected predicate (`rid >= 1000`, `well_known` absent, and `password_not_required` or `logon_count: 0`) matches **zero accounts on all five collections**. The full population is 7 accounts per host on host 1 and 5 on host 2, so this is the whole set and not a sample: every RID ≥ 1000 account has non-zero logons, and every `password_not_required` account is a disabled well-known built-in (Guest, DefaultAccount). A staged account is exactly what the shape would catch and this corpus contains none — `testuser` was created on `clean_b` and is **absent from SAM entirely** (§1). Zero is the correct result, not a miss |
 
@@ -663,6 +665,68 @@ created" from evidence that says nothing about account creation.
 
 **Not started pending both.** Recorded here so the measurement is not lost and
 so the next person does not re-derive it.
+
+### 3.9 T1070.006 timestomp: the indicator inverts, then vanishes (2026-09-20)
+
+Attempted as a Class 2 rule from the priority batch. **Not written**, for two
+independent reasons, both measured.
+
+**The naive shape is a non-discriminator at enormous scale.** `si_created <
+fn_created` — $STANDARD_INFORMATION older than $FILE_NAME, the classic
+SetFileTime backdating signature:
+
+| collection | mft rows with both times | si < fn | rate |
+|---|---|---|---|
+| clean_a | 415,719 | 110,313 | **26.5%** |
+| clean_b | 414,041 | 110,314 | **26.6%** |
+| clean_c | 284,146 | 99,955 | **35.2%** |
+| s1_v2 | 452,284 | 110,092 | **24.3%** |
+| s1_v3 | 340,114 | 94,262 | **27.7%** |
+
+A quarter of every collection, and **lower on the scenario host than on either
+clean collection of the same machine**. Row-level, the cause is immediate:
+
+    Program Files    si=2019-12-07T09:14:52   fn=2026-06-21T00:37:44
+    PerfLogs         si=2019-12-07T09:14:52   fn=2026-06-21T00:37:44
+    $Recycle.Bin     si=2019-12-07T09:14:52   fn=2026-06-21T00:37:44
+    WindowsUpdate.adml  si=2023-05-05        fn=2026-08-12
+
+Windows Setup preserves the install media's timestamps in `$SI` while the
+kernel writes `$FN` at install time. Top extensions are `dll` (28,620),
+`manifest` (18,451), `xml`, `mui`. This is the OS, not an adversary.
+
+**Restricting it removes the entire population.** Three tightened variants,
+all five collections:
+
+| variant | all five |
+|---|---|
+| file (not dir) under a user-writable path | **0** |
+| the above, executable extension, gap > 1 day | **0** |
+| uniform `$SI` (created == modified == accessed), user-writable | **0** |
+
+So the discrepancy is 110,000 rows of system files and **zero** user-writable
+files anywhere in the corpus. There is no population between "everything" and
+"nothing" from which to choose a threshold, and no positive instance to
+validate against — the scenario did not timestomp.
+
+**It is also not expressible in schema 2.0.0.** The predicate compares
+`details.si_created` against `details.fn_created` — a **field-to-field**
+comparison. Conditions compare a field to a *literal*; `value_field` is not a
+condition key and the validator rejects it (`unknown condition key(s):
+['value_field']`). The operator set is closed and contains no field-versus-
+field form. This is the same expressibility gap recorded in §3.8, reached
+from a different direction.
+
+**State: `measured, not exercised`** — the batch's third state. The technique
+is real and the artefact carries the fields; this corpus contains no instance,
+and the schema cannot express the comparison even if it did. Both would have
+to change before a rule is worth writing.
+
+*(An incidental correction: the operator set does contain `is_user_writable`,
+a purpose-built shape predicate added for R-CORR-0003 so that rules ask where
+a binary lives rather than regex-matching paths. A first draft of this rule
+hand-rolled a `contains_any` path list; that operator does not exist, and the
+one that does is better. It is used in R-ATOMIC-0011.)*
 
 ## 4. What this document does NOT claim
 

@@ -1,0 +1,147 @@
+# Atomic rule 11. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Deliberately NOT a duplicate of R-ATOMIC-0004. That rule reads EID 7045 from
+# evtx.system -- the LIVE LOG -- and matches services whose ImagePath is an
+# INTERPRETER. This one reads the SYSTEM registry hive and matches services
+# whose binary LIVES IN A USER-WRITABLE LOCATION. Different family, different
+# predicate, and the difference matters: the hive survives `wevtutil cl
+# system`, which is the first thing cleared after a service is installed.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0011
+type: atomic
+title: Registered service whose binary lives in a user-writable location
+enabled: true
+
+description: >
+  Fires on a service registered in the SYSTEM hive whose `ImagePath` resolves
+  under a user-writable directory.
+
+  A Windows service runs as SYSTEM. A service binary that any user can
+  overwrite is therefore a privilege-escalation primitive whether or not it
+  was installed maliciously, and legitimate vendors almost never do it --
+  service binaries belong under `%SystemRoot%` or `%ProgramFiles%`, both of
+  which require administrator rights to write.
+
+  This is the persistence half of T1543.003 read from the registry rather
+  than from the event log. R-ATOMIC-0004 reads EID 7045 and asks whether the
+  ImagePath is an interpreter; this asks where the binary lives, from an
+  artefact that survives the log being cleared.
+
+severity: high
+weight: 55
+
+attack:
+  technique: T1543.003
+  name: Create or Modify System Process - Windows Service
+
+select:
+  event_type: [service_registered]
+  source_artifact: [services]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: service_registered
+    - field: path
+      op: present
+    # The shape operator the schema provides for exactly this question. Asking
+    # where a binary lives is a property of the finding; matching a path regex
+    # would be corpus-fitting, which R-CORR-0003's notes rejected.
+    - field: path
+      op: is_user_writable
+      value: true
+
+expected:
+  clean_a: 3
+  clean_b: 3
+  s1_v2: 3
+  clean_c: 2
+  s1_v3: 2
+  note: >
+    MEASURED 2026-09-20, and the figures are the reason this rule stays
+    CLASS 2 rather than being promoted or withdrawn. It fires on every
+    collection at a near-flat rate, and every hit is the same benign thing.
+
+    Read at row level on clean_a, all three matches are WINDOWS DEFENDER,
+    every one of them under ProgramData/Microsoft/Windows Defender:
+
+        WinDefend       auto     platform/<version>/MsMpEng.exe
+        MDCoreSvc       auto     platform/<version>/MpDefenderCoreService.exe
+        MpKslb9a56fc4   manual   Definition Updates/{guid}/MpKslDrv.sys
+
+    (Separators shown as forward slashes and the version elided; the
+    recorded ImagePath is a quoted Windows path, and the platform
+    directory is version-numbered -- 4.18.26070.9-0 at collection time.)
+
+    Microsoft ships its own antimalware platform under ProgramData, in a
+    version-numbered directory it rewrites on every definition update. The
+    2-versus-3 split is host 2 carrying one fewer Defender component.
+
+    The scenario installed no service, so there is NO positive instance and
+    the 3/3/3/2/2 is entirely false-positive population. That is what Class 2
+    means here: the logic is defensible, the corpus supplies only the FP side,
+    and the FP side is documented instead of a detection rate.
+
+false_positive_notes: >
+  THE FALSE-POSITIVE PROFILE.
+
+  1. Per-user and self-updating applications. The strongest real FP. Dropbox,
+     some Chrome/Edge updater configurations, Cursor, and several developer
+     tools install helper services under `%LOCALAPPDATA%` or `%ProgramData%`.
+     This corpus's clean hosts carry `cursorusersetup-x64`, `7z2602-x64` and
+     `npp` installers precisely in those paths -- none registered a service,
+     but a similar machine plausibly would.
+
+  2. ProgramData, and it is not hypothetical -- it is THE measured FP on this
+     corpus. ProgramData is writable by authenticated users on many
+     configurations, and Microsoft's own Defender platform lives there:
+     `WinDefend`, `MDCoreSvc` and a `MpKsl*` definition-update driver account
+     for all 3/3/3/2/2 hits. Whether ProgramData is genuinely user-writable is
+     a property of the host's ACLs, which this rule cannot read -- it reasons
+     from the path alone, and on a default Windows install that reasoning
+     over-fires on the antimalware stack.
+
+     PRACTICAL CONSEQUENCE: on any Windows host, expect a constant floor of
+     two to three Defender services. A deployment should treat that floor as
+     the baseline and read only what exceeds it. Suppressing Defender BY NAME
+     was considered and rejected -- R-CORR-0003's notes reject name-based
+     suppression as corpus-fitting, and an attacker naming a service
+     `MpKslXXXXXXXX` in that directory is a known masquerading technique that
+     a name filter would hide.
+
+  3. Development and test machines. Services registered from a build output
+     directory under a user profile are routine for anyone writing a service,
+     and look identical to the malicious case.
+
+  4. Portable and staged installations. Software deliberately installed to a
+     user profile so it needs no administrator rights -- increasingly common
+     under least-privilege policies -- produces exactly this artefact.
+
+  WHAT MAKES A HIT WORTH READING: a service whose binary is in a user-writable
+  path AND whose `start_type` is `auto` or `boot`, AND which has no
+  corresponding entry in `amcache`/`prefetch` showing a legitimate installer
+  created it. The rule does not encode that -- correlating the three is a
+  correlation rule, and it is not written here.
+
+  WEIGHT. 55, below R-ATOMIC-0004's, because that rule has a sharper
+  predicate (an interpreter as a service binary is far less ambiguous than a
+  writable location) and because this one has the ProgramData ambiguity above.
+
+notes: >
+  `image_path` on the `services` family is "ImagePath exactly as recorded" and
+  is "frequently a command line rather than a path", per details-schema.md.
+  This rule therefore tests `path`, which the parser derives, rather than
+  `details.image_path`, which may carry arguments and quoting.
+
+  `start_type` is available (`boot`, `system`, `auto`, `manual`, `disabled`)
+  and would sharpen this rule considerably -- a disabled service in a
+  writable path is far less interesting than an auto-start one. It is NOT
+  added as a condition because a service installed for a single execution and
+  then set to manual is a real technique, and excluding `manual` would miss
+  it. Recorded as a deliberate choice rather than an oversight.
+
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+  - docs/details-schema.md   # services: service_name, image_path, start_type

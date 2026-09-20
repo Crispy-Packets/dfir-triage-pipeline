@@ -1,0 +1,120 @@
+# Atomic rule 10. Added 2026-09-20 as the first CLASS 2 (known-behavior) rule.
+#
+# CLASS 2: expresses a real intrusion behaviour with defensible logic, NOT
+# validated against this corpus because the scenario never exercised it. It
+# ships with a false-positive profile instead of measured scenario figures.
+# The `expected:` block below is therefore honest about what was and was not
+# measured: the removable-drive population WAS measured exhaustively (D-064),
+# and it contains no attack.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0010
+type: atomic
+title: Shortcut target on removable or network media
+enabled: true
+
+description: >
+  Fires on a Windows shortcut whose target lived on a removable volume or a
+  network share. Claims only that: a file on external media was opened, and
+  the link survives the media's removal.
+
+  A `.lnk` records the target's volume serial, label and drive type at the
+  moment Explorer wrote it. That is the property this rule exists for --
+  the shortcut outlives the device, so it is evidence of a volume that is no
+  longer attached and may never be recovered.
+
+  Collection-to-external-media and access-to-network-share are the two
+  behaviours it covers. It does NOT claim exfiltration: reading a file from a
+  USB stick and writing one to it produce the same artefact, and the direction
+  of travel is not recorded.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1052.001
+  name: Exfiltration over USB
+
+select:
+  event_type: [file_opened]
+  source_artifact: [lnk]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_opened
+    - field: details.drive_type
+      op: in
+      value: [removable, remote]
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 9
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    These figures are MEASURED (D-064, 2026-09-18) and they are the reason
+    this rule is Class 2 rather than Class 1. The count looks like the best
+    base rate in the project -- 9 against 0/0/0/0 -- and it is not a detection.
+
+    Every one of the nine rows on s1_v2 is the operator's own evidence-handling
+    procedure: E:\collection_clean_a, E:\collection_clean_b, E:\collection_s1,
+    E:\handoff, plus personal media from 2020 and 2024. They were browsed on
+    2026-08-20, BEFORE the s1 directory existed. The removable volume in this
+    corpus is the USB stick the collections were carried off on.
+
+    So the 9 is a true positive for the RULE and a false positive for the
+    INVESTIGATION. The scenario never exfiltrated anything to removable media
+    (C-01), so there is no attack instance here to validate against. Scoring
+    this as though 9-vs-0 demonstrated detection would be the error C-01 was
+    written to prevent.
+
+false_positive_notes: >
+  THE FALSE-POSITIVE PROFILE, which is what this rule ships instead of a
+  validated scenario figure.
+
+  1. DFIR collection procedure itself. Measured, and the dominant FP on this
+     corpus: an examiner attaching a USB stick to carry evidence off the host
+     leaves exactly this artefact, and it is indistinguishable from an
+     attacker attaching one to carry data off. If the rule fires on a host you
+     collected from, suspect your own procedure first. This is C-01 as an
+     operational warning rather than a collection constraint.
+
+  2. Ordinary removable-media use. Cameras, phones in storage mode, music
+     players, USB drives used for legitimate file transfer. On a workstation
+     where staff move files by USB this rule fires constantly and carries no
+     signal. Its value is inversely proportional to how normal removable media
+     is in the environment.
+
+  3. Mapped network drives. drive_type `remote` covers a file opened from a
+     mapped share, which on a domain-joined machine is routine work. On this
+     corpus there is no domain and no mapped share, so the `remote` half is
+     entirely unexercised -- it is written from the behaviour, not measured.
+
+  4. Optical and virtual media. Mounted ISOs commonly present as `cdrom`, and
+     are deliberately NOT selected here, because software installation from a
+     mounted image is too common to carry signal. An attacker delivering a
+     payload in an ISO -- a real and current technique -- is therefore NOT
+     covered by this rule.
+
+  WHEN THIS RULE IS WORTH ITS WEIGHT: on a server or a locked-down endpoint
+  where removable media is prohibited by policy, any hit is worth reading. On
+  a general-purpose workstation it is triage context, not a finding.
+
+notes: >
+  The technique id is T1052.001 and the row was closed `not-observable` in
+  docs/technique-coverage-grid.md for this corpus (D-064). That closure and
+  this rule are consistent: the closure says this corpus cannot validate the
+  technique, and Class 2 exists precisely for rules that are defensible
+  without corpus validation.
+
+  The `arguments` key on `lnk` is measured 2 of 69 on s1_v2 -- a Recent link
+  normally carries none, so a shortcut with arguments is an anomaly worth a
+  separate rule. Not written here; recorded so the observation is not lost.
+
+references:
+  - https://attack.mitre.org/techniques/T1052/001/
+  - docs/scenario-design-constraints.md  # C-01
+  - docs/defect-log.md                   # D-064
