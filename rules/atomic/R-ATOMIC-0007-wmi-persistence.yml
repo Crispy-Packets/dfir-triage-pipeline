@@ -7,7 +7,7 @@
 # registers for itself, at a severity implying otherwise. This version asks what
 # a subscription would look like if someone were hiding in it.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0007
 type: atomic
 title: WMI subscription bound to a consumer that executes

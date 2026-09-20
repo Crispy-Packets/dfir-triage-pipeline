@@ -4,13 +4,13 @@
 # not against the schema tables: a documented key and a key that survives
 # parsing are different claims.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0013
 type: atomic
 title: Jump list entry whose target was on removable or network media
 enabled: true
 class: known-behavior
-phase: delivery
+phase: exfiltrate
 
 description: >
   Fires on a jump list entry recording a file that lived on a removable

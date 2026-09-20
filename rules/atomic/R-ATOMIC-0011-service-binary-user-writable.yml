@@ -7,7 +7,7 @@
 # predicate, and the difference matters: the hive survives `wevtutil cl
 # system`, which is the first thing cleared after a service is installed.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0011
 type: atomic
 title: Registered service whose binary lives in a user-writable location

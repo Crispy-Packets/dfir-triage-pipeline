@@ -4,7 +4,7 @@
 # not against the schema tables: a documented key and a key that survives
 # parsing are different claims.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0012
 type: atomic
 title: Recent-items shortcut carrying command-line arguments

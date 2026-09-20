@@ -2,7 +2,7 @@
 # This rule is expected to fire zero times on this corpus. That is a negative
 # test, not a failure - see expected.note.
 
-schema_version: "1.2.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0005
 type: atomic
 title: Remote interactive logon from a network address

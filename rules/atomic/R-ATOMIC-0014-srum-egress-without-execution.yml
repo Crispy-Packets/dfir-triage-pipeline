@@ -4,13 +4,13 @@
 # not against the schema tables: a documented key and a key that survives
 # parsing are different claims.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0014
 type: atomic
 title: Sustained network egress recorded for a binary by SRUM
 enabled: true
 class: known-behavior
-phase: execute
+phase: exfiltrate
 
 description: >
   Fires on a SRUM network row recording a large volume of bytes SENT by an

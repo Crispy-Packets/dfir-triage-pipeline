@@ -7,13 +7,13 @@
 # measured: the removable-drive population WAS measured exhaustively (D-064),
 # and it contains no attack.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0010
 type: atomic
 title: Shortcut target on removable or network media
 enabled: true
 class: known-behavior
-phase: delivery
+phase: exfiltrate
 
 description: >
   Fires on a Windows shortcut whose target lived on a removable volume or a

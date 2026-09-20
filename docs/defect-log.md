@@ -2617,8 +2617,9 @@ affects how Person A reads it.
 **`phase:` is a mandatory schema key added inside a Person A file, and it is a
 schema change that the version string does not record.**
 
-Filed 2026-09-20, with the change. Status: OPEN for Person A review; the code
-is committed and green.
+Filed 2026-09-20, with the change. Status: point 2 RESOLVED the same day
+(schema 2.1.0, f655858 + the follow-up commit). Point 1 OPEN for Person A
+review; the code is committed and green.
 
 **What was added.** A top-level `phase:` key on every rule, closed set
 `delivery` / `execute` / `persist` / `destroy`. Three lines of enforcement in
@@ -2641,13 +2642,26 @@ routine, and both were decided rather than defaulted:
    enforced in two different places for no reason intrinsic to either.
    `rules/schema.md` now owes a paragraph on **both**.
 
-2. **A rule stamped `2.0.0` now fails the `2.0.0` validator.** `phase:` is
-   required, so every rule file written before today is invalid against the
-   current checker while still declaring the same schema version. Nothing in
-   `SCHEMA_MAJOR_COMPATIBLE` catches this -- it checks the major only. In
-   substance this is a schema change; in the version string it is invisible.
-   It was not bumped here because the version field is Person A's to move and
-   a silent bump would be worse than a recorded inconsistency.
+2. **RESOLVED -- a rule stamped `2.0.0` briefly failed the `2.0.0`
+   validator.** For one commit, `phase:` was required while every rule still
+   declared the version that did not require it. `SCHEMA_MAJOR_COMPATIBLE`
+   does not catch this -- it checks the major only -- so the inconsistency was
+   invisible to the gate and recorded here instead.
+
+   Closed on Person B's instruction the same day: *"Adding a required field is
+   breaking; 2.0.0 rules failing a 2.0.0 validator is the wrong end state."*
+   `SCHEMA_VERSION` is now `2.1.0`, all 24 rule files are restamped (from a
+   mix of `1.2.0`, `1.3.0` and `2.0.0`), and `rules/schema.md` carries the
+   header bump and a changelog row. That row states plainly that, unlike every
+   other minor bump in its table, 2.0.0 files do **not** still load, and that
+   strict semver would call this major -- the label is Person B's call, made
+   explicit rather than hidden by the number.
+
+   Stamping 1.x files to 2.1.0 is safe for behaviour: `schema_version` is read
+   in `core/ruleset.py` only to check major-compatibility and then stored, and
+   nothing in the loader or engine branches on it. It does propagate into
+   `Finding.rule_version` / `schema_version` and therefore into `run.json` and
+   the HTML report, which is an output change and not a ranking one.
 
 **What is NOT affected.** No rule predicate, `expected:` block, weight,
 severity, or `class:` value changed -- the diff is 24 files at exactly +1 line
@@ -2655,18 +2669,33 @@ each. Nothing reads `Rule.phase`, so matching and scoring are bit-identical
 and the entity-identity check was not re-run (its inputs did not move). The
 Class 2 exclusion in `entity_score.aggregate` is untouched.
 
-**The tagging is partly judgement, not lookup.** The event_type -> phase map
-in `docs/evidence/phase-span-2026-09-20.md` deliberately leaves 22
-record-keeping types unmapped, `file_opened` among them, on the grounds that
-they "assert that a file or path exists" rather than naming a stage. Three
-rules select on exactly those types (R-ATOMIC-0010, 0012, 0013), so their
-phase is an assignment with no map entry behind it. A fourth, R-ATOMIC-0014,
-is tagged `execute` because the map puts `network_usage` there -- the rule
-itself is about egress (T1041), which the four-stage model does not name at
-all. `tests/test_schema_v2_features.py::TestEveryRuleDeclaresAPhase` asserts
-agreement only where the map actually has an entry, and skips these by
-construction, which is the honest scope: it cannot check what the map declines
-to say.
+**The five-stage set, and where it parts company with the ranking map.**
+The set was four on the first commit, matching
+`docs/evidence/phase-span-2026-09-20.md`. Person B widened it to five the same
+day, with the reason: *"The four-stage map came from the scenario, not a
+taxonomy -- egress and exfil belong in the set."* That is the corpus-fit risk
+the phase-span document states about itself, now acted on: the map's stages
+are the four steps this scenario happened to contain, which is a property of
+the corpus rather than of intrusions.
+
+`exfiltrate` therefore exists in the rule schema and **not** in the ranking
+map, and the two layers now disagree about exactly one event type:
+`network_usage`, which the map files under EXECUTE because it has no exfil
+bucket, and which R-ATOMIC-0014 (T1041) declares `exfiltrate`. The map was
+not edited to match -- it records a measurement, and editing it would make it
+assert something it never measured. The disagreement is deliberate, is scoped
+to that one type, and
+`tests/test_schema_v2_features.py::TestEveryRuleDeclaresAPhase` drops
+`network_usage` from its lookup with that reason written beside it.
+
+**One assignment remains judgement rather than lookup.** R-ATOMIC-0010 and
+0013 are T1052.001 and R-ATOMIC-0014 is T1041, so all three are now lookups
+against the technique. R-ATOMIC-0012 is not: it selects `file_opened`, which
+the map leaves unmapped as a record-keeping type, and its technique is
+T1204.002 -- user execution via a shortcut carrying arguments. It stays
+`execute`. It was grouped with 0010 and 0013 in the first report because all
+three select the same event type, and that grouping was read as three exfil
+rules; the technique field is what settles it.
 
 **What would close this**: Person A's ruling on where enforcement belongs,
 a `schema.md` paragraph for `class:` and `phase:`, and a decision on whether

@@ -1,6 +1,6 @@
 # Atomic rule 4 of 6. Compressed week, Day 2 (A-3).
 
-schema_version: "1.2.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0004
 type: atomic
 title: Service installed with an interpreter or user-writable image

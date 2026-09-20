@@ -33,7 +33,7 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
 # files would be a breaking change and this one is not.
 SCHEMA_MAJOR = "2"
 SCHEMA_MAJOR_COMPATIBLE = frozenset({"1", "2"})
-SCHEMA_VERSION = "2.0.0"
+SCHEMA_VERSION = "2.1.0"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_DOC = REPO_ROOT / "docs" / "contract-decisions.md"
@@ -113,10 +113,17 @@ GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
 SEVERITIES = frozenset({"informational", "low", "medium", "high", "critical"})
 
 # The chain stage a rule's finding belongs to. Metadata only: nothing in scoring
-# or matching reads it. The set is the four-stage map in
-# docs/evidence/phase-span-2026-09-20.md, which is the scenario's own four steps
-# -- see that document's corpus-fit statement before adding a fifth.
-PHASES = frozenset({"delivery", "execute", "persist", "destroy"})
+# or matching reads it.
+#
+# Five stages, not the four in docs/evidence/phase-span-2026-09-20.md. That
+# map's four came from the scenario's own steps, which is a property of this
+# corpus rather than of intrusions; `exfiltrate` was added 2026-09-20 because
+# egress and exfil are real stages the scenario happened not to exercise. The
+# ranking map still has no exfil bucket and files `network_usage` under
+# EXECUTE -- the two layers now disagree about exactly that one event type,
+# deliberately, and the disagreement is recorded in D-071 rather than
+# smoothed over by editing the measured document.
+PHASES = frozenset({"delivery", "execute", "persist", "destroy", "exfiltrate"})
 
 # Every collection an `expected:` block may declare a base rate for. clean_c and
 # s1_v3 are the host-2 pair added 2026-09-13; the first three are host 1. A rule

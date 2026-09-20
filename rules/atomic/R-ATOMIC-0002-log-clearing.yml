@@ -4,7 +4,7 @@
 # today because EID 1102 is already in the fixed vocabulary (CD-007) and the
 # EVTX parser already emits it.
 
-schema_version: "1.2.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0002
 type: atomic
 title: Windows event log cleared

@@ -758,20 +758,30 @@ class TestEveryRuleDeclaresAPhase:
     wrong value cannot be caught by a result changing. These checks are the
     only thing standing between the field and silent drift.
 
-    The agreement check is the point of the field: an atomic rule's phase must
-    match what the event_type -> phase map in
-    docs/evidence/phase-span-2026-09-20.md says about the type it selects on.
-    Two layers naming the same stage differently is the failure this catches.
+    The agreement check is the point of the field: where the event_type -> phase
+    map in docs/evidence/phase-span-2026-09-20.md and the rule schema are
+    naming the same stage, an atomic rule's phase must match the map. Drift
+    between the two layers is the failure this catches.
+
+    They are no longer the same taxonomy -- the map has four stages taken from
+    the scenario's steps, the schema has five -- so the check covers the types
+    where both speak, and names the exception rather than hiding it.
     """
 
     # docs/evidence/phase-span-2026-09-20.md, the adopted mapping table.
     # Only the types the 24 rules actually select on; the table is larger.
+    #
+    # `network_usage` is deliberately absent. That document maps it to EXECUTE
+    # because its four stages are the scenario's own steps and it has no exfil
+    # bucket; schema 2.1.0 has `exfiltrate` and R-ATOMIC-0014 (T1041) uses it.
+    # The two layers disagree about that one event type on purpose, so it is
+    # not checked here. Flipping the table value instead would assert the
+    # measured document says something it does not.
     EVENT_TYPE_PHASE = {
         "file_download": "delivery",
         "process_exec": "execute",
         "script_block": "execute",
         "program_inventoried": "execute",
-        "network_usage": "execute",
         "persistence_autorun": "persist",
         "service_install": "persist",
         "service_registered": "persist",
@@ -787,7 +797,7 @@ class TestEveryRuleDeclaresAPhase:
         return load_rules(REPO_ROOT / "rules", include_disabled=True)
 
     def test_every_rule_on_disk_carries_a_phase_in_the_closed_set(self):
-        phases = {"delivery", "execute", "persist", "destroy"}
+        phases = {"delivery", "execute", "persist", "destroy", "exfiltrate"}
         offenders = [r.rule_id for r in self._rules() if r.phase not in phases]
         assert offenders == [], f"rules with no phase or a phase outside the set: {offenders}"
 
@@ -823,5 +833,7 @@ class TestEveryRuleDeclaresAPhase:
         mod = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(mod)
-        assert mod.PHASES == frozenset({"delivery", "execute", "persist", "destroy"})
+        assert mod.PHASES == frozenset(
+            {"delivery", "execute", "persist", "destroy", "exfiltrate"}
+        )
         assert "phase" in mod.REQUIRED_TOP

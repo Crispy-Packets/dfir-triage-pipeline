@@ -3,7 +3,7 @@
 # Read the `expected:` note before changing anything: two other predicates were
 # measured and REJECTED before this one, and the reasons are the substance.
 
-schema_version: "1.3.0"
+schema_version: "2.1.0"
 id: R-CORR-0006
 type: correlation
 title: An autorun-registered executable was deleted to the Recycle Bin

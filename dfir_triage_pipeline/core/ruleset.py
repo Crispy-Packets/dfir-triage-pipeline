@@ -204,6 +204,10 @@ class Rule:
     # Chain stage, from the rule's `phase:`. Metadata only -- no matching or
     # scoring path reads it. Defaults to "" so a hand-built Rule in a test need
     # not carry one; the validator is what makes it mandatory on disk.
+    #
+    # Closed set of five as of schema 2.1.0: delivery, execute, persist,
+    # destroy, exfiltrate. The fifth is not in the phase-span ranking map,
+    # whose four stages were the scenario's steps rather than a taxonomy.
     phase: str = ""
 
 

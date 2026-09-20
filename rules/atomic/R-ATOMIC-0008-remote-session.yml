@@ -6,7 +6,7 @@
 # the two are kept separate rather than merged: 4624 records an authentication,
 # 21/25 record a SESSION, and a host can have one without the other.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0008
 type: atomic
 title: Terminal Services session opened from a remote address

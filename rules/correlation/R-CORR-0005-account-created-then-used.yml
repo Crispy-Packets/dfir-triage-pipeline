@@ -8,7 +8,7 @@
 # days later. An account that authenticates almost immediately after being
 # created was created BY the person about to use it.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-CORR-0005
 type: correlation
 title: An account was created and then authenticated within the hour

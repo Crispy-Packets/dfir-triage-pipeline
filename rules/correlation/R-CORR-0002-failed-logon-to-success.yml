@@ -1,6 +1,6 @@
 # Correlation chain 2 of 4. Compressed week, Day 3 (A-5).
 
-schema_version: "1.3.0"
+schema_version: "2.1.0"
 id: R-CORR-0002
 type: correlation
 title: A failed logon was followed by a success for the same account

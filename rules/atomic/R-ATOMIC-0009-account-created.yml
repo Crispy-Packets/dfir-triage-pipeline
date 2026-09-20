@@ -6,7 +6,7 @@
 # corpus. It is used as a correlation STEP in R-CORR-0003, which is the right
 # way to read an inventory.
 
-schema_version: "2.0.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0009
 type: atomic
 title: Local user account created

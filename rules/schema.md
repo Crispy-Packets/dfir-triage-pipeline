@@ -1,6 +1,6 @@
 # Rule schema
 
-    schema_version: 2.0.0
+    schema_version: 2.1.0
     Frozen:         2026-08-29 (compressed week, Day 1, step A-1/A-2)
     Revised:        2026-08-29, against week2/parsers-registry-browser @ 0994251
     1.2.0:          2026-08-29, when the six atomic rules were written
@@ -9,6 +9,7 @@
     1.4.1:          2026-08-30, after probing the engine for misses
     1.5.0:          2026-09-13, shape predicates and the host-2 base rates
     2.0.0:          2026-09-14, the seven grammar gaps closed
+    2.1.0:          2026-09-20, `phase:` required on every rule
     Owner:          Person A (rules/** per shared/CONTRACT-RULES.md section 5)
     Applies to:     every file under rules/atomic/ and rules/correlation/
 
@@ -126,6 +127,7 @@ omitted field is a load-time error, not an implied value.
 
 | Field | Type | Notes |
 |---|---|---|
+| 2.1.0 | 2026-09-20 | Adds **`phase:`**, a required top-level key naming the chain stage a rule's finding belongs to. Closed set of five: `delivery`, `execute`, `persist`, `destroy`, `exfiltrate`. Metadata only -- nothing in matching or scoring reads it, no rule predicate, `expected:` block, weight or severity changed, and the entity ranking is unaffected. **Unlike every other minor bump in this table, 2.0.0 files do NOT still load**: a required field was added, so every rule file was restamped to 2.1.0 in the same commit. By strict semver that is a major change; it is recorded as minor by Person B's decision, with the breaking nature stated here rather than hidden by the number. The five stages are deliberately not the four in `docs/evidence/phase-span-2026-09-20.md` -- that map's stages were the scenario's own steps, and `exfiltrate` covers egress and exfil the scenario never exercised. The two layers therefore disagree about `network_usage` on purpose (D-071). Enforced in `rules/validate_rules.py`, which is a Person A file; see D-071. |
 | `schema_version` | string | must match this document's major version |
 | `id` | string | matches `^R-(ATOMIC\|CORR\|TEST)-\d{4}$` |
 | `type` | enum | `atomic` \| `correlation` |

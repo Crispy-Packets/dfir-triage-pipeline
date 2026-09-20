@@ -5,7 +5,7 @@
 # draft set out - a bounded text key with honest truncation metadata. See D-031
 # and docs/details-schema.md.
 
-schema_version: "1.2.0"
+schema_version: "2.1.0"
 id: R-ATOMIC-0003
 type: atomic
 title: PowerShell script block with an in-memory download or encoded command
