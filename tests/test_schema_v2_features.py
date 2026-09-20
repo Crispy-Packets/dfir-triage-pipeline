@@ -662,7 +662,11 @@ class TestEntityKindsAreRankedSeparately:
             findings=findings,
             entities=entity_score.aggregate(findings),
         )
-        assert doc["run_json_version"] == "1.1.0"
+        # Pinned to the constant, not to a literal: this test is about D-058's
+        # two entity views, and it failed on the additive 1.2.0 bump (D-072)
+        # without either view having changed. A version literal here asserts
+        # "nothing was ever added", which is not the claim.
+        assert doc["run_json_version"] == run_json.RUN_JSON_VERSION
         kinds = doc["entities_by_kind"]
         assert set(kinds) == set(entity_score.KIND_ORDER)
         assert [e["value"] for e in kinds["entity.exe_name"]] == ["payload.exe"]

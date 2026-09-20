@@ -46,11 +46,16 @@ from .findings import Finding
 
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
+#: Bumped to 1.2.0 on 2026-09-20 for D-072. ADDITIVE: every finding gains
+#: `rule_class`. Without it a consumer cannot tell a corpus-validated finding
+#: from a known-behavior one, so the Class 2 split existed in `entity_score`
+#: and nowhere a reader could see it.
+#:
 #: Bumped to 1.1.0 on 2026-09-19 for D-058. ADDITIVE: `entities` keeps its
 #: name, its shape and its worst-first ordering, so an existing consumer is
 #: unaffected -- but it no longer contains `entity.host` rows, because the host
 #: is no longer scored. `entities_by_kind` is new. See entity_score.py.
-RUN_JSON_VERSION = "1.1.0"
+RUN_JSON_VERSION = "1.2.0"
 
 #: Events either side of a finding's first timestamp. Five minutes because the
 #: scenario's own tightest interval is 2m32s, so a window that narrow would cut
@@ -154,6 +159,7 @@ def _finding_json(
     out: dict[str, Any] = {
         "finding_id": finding.finding_id,
         "rule_id": finding.rule_id,
+        "rule_class": finding.rule_class,
         "rule_version": finding.rule_version,
         "title": finding.title,
         "severity": finding.severity,

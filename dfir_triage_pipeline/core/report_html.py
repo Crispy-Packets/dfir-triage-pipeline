@@ -36,6 +36,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+# Imported rather than repeated: the panel split and the score filter must name
+# the same class, or the report and the ranking disagree about what a verdict is.
+from dfir_triage_pipeline.core.entity_score import SCORING_RULE_CLASS
+
 #: Severity ordering for display, worst first. Matches entity_score's, so the
 #: two cannot disagree about which of two findings is worse.
 _SEVERITY_ORDER = ("critical", "high", "medium", "low", "informational")
@@ -55,6 +59,11 @@ h3{font-size:14px;margin:0 0 6px}
 padding:18px;margin-bottom:22px}
 .panel.ml{border-left:4px solid var(--ml)}
 .panel.verdict{border-left:4px solid var(--crit)}
+.panel.context{border-left:4px solid var(--dim)}
+.finding.ctx-only{opacity:.92}
+.cls{display:inline-block;font-size:11px;text-transform:uppercase;
+letter-spacing:.04em;padding:1px 6px;border-radius:3px;border:1px solid var(--dim);
+color:var(--dim);margin-left:6px;vertical-align:1px}
 .note{background:#f0efe9;border-left:3px solid var(--dim);padding:10px 12px;
 margin:0 0 16px;color:var(--dim);font-size:13px}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -171,10 +180,20 @@ def _finding_block(finding: dict[str, Any]) -> str:
         for m in finding["matched"]
     )
 
+    known_behavior = finding.get("rule_class", SCORING_RULE_CLASS) != SCORING_RULE_CLASS
+    badge = (
+        "<span class=cls title='Known-behavior rule: expresses a real behaviour "
+        "this corpus never exercised. Does not contribute to the entity "
+        "score.'>context only</span>"
+        if known_behavior
+        else ""
+    )
+
     parts = [
-        "<div class=finding><div class=finding-head>",
+        f"<div class='finding{' ctx-only' if known_behavior else ''}'>"
+        "<div class=finding-head>",
         f"<div><span class='sev {_esc(finding['severity'])}'>{_esc(finding['severity'])}</span> ",
-        f"<strong>{_esc(finding['title'])}</strong></div>",
+        f"<strong>{_esc(finding['title'])}</strong>{badge}</div>",
         f"<div class=rid>{_esc(finding['rule_id'])} &middot; "
         f"{_esc(finding['attack_technique'])} &middot; weight {finding['weight']}</div>",
         "</div>",
@@ -207,9 +226,20 @@ def _finding_block(finding: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _is_verdict_finding(finding: dict[str, Any]) -> bool:
+    """A finding belongs in the verdict only if its rule is corpus-validated.
+
+    Mirrors `entity_score.aggregate`, which is where the same split decides the
+    score. Before D-072 the score was filtered and this was not, so a Class 2
+    finding could not move the ranking but still rendered under a heading that
+    said "verdict" -- the split held in the arithmetic and not in the document.
+    """
+    return finding.get("rule_class", SCORING_RULE_CLASS) == SCORING_RULE_CLASS
+
+
 def _verdict_panel(doc: dict[str, Any]) -> str:
     findings = sorted(
-        doc["findings"],
+        (f for f in doc["findings"] if _is_verdict_finding(f)),
         key=lambda f: (_severity_rank(f["severity"]), f["first_timestamp_utc"]),
     )
     if not findings:
@@ -241,6 +271,28 @@ def _verdict_panel(doc: dict[str, Any]) -> str:
             if entities
             else ""
         )
+        + "".join(_finding_block(f) for f in findings)
+        + "</div>"
+    )
+
+
+def _context_panel(doc: dict[str, Any]) -> str:
+    """Class 2 findings, outside the verdict and labelled as context."""
+    findings = sorted(
+        (f for f in doc["findings"] if not _is_verdict_finding(f)),
+        key=lambda f: (_severity_rank(f["severity"]), f["first_timestamp_utc"]),
+    )
+    if not findings:
+        return ""
+
+    return (
+        "<div class='panel context'><h2>Context — known-behavior rules</h2>"
+        "<p class=sub>These rules express real intrusion behaviour that this "
+        "corpus never exercised, so each ships a false-positive profile rather "
+        "than a detection rate. <strong>They do not contribute to the entity "
+        "score and are not a verdict.</strong> Their severity is the severity "
+        "the behaviour would carry if confirmed, not a claim about these "
+        "rows.</p>"
         + "".join(_finding_block(f) for f in findings)
         + "</div>"
     )
@@ -304,6 +356,7 @@ def render(doc: dict[str, Any]) -> str:
         f"<p class=sub>{name} &middot; run.json v{_esc(doc['run_json_version'])}</p>"
         + _run_header(doc)
         + _verdict_panel(doc)
+        + _context_panel(doc)
         + _prioritisation_panel(doc)
         + "<footer>Rendered from run.json. Detection claims come from the "
         "deterministic rules; the prioritisation panel ranks and does not "

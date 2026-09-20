@@ -29,6 +29,7 @@ from typing import Any
 FINDINGS_CSV_COLUMNS = (
     "finding_id",
     "rule_id",
+    "rule_class",
     "severity",
     "weight",
     "attack_technique",
@@ -77,6 +78,7 @@ def write_findings_csv(doc: dict[str, Any], path: Path) -> str:
             {
                 "finding_id": finding["finding_id"],
                 "rule_id": finding["rule_id"],
+                "rule_class": finding["rule_class"],
                 "severity": finding["severity"],
                 "weight": str(finding["weight"]),
                 "attack_technique": finding["attack_technique"],

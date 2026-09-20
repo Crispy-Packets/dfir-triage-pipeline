@@ -8,6 +8,7 @@ provenance on the page, no external dependency, and deterministic bytes.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from datetime import UTC, datetime, timedelta
 
@@ -212,3 +213,55 @@ class TestWrite:
         digest = report_html.write(run_path, out)
         assert out.is_file()
         assert len(digest) == 64
+
+
+class TestClassTwoIsNotAVerdict:
+    """D-072. The Class 2 split was enforced in `entity_score` and nowhere a
+    reader could see it: the score was filtered, the rendered findings list was
+    not, so a known-behavior finding appeared under a heading saying "verdict".
+
+    These assert the document, not the arithmetic -- the arithmetic was already
+    right and already tested, which is exactly why the gap survived.
+    """
+
+    def _two_class_doc(self, tmp_path):
+        c1 = _finding(entity="evil.exe")
+        c2 = dataclasses.replace(
+            _finding(entity="benign.exe"),
+            rule_id="R-ATOMIC-0014",
+            rule_class="known-behavior",
+            title="Sustained network egress recorded for a binary by SRUM",
+        )
+        return _doc(tmp_path, findings=[c1, c2])
+
+    def test_known_behavior_finding_is_not_in_the_verdict_panel(self, tmp_path):
+        page = report_html.render(self._two_class_doc(tmp_path))
+        verdict = page.split("Verdict &mdash; rule findings")[-1]
+        verdict = verdict.split("panel context")[0]
+        assert "R-CORR-0003" in verdict
+        assert "R-ATOMIC-0014" not in verdict
+
+    def test_known_behavior_finding_is_rendered_as_context(self, tmp_path):
+        page = report_html.render(self._two_class_doc(tmp_path))
+        assert "Context" in page
+        assert "R-ATOMIC-0014" in page
+        assert "context only" in page
+
+    def test_the_context_panel_is_absent_when_no_class_two_fires(self, tmp_path):
+        """An empty panel would imply the run considered known-behavior rules
+        and found nothing, which is a different claim from not having any."""
+        page = report_html.render(_doc(tmp_path))
+        assert "Context &mdash; known-behavior rules" not in page
+
+    def test_the_split_uses_the_same_constant_as_the_score(self, tmp_path):
+        """If the report and `entity_score` named the class separately they
+        could drift, and the report would disagree with the ranking."""
+        assert report_html.SCORING_RULE_CLASS == entity_score.SCORING_RULE_CLASS
+
+    def test_rule_class_reaches_the_run_document(self, tmp_path):
+        doc = self._two_class_doc(tmp_path)
+        classes = {f["rule_id"]: f["rule_class"] for f in doc["findings"]}
+        assert classes == {
+            "R-CORR-0003": "corpus-validated",
+            "R-ATOMIC-0014": "known-behavior",
+        }

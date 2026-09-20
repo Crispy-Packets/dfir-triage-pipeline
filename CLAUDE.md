@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  930 passed, 21 skipped
+    python -m pytest -q               ->  935 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -76,18 +76,20 @@ on `clean_b` must not flag `clean_a` as broadly anomalous. If that fails, no
 **The anomaly layer ranks; it does not detect.** Nothing is flagged as an
 outlier in either host's scenario.
 
-**The ML workstream is NOT REACHED and NOT CLOSED.** The evidence bearing on
-its eventual scope is assembled in
-`docs/evidence/ml-scope-evidence-2026-09-20.md` — read it as *input to* that
-decision, not as the decision. The scope call is the project owner's to make
-when ML is reached, and `week2-plan.md` §7 does not settle it: §7 was written
-2026-08-28, before the ablation existed, so it cannot bind a choice informed
-by the ablation's result.
+**ML scope is DECIDED (OD-01, 2026-09-20): report the measured answer.**
+`FAMILY_FEATURES` stays at 7 and is not extended to the 31 further families.
+The reasoning is in `docs/open-decisions.md`; the evidence is in
+`docs/evidence/ml-scope-evidence-2026-09-20.md` and
+`ml-stage-record-2026-09-13.md`.
 
-What is measured, and is all that is measured: the anomaly layer ranks rather
-than detects, at a ~5% false-positive floor. Whether that answers the
-project's ML question or motivates extending `FAMILY_FEATURES` to the 31
-further families is undecided. `FAMILY_FEATURES` stays at 7 until it is.
+The short form: the anomaly layer ranks rather than detects, at a ~5%
+false-positive floor, and no family places the attack entity in its own top
+decile. Extending to families the attack does not touch cannot improve its
+rank — it enlarges the denominator, which the ablation already showed makes
+the percentile worse. The deliverable is that measured negative about
+method-corpus fit, not a larger feature layer. What would reopen it is a
+corpus with enough labelled intrusion entities to compute lift instead of a
+single rank, which is a collection problem rather than a feature one.
 
 **The anomaly layer is scoped to the original 7 families.** `FAMILY_FEATURES`
 declares feature sets for `amcache`, `browser`, `evtx.powershell`,
