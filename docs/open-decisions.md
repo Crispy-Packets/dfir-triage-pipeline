@@ -7,6 +7,20 @@ Two decisions that were being carried by citation rather than by choice. Filed
 
 ## OD-01 — ML scope. DECIDED: (b), report the measured answer.
 
+**Reopened to (a) and re-confirmed as (b), 2026-09-20, on stronger evidence.**
+A three-phase coverage measurement (`docs/evidence/od-01-phase1-coverage-audit.md`,
+`od-01-phase2-acceptance.md`) tested directly whether extending the model to the
+31 unmodelled families would move the attack entity's rank. It cannot: of 31,
+only 2 clear rows + numeric variance + attack-entity presence, and 0 of those 2
+carry the entity with enough distinct behavioural signal to plausibly rank it
+top-quartile (`defender_mplog` has no attack rows; `userassist` is
+mid-distribution on both scenario hosts). No family survives to feature design,
+so `FAMILY_FEATURES` stays at 7 and the entity rank cannot move — the Phase 3
+stop condition, reached before Phase 3 ran. The original decision below stands,
+now backed by measurement of the unmodelled families rather than only the
+modelled ones. The temporal/relational feature question is untouched and remains
+separate.
+
 `week2-plan.md` §7 predates the ablation and does not bind this. The decision
 is made here on the ablation's result, not by citation.
 
