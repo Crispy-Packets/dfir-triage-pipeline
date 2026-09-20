@@ -100,7 +100,7 @@ qualifier is genuinely needed it belongs in the note, not in a new bucket.
 | **T1547.001** Registry Run Keys | disk-resident | writable-now | `covered` | R-ATOMIC-0006 (8/8/4/1/2), R-CORR-0003 (0/0/1/0/1 after D-056). The strongest discriminator in the set |
 | **T1070.001** Clear Windows Event Logs | disk-resident | writable-now | `covered` | R-ATOMIC-0002, 0/0/1/0/1. Validated end-to-end through `run.json` + manifest |
 | **T1059.001** PowerShell | disk-resident | writable-now | `covered` | R-ATOMIC-0003, 3/3/8/0/0. Fires on the delivery step s1_v2's cleared 4688 destroyed |
-| **T1136.001** Create Account — Local | disk-resident | writable-now | `observable-unwritten` — **anchored wrong**, see §3.2 | R-ATOMIC-0009 and R-CORR-0005 exist and fire, but 4/5/0/2/0 and 1/1/0/1/0: on all three CLEAN hosts and neither scenario. The rules match account creation; account creation is a routine lab-setup event here and not part of either scenario. The fix is re-anchoring on a discriminating property, not reclassifying the technique |
+| ~~**T1136.001** Create Account — Local~~ | disk-resident | writable-now | **`not-observable` in this corpus (C-05)** — closed 2026-09-20, rules RETAINED | R-ATOMIC-0009 and R-CORR-0005 fire **4 / 5 / 2 / 0 / 0** and **1 / 1 / 1 / 0 / 0** in collection order (clean_a, clean_b, clean_c, s1_v2, s1_v3) — re-measured 2026-09-20. **Neither scenario created an account**: `janed` was provisioned before the baseline snapshot (C-04), and step 4's `wevtutil cl security` destroyed the 4720 channel that would have recorded one if it had (`account_created` 4/5/2 clean → **0/0** scenario). The rules are the correct shape for the technique and have no positive class to find here — C-05 for the third time. **§3.3's prescription to re-anchor on a SAM shape predicate is withdrawn**: that predicate is T1078.003, measured 0/0/0/0/0, correctly so — there is no staged account. See §3.3 |
 | **T1543.003** Windows Service | disk-resident | writable-now | `covered` (untested) | R-ATOMIC-0004, R-CORR-0004 — 0 on all five. No service persistence in either scenario; exercised via `tools/rule_harness.py` |
 | **T1546.003** WMI Event Subscription | disk-resident | writable-now | `covered` (untested) | R-ATOMIC-0007 — 0 on all five. `CommandLineEventConsumer` is execution-capable by definition; the zero is structural |
 | **T1021.001** RDP | disk-resident | writable-now | `covered` (untested) | R-ATOMIC-0005, R-ATOMIC-0008 — 0 on all five. No RDP in either lab |
@@ -310,6 +310,50 @@ from SAM entirely** (§1 records this). A rule on account shape cannot see an
 account the hive no longer holds, which is the standing limit of the family
 rather than of the rule.
 
+
+**CLOSED 2026-09-20 — `not-observable` under C-05, and the prescription above
+is WITHDRAWN.**
+
+Re-measured, in collection order (clean_a, clean_b, clean_c, s1_v2, s1_v3):
+
+    R-ATOMIC-0009   4 / 5 / 2 / 0 / 0
+    R-CORR-0005     1 / 1 / 1 / 0 / 0
+
+(The figures previously written here as `4/5/0/2/0` and `1/1/0/1/0` put
+`clean_c`'s value in `s1_v2`'s slot. `clean_c` is 2 and 1; both scenario hosts
+are 0. Same collection-order slip as T1027 — see §3.6.)
+
+**Why it closes rather than re-anchors.** Two facts, both measured:
+
+1. **Neither scenario created an account.** `janed` was provisioned before the
+   baseline snapshot, which is C-04 working as intended. There is no positive
+   class for an account-creation rule to find.
+2. **The channel that would have recorded one was destroyed.** Step 4's
+   `wevtutil cl security` took `account_created` from 4/5/2 on the clean hosts
+   to **0 on both scenario hosts**, with `log_cleared` firing 1/1 there and
+   0/0/0 on clean. Even had the scenario created an account, the evidence
+   would be gone.
+
+So the rules are **the correct shape for the technique** and are retained.
+What is absent is the indicator, not the rule — **C-05 for the third time**,
+after T1071.001 and T1059.001.
+
+**The prescription above is withdrawn.** It said: re-anchor on "does an
+account exist with a suspicious shape", a standalone `sam` shape predicate,
+listed as T1078.003. That predicate was written and measured on 2026-09-18:
+**0 matches on all five collections**, over the full population (7 accounts
+per host on host 1, 5 on host 2). It returns zero *correctly* — every RID ≥
+1000 account has a non-zero logon count, and every `password_not_required`
+account is a disabled built-in. There is no staged account in this corpus to
+find. Pointing T1136.001 at it would move the row from one dead end to
+another, so the pointer is removed rather than left standing.
+
+**What the SAM family *does* discriminate is a different technique.** Reading
+`sam` rows against the surviving Security log produced the sharpest separation
+measured in this project — and it is **not** an account-creation signal. It is
+recorded in §3.8, classified as T1070.001, because it fires on every account
+on a cleared host including ones the attack never touched.
+
 ### 3.4 The discriminator was not in the family that carried the signal
 
 R-CORR-0006 is the first rule of the coverage phase and the clearest
@@ -351,7 +395,7 @@ named parser defects; four measured as non-discriminating.
 | T1053.005 Scheduled Task | → `measured-no-discriminator` |
 | T1027 Obfuscated Files | → `measured-no-discriminator` |
 | T1078.003 Valid Accounts | → `measured-no-discriminator` |
-| T1136.001 Create Account | → `observable-unwritten`, anchored wrong (§3.3) |
+| T1136.001 Create Account | → `not-observable` (C-05); rules retained, §3.3 |
 
 **One rule from seven candidates is the honest yield**, and the six negatives
 are the output of the phase rather than its failure. Each carries a figure:
@@ -384,6 +428,15 @@ firewall EID established it; these three confirm it on a larger sample.
 **What is left is not more rules but two parser defects** (D-065 for BITS,
 D-055 for `ps_classic` 400/403/600), one re-anchoring (T1136.001), and the
 D-058 implementation. None of those is a rule-authoring task.
+
+> **Update 2026-09-20 — the last row is closed and the backlog is fully
+> empty.** T1136.001 closed `not-observable` under C-05 rather than being
+> re-anchored (§3.3): neither scenario created an account, and the channel
+> that would have recorded one was destroyed by step 4. The yield is
+> unchanged at **one rule from seven candidates**. The two parser defects and
+> D-058 all landed on 2026-09-19. What the re-anchoring attempt did produce
+> is §3.8 — a T1070.001 signal with perfect separation that is not expressible
+> in schema 2.0.0 and is not written.
 
 
 ### 3.6 Reading-method check on T1027's closure (2026-09-20)
@@ -518,6 +571,98 @@ construction, i.e. C-02 again, not the attack's use of a valid account. They
 are not an alternative anchor for this technique.
 
 ---
+
+### 3.8 SAM counts logons the cleared Security log no longer holds (2026-09-20)
+
+Found while closing T1136.001, by asking what `sam` discriminates once the
+account-creation anchor is abandoned. It discriminates sharply — and **not the
+technique that was being worked on**.
+
+`details-schema.md` describes `logon_count` as the field the artefact exists
+for: *"Interactive logons counted by SAM itself, not by the log. A non-zero
+count with no 4624 is authentication the log no longer holds."* That is a
+specification for a log-tampering detector, and it measures as one.
+
+**Measured, whole population, `user_key()` join on both sides:**
+
+| collection | account | rid | SAM count | interactive 4624 | gap |
+|---|---|---|---|---|---|
+| clean_a | `youssef` | 1000 | 13 | 26 | **-13** |
+| clean_a | `janed` | 1002 | 1 | 1 | **0** |
+| clean_a | `admin_local` | 1003 | 5 | 10 | **-5** |
+| clean_b | `youssef` | 1000 | 13 | 26 | **-13** |
+| clean_b | `janed` | 1002 | 1 | 1 | **0** |
+| clean_b | `admin_local` | 1003 | 5 | 10 | **-5** |
+| clean_c | `vboxuser` | 1000 | 9 | 18 | **-9** |
+| **s1_v2** | `youssef` | 1000 | 17 | **0** | **+17** |
+| **s1_v2** | `janed` | 1002 | 12 | **0** | **+12** |
+| **s1_v2** | `admin_local` | 1003 | 29 | **2** | **+27** |
+| **s1_v3** | `vboxuser` | 1000 | 15 | **0** | **+15** |
+
+**Every clean account has gap ≤ 0. Every scenario account has gap ≥ +12.** No
+overlap, on the full account population of both hosts — 7 rows per host on
+host 1 and 5 on host 2, built-ins excluded as `well_known`.
+
+**Why clean gaps are negative, which a reader will ask.** On an intact log
+`4624_int` is exactly **twice** the SAM count on every clean host (26/13,
+10/5, 18/9). Windows writes two interactive 4624 records per logon session
+while SAM increments its counter once. So `4624 >= sam` is the expected
+healthy relation, and the predicate is strictly **`sam > interactive 4624`** —
+a count in the hive the log cannot account for.
+
+**This is T1070.001, not T1136.001.** It fires on `youssef` (+17) and
+`vboxuser` (+15), who are the machines' ordinary users and took no part in the
+attack. It identifies a **host whose log was cleared**, not a malicious
+account. Anchoring an account-creation rule on it would claim "an account was
+created" from evidence that says nothing about account creation.
+
+#### Reading-method checks, run before this was written
+
+* **`LogonType` is populated and was misread first.** The distribution on
+  `clean_a` is type 5 (service) 802, type 2 (console) 91, type 0 twelve, type
+  3 one. An initial reconciliation reported an "interactive" column that
+  matched the total exactly; that column was not measuring logon type at all,
+  it was measuring *which rows resolved to a user*. Corrected: service logons
+  fold to `None` through `SYSTEM_CONTEXTS`, so every 4624 that resolves to a
+  real user on these hosts is interactive anyway. **The figures are unchanged
+  and the reason is now verified rather than coincidental.**
+* **The join resolves on both sides.** `user_key()` returns `youssef`,
+  `janed`, `admin_local` for both `sam` rows and 4624 rows, so a rule joining
+  on `entity.user` under CD-010 would match what this measurement matched.
+* **Population, not sample.** Every non-built-in SAM account on every
+  collection is in the table.
+
+#### Status: NOT WRITTEN, and two things gate it
+
+1. **T1070.001 is already `covered`** by R-ATOMIC-0002 on EID 1102, firing
+   0/0/0/1/1 (§2.1). On this corpus the discrepancy is therefore
+   **corroborating, not corrective** — it finds the same two hosts 1102
+   already finds. Its distinct value is the case 1102 cannot cover: an
+   attacker who deletes the `.evtx` file, or clears twice so the 1102 record
+   is itself removed. **That case does not occur in this corpus**, so the rule
+   would be validated only in the 1102-present condition and must say so.
+2. **It is NOT expressible in schema 2.0.0 — checked in the engine, not
+   assumed.** The engine does have numeric ops (`gt`, `gte`, `lt`, `lte`,
+   `core/engine.py:292`) and does have a corpus-level aggregate: `RunContext`
+   with `entity_count_lte` / `entity_count_gte` (`:298`). Neither reaches this
+   predicate, for two specific reasons:
+
+   * `RunContext.build` counts **`entity.exe_name` only** (`:197-204`). This
+     predicate needs a count keyed on **`entity.user`**, and further restricted
+     to `event_type == logon` on `evtx.security` — the context counts *all*
+     events naming an executable, with no event-type filter.
+   * The rarity ops compare a count against a **literal integer** supplied in
+     the rule (`:320-322`, raising unless `cond.value` is an `int`). This
+     predicate compares a count against a **field on another row**
+     (`details.logon_count`), which no operator accepts.
+
+   Writing it therefore requires extending `RunContext` to a second keying and
+   adding a field-versus-aggregate comparison — an engine change plus a schema
+   bump, in `rules/**`, which is Person A's directory. **That is a fork to
+   raise, not work to start unilaterally.**
+
+**Not started pending both.** Recorded here so the measurement is not lost and
+so the next person does not re-derive it.
 
 ## 4. What this document does NOT claim
 

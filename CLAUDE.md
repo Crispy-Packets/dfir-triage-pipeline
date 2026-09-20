@@ -76,15 +76,18 @@ on `clean_b` must not flag `clean_a` as broadly anomalous. If that fails, no
 **The anomaly layer ranks; it does not detect.** Nothing is flagged as an
 outlier in either host's scenario.
 
-**The ML workstream is CLOSED as of 2026-09-20, and the ablation is its
-result** (`docs/evidence/ml-scope-decision-2026-09-20.md`). `week2-plan.md` §7
-committed this component as an unsupervised anomaly baseline, not a detector,
-because one attack row in 24,323 cannot train or evaluate a classifier. The
-question it was to answer — does unsupervised anomaly detection contribute to
-forensic detection on disk collections — is answered: **not beyond triage
-ranking and a ~5% false-positive floor**. Extending `FAMILY_FEATURES` to the
-31 further families is a workstream that result does not justify, and is
-deliberately not started.
+**The ML workstream is NOT REACHED and NOT CLOSED.** The evidence bearing on
+its eventual scope is assembled in
+`docs/evidence/ml-scope-evidence-2026-09-20.md` — read it as *input to* that
+decision, not as the decision. The scope call is the project owner's to make
+when ML is reached, and `week2-plan.md` §7 does not settle it: §7 was written
+2026-08-28, before the ablation existed, so it cannot bind a choice informed
+by the ablation's result.
+
+What is measured, and is all that is measured: the anomaly layer ranks rather
+than detects, at a ~5% false-positive floor. Whether that answers the
+project's ML question or motivates extending `FAMILY_FEATURES` to the 31
+further families is undecided. `FAMILY_FEATURES` stays at 7 until it is.
 
 **The anomaly layer is scoped to the original 7 families.** `FAMILY_FEATURES`
 declares feature sets for `amcache`, `browser`, `evtx.powershell`,
