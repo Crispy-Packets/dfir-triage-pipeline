@@ -5,6 +5,7 @@ id: R-CORR-0004
 type: correlation
 title: A service was installed and the security log was then cleared
 enabled: true
+phase: destroy
 
 description: >
   Joins a service installation to a subsequent security-log clearing performed

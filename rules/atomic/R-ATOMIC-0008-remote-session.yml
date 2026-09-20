@@ -11,6 +11,7 @@ id: R-ATOMIC-0008
 type: atomic
 title: Terminal Services session opened from a remote address
 enabled: true
+phase: delivery
 
 description: >
   Fires on a TerminalServices-LocalSessionManager 21 or 25 record whose

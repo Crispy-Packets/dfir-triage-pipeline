@@ -10,6 +10,7 @@ id: R-ATOMIC-0003
 type: atomic
 title: PowerShell script block with an in-memory download or encoded command
 enabled: true
+phase: execute
 
 description: >
   Fires on an EID 4104 script block whose recorded text carries an in-memory

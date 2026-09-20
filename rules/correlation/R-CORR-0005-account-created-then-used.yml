@@ -13,6 +13,7 @@ id: R-CORR-0005
 type: correlation
 title: An account was created and then authenticated within the hour
 enabled: true
+phase: persist
 
 description: >
   Joins a Security 4720 account creation to a subsequent 4624 logon for the

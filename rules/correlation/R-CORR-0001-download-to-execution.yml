@@ -5,6 +5,7 @@ id: R-CORR-0001
 type: correlation
 title: A downloaded file was executed
 enabled: true
+phase: execute
 
 description: >
   Joins a browser download to an execution of the same executable name. Claims

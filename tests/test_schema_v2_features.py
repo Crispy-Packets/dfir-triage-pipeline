@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -33,6 +34,8 @@ from dfir_triage_pipeline.core.ruleset import (
     Window,
 )
 from dfir_triage_pipeline.model import Event
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 BASE = datetime(2026, 9, 14, 10, 0, tzinfo=UTC)
 
@@ -748,3 +751,77 @@ class TestKnownBehaviorRulesDoNotScore:
             "rules carry `unmeasured` expectations but are not marked "
             f"`class: known-behavior`: {offenders}"
         )
+
+
+class TestEveryRuleDeclaresAPhase:
+    """`phase:` is metadata -- nothing in matching or scoring reads it, so a
+    wrong value cannot be caught by a result changing. These checks are the
+    only thing standing between the field and silent drift.
+
+    The agreement check is the point of the field: an atomic rule's phase must
+    match what the event_type -> phase map in
+    docs/evidence/phase-span-2026-09-20.md says about the type it selects on.
+    Two layers naming the same stage differently is the failure this catches.
+    """
+
+    # docs/evidence/phase-span-2026-09-20.md, the adopted mapping table.
+    # Only the types the 24 rules actually select on; the table is larger.
+    EVENT_TYPE_PHASE = {
+        "file_download": "delivery",
+        "process_exec": "execute",
+        "script_block": "execute",
+        "program_inventoried": "execute",
+        "network_usage": "execute",
+        "persistence_autorun": "persist",
+        "service_install": "persist",
+        "service_registered": "persist",
+        "wmi_subscription": "persist",
+        "account_created": "persist",
+        "file_deleted": "destroy",
+        "log_cleared": "destroy",
+    }
+
+    def _rules(self):
+        from dfir_triage_pipeline.core.ruleset import load_rules
+
+        return load_rules(REPO_ROOT / "rules", include_disabled=True)
+
+    def test_every_rule_on_disk_carries_a_phase_in_the_closed_set(self):
+        phases = {"delivery", "execute", "persist", "destroy"}
+        offenders = [r.rule_id for r in self._rules() if r.phase not in phases]
+        assert offenders == [], f"rules with no phase or a phase outside the set: {offenders}"
+
+    def test_atomic_phases_agree_with_the_event_type_map(self):
+        """Where the phase-span map assigns the selected event type a stage,
+        the rule must name the same stage. Types the map deliberately leaves
+        unmapped (the record-keeping group, `file_opened` among them) are
+        skipped -- the rule's phase there is a judgement, not a lookup.
+        """
+        disagreements = []
+        for rule in self._rules():
+            if rule.kind != "atomic":
+                continue
+            types = list(rule.select.event_types)
+            if len(types) != 1:
+                continue
+            expected = self.EVENT_TYPE_PHASE.get(types[0])
+            if expected is None:
+                continue
+            if rule.phase != expected:
+                disagreements.append(
+                    f"{rule.rule_id}: {types[0]} maps to {expected}, "
+                    f"rule says {rule.phase}"
+                )
+        assert disagreements == [], disagreements
+
+    def test_the_validator_declares_the_same_closed_set(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "validate_rules", REPO_ROOT / "rules" / "validate_rules.py"
+        )
+        mod = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(mod)
+        assert mod.PHASES == frozenset({"delivery", "execute", "persist", "destroy"})
+        assert "phase" in mod.REQUIRED_TOP

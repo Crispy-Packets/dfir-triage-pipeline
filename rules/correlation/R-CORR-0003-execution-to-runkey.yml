@@ -8,6 +8,7 @@ id: R-CORR-0003
 type: correlation
 title: An executed binary is also registered to run at logon
 enabled: true
+phase: persist
 
 description: >
   Joins an execution to a Run or RunOnce value naming the same executable.

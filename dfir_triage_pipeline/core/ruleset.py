@@ -201,6 +201,10 @@ class Rule:
     #: Enforced in `entity_score.aggregate`, once, for the same reason D-058
     #: excludes `entity.host` there rather than in each caller.
     rule_class: str = "corpus-validated"
+    # Chain stage, from the rule's `phase:`. Metadata only -- no matching or
+    # scoring path reads it. Defaults to "" so a hand-built Rule in a test need
+    # not carry one; the validator is what makes it mandatory on disk.
+    phase: str = ""
 
 
 def _conditions(node: Any, where: str) -> Conditions:
@@ -466,6 +470,7 @@ def load_rule(path: Path) -> Rule:
         order=order,
         expected=expected,
         rule_class=str(data.get("class", "corpus-validated")),
+        phase=str(data.get("phase", "")),
     )
 
 

@@ -11,6 +11,7 @@ id: R-ATOMIC-0009
 type: atomic
 title: Local user account created
 enabled: true
+phase: persist
 
 description: >
   Fires on a Security 4720 record: a local user account was created. Claims the

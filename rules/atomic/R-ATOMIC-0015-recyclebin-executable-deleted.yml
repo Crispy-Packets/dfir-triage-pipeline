@@ -10,6 +10,7 @@ type: atomic
 title: Executable sent to the Recycle Bin from a user-writable location
 enabled: true
 class: known-behavior
+phase: destroy
 
 description: >
   Fires on a Recycle Bin record whose original path is an executable under a

@@ -7,6 +7,7 @@ id: R-ATOMIC-0005
 type: atomic
 title: Remote interactive logon from a network address
 enabled: true
+phase: delivery
 
 description: >
   Fires on an EID 4624 logon of type 10 (RemoteInteractive, the RDP type) whose

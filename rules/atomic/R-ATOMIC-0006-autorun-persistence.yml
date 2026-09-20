@@ -5,6 +5,7 @@ id: R-ATOMIC-0006
 type: atomic
 title: Autorun value pointing at a user-writable path or an interpreter
 enabled: true
+phase: persist
 
 description: >
   Fires on a Run or RunOnce value whose data points into a user-writable

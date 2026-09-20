@@ -10,6 +10,7 @@ type: atomic
 title: Autorun value written into a per-user hive
 enabled: true
 class: known-behavior
+phase: persist
 
 description: >
   Fires on a Run/RunOnce value in a PER-USER hive (`NTUSER.DAT`) rather than

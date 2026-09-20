@@ -8,6 +8,7 @@ id: R-CORR-0006
 type: correlation
 title: An autorun-registered executable was deleted to the Recycle Bin
 enabled: true
+phase: destroy
 
 description: >
   Joins a Run or RunOnce value to a Recycle Bin deletion of the same

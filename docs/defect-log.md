@@ -2610,3 +2610,64 @@ PowerShell is used. Naming it costs nothing; writing a bad rule for it would.
 *parsed / has usable fields / read by a rule*, so the gap is visible without
 grepping. Proposed, not built -- the grid is a shared document and the column
 affects how Person A reads it.
+
+
+## D-071
+
+**`phase:` is a mandatory schema key added inside a Person A file, and it is a
+schema change that the version string does not record.**
+
+Filed 2026-09-20, with the change. Status: OPEN for Person A review; the code
+is committed and green.
+
+**What was added.** A top-level `phase:` key on every rule, closed set
+`delivery` / `execute` / `persist` / `destroy`. Three lines of enforcement in
+`rules/validate_rules.py`: a `PHASES` frozenset, `"phase"` appended to
+`REQUIRED_TOP`, and one `report.error` beside the existing `severity` check.
+All 24 rules tagged. `Rule.phase` added to `core/ruleset.py`, defaulted to
+`""`, read by nothing.
+
+**Why this is filed rather than just done.** Two things about it are not
+routine, and both were decided rather than defaulted:
+
+1. **It crosses the ownership line that `class:` deliberately did not.**
+   `rules/**` is Person A's per `rules/schema.md:12` and
+   `shared/CONTRACT-RULES.md` section 5. When `class:` was added on 2026-09-20
+   the same question came up and was answered the other way: enforcement went
+   into `core/entity_score.py` and `tests/`, and the validator was left alone,
+   leaving "`rules/schema.md` has no paragraph on `class:`" as a pending
+   Person A item. The `phase:` brief asked for the validator change directly,
+   so it was made. The result is that the two sibling metadata fields are
+   enforced in two different places for no reason intrinsic to either.
+   `rules/schema.md` now owes a paragraph on **both**.
+
+2. **A rule stamped `2.0.0` now fails the `2.0.0` validator.** `phase:` is
+   required, so every rule file written before today is invalid against the
+   current checker while still declaring the same schema version. Nothing in
+   `SCHEMA_MAJOR_COMPATIBLE` catches this -- it checks the major only. In
+   substance this is a schema change; in the version string it is invisible.
+   It was not bumped here because the version field is Person A's to move and
+   a silent bump would be worse than a recorded inconsistency.
+
+**What is NOT affected.** No rule predicate, `expected:` block, weight,
+severity, or `class:` value changed -- the diff is 24 files at exactly +1 line
+each. Nothing reads `Rule.phase`, so matching and scoring are bit-identical
+and the entity-identity check was not re-run (its inputs did not move). The
+Class 2 exclusion in `entity_score.aggregate` is untouched.
+
+**The tagging is partly judgement, not lookup.** The event_type -> phase map
+in `docs/evidence/phase-span-2026-09-20.md` deliberately leaves 22
+record-keeping types unmapped, `file_opened` among them, on the grounds that
+they "assert that a file or path exists" rather than naming a stage. Three
+rules select on exactly those types (R-ATOMIC-0010, 0012, 0013), so their
+phase is an assignment with no map entry behind it. A fourth, R-ATOMIC-0014,
+is tagged `execute` because the map puts `network_usage` there -- the rule
+itself is about egress (T1041), which the four-stage model does not name at
+all. `tests/test_schema_v2_features.py::TestEveryRuleDeclaresAPhase` asserts
+agreement only where the map actually has an entry, and skips these by
+construction, which is the honest scope: it cannot check what the map declines
+to say.
+
+**What would close this**: Person A's ruling on where enforcement belongs,
+a `schema.md` paragraph for `class:` and `phase:`, and a decision on whether
+the schema version moves.

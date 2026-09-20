@@ -5,6 +5,7 @@ id: R-ATOMIC-0004
 type: atomic
 title: Service installed with an interpreter or user-writable image
 enabled: true
+phase: persist
 
 description: >
   Fires on an EID 7045 service installation whose ImagePath invokes a command

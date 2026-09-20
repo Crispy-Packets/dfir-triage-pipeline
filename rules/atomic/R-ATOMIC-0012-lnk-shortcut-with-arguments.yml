@@ -10,6 +10,7 @@ type: atomic
 title: Recent-items shortcut carrying command-line arguments
 enabled: true
 class: known-behavior
+phase: execute
 
 description: >
   Fires on a `.lnk` under Recent Items whose target carries command-line

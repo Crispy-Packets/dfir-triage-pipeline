@@ -10,6 +10,7 @@ type: atomic
 title: Executable downloaded to a user-writable location
 enabled: true
 class: known-behavior
+phase: delivery
 
 description: >
   Fires on a browser download record whose target path is an executable in a

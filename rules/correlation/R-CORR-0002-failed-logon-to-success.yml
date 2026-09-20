@@ -5,6 +5,7 @@ id: R-CORR-0002
 type: correlation
 title: A failed logon was followed by a success for the same account
 enabled: true
+phase: delivery
 
 description: >
   Joins an EID 4625 failure to a subsequent EID 4624 success for the same

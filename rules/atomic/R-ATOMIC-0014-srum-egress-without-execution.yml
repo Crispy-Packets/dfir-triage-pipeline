@@ -10,6 +10,7 @@ type: atomic
 title: Sustained network egress recorded for a binary by SRUM
 enabled: true
 class: known-behavior
+phase: execute
 
 description: >
   Fires on a SRUM network row recording a large volume of bytes SENT by an

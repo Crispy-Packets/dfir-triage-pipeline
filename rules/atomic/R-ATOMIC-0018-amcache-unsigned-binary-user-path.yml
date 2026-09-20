@@ -10,6 +10,7 @@ type: atomic
 title: Program inventoried from a user-writable path with no publisher
 enabled: true
 class: known-behavior
+phase: execute
 
 description: >
   Fires on an Amcache entry for a binary under a user-writable path that

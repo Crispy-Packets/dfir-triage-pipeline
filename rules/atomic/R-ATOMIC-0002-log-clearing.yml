@@ -9,6 +9,7 @@ id: R-ATOMIC-0002
 type: atomic
 title: Windows event log cleared
 enabled: true
+phase: destroy
 
 description: >
   Fires on a Security log clearing record (EID 1102). Claims that the audit log

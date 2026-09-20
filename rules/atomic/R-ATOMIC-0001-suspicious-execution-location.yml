@@ -5,6 +5,7 @@ id: R-ATOMIC-0001
 type: atomic
 title: Process executed from a user-writable location
 enabled: true
+phase: execute
 
 description: >
   Fires on an EID 4688 process creation whose image path sits in a directory an

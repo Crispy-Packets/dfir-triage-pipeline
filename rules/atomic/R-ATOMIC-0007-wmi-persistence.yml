@@ -12,6 +12,7 @@ id: R-ATOMIC-0007
 type: atomic
 title: WMI subscription bound to a consumer that executes
 enabled: true
+phase: persist
 
 description: >
   Fires on a WMI-Activity 5861 permanent event subscription whose consumer is

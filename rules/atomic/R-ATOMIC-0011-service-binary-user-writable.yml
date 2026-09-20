@@ -13,6 +13,7 @@ type: atomic
 title: Registered service whose binary lives in a user-writable location
 enabled: true
 class: known-behavior
+phase: persist
 
 description: >
   Fires on a service registered in the SYSTEM hive whose `ImagePath` resolves

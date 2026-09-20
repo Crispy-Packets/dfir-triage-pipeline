@@ -112,6 +112,12 @@ GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
 
 SEVERITIES = frozenset({"informational", "low", "medium", "high", "critical"})
 
+# The chain stage a rule's finding belongs to. Metadata only: nothing in scoring
+# or matching reads it. The set is the four-stage map in
+# docs/evidence/phase-span-2026-09-20.md, which is the scenario's own four steps
+# -- see that document's corpus-fit statement before adding a fifth.
+PHASES = frozenset({"delivery", "execute", "persist", "destroy"})
+
 # Every collection an `expected:` block may declare a base rate for. clean_c and
 # s1_v3 are the host-2 pair added 2026-09-13; the first three are host 1. A rule
 # need not carry all five, but a key outside this tuple is a typo rather than a
@@ -246,6 +252,7 @@ REQUIRED_TOP = (
     "title",
     "description",
     "severity",
+    "phase",
     "weight",
     "attack",
     "select",
@@ -838,6 +845,9 @@ def validate_file(path: Path, report: Report, details_refs: set[str],
 
     if data.get("severity") not in SEVERITIES:
         report.error(where, f"severity must be one of {sorted(SEVERITIES)}")
+
+    if data.get("phase") not in PHASES:
+        report.error(where, f"phase must be one of {sorted(PHASES)}")
     weight = data.get("weight")
     if isinstance(weight, bool) or not isinstance(weight, int) or not 0 <= weight <= 100:
         report.error(where, "weight must be an integer 0..100")

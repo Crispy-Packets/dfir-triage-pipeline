@@ -10,6 +10,7 @@ type: atomic
 title: Jump list entry whose target was on removable or network media
 enabled: true
 class: known-behavior
+phase: delivery
 
 description: >
   Fires on a jump list entry recording a file that lived on a removable
