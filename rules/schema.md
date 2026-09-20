@@ -127,7 +127,7 @@ omitted field is a load-time error, not an implied value.
 
 | Field | Type | Notes |
 |---|---|---|
-| 2.1.0 | 2026-09-20 | Adds **`phase:`**, a required top-level key naming the chain stage a rule's finding belongs to. Closed set of five: `delivery`, `execute`, `persist`, `destroy`, `exfiltrate`. Metadata only -- nothing in matching or scoring reads it, no rule predicate, `expected:` block, weight or severity changed, and the entity ranking is unaffected. **Unlike every other minor bump in this table, 2.0.0 files do NOT still load**: a required field was added, so every rule file was restamped to 2.1.0 in the same commit. By strict semver that is a major change; it is recorded as minor by Person B's decision, with the breaking nature stated here rather than hidden by the number. The five stages are deliberately not the four in `docs/evidence/phase-span-2026-09-20.md` -- that map's stages were the scenario's own steps, and `exfiltrate` covers egress and exfil the scenario never exercised. The two layers therefore disagree about `network_usage` on purpose (D-071). Enforced in `rules/validate_rules.py`, which is a Person A file; see D-071. |
+| 2.1.0 | 2026-09-20 | Adds **`phase:`**, a required top-level key naming the chain stage a rule's finding belongs to. Closed set of five: `delivery`, `execute`, `persist`, `destroy`, `exfiltrate`. Metadata only -- nothing in matching or scoring reads it, no rule predicate, `expected:` block, weight or severity changed, and the entity ranking is unaffected. **Unlike every other minor bump in this table, 2.0.0 files do NOT still load**: a required field was added, so every rule file was restamped to 2.1.0 in the same commit. By strict semver that is a major change; it is recorded as minor deliberately, with the breaking nature stated here rather than hidden by the number. The five stages are deliberately not the four in `docs/evidence/phase-span-2026-09-20.md` -- that map's stages were the scenario's own steps, and `exfiltrate` covers egress and exfil the scenario never exercised. The two layers therefore disagree about `network_usage` on purpose (D-071). Enforced in `rules/validate_rules.py`; see section 2.1. |
 | `schema_version` | string | must match this document's major version |
 | `id` | string | matches `^R-(ATOMIC\|CORR\|TEST)-\d{4}$` |
 | `type` | enum | `atomic` \| `correlation` |
@@ -156,6 +156,46 @@ silently rewrites the report's language.
 
 Optional fields, defined here so Day 2 does not invent them: `references` (list
 of strings), `notes` (string), `false_positive_notes` (string).
+
+### 2.1 `class:` and `phase:` — the two metadata keys, and where each is enforced
+
+`class:` is optional and defaults to `corpus-validated`. The closed set is
+`corpus-validated` and `known-behavior`. A `corpus-validated` rule fires on the
+scenario and not on clean, and carries measured `expected:` figures. A
+`known-behavior` rule expresses a real intrusion behaviour this corpus never
+exercises, so it ships a false-positive profile instead of a detection rate and
+may declare `expected: unmeasured` per collection.
+
+**`class:` decides whether a finding contributes to `entity_score`. Only
+`corpus-validated` does.** A `known-behavior` rule still writes to
+`findings.csv`; it must never move the entity ranking, because a rule with no
+measured true positive cannot be allowed to alter the project's headline
+separation.
+
+`phase:` is required. The closed set is `delivery`, `execute`, `persist`,
+`destroy`, `exfiltrate`. It names the chain stage a finding belongs to and
+nothing computes on it.
+
+The two are enforced in different places, which is deliberate rather than an
+inconsistency:
+
+| Key | Enforced in | Why there |
+|---|---|---|
+| `class:` | `core/entity_score.py`, plus a closed-set test | It changes a runtime computation |
+| `phase:` | `rules/validate_rules.py` | It is metadata; load time is the only point that means anything |
+
+`class:` must be enforced where the score is computed, because that is the only
+place that covers every path to it — a `Rule` built by hand in a test, or any
+file that reaches the engine without passing the checker, still must not score.
+A load-time check would leave those paths open. `phase:` has no runtime
+consumer at all, so a load-time check is the whole of its enforcement; adding
+one for `class:` as well would be symmetry rather than safety.
+
+The failure directions differ too, and both are chosen. An unrecognised
+`class:` string is **excluded** from scoring, so a typo costs a contribution
+rather than inventing one — the safe direction for the headline result; the
+closed-set test catches the typo on disk. A missing or unrecognised `phase:` is
+a hard validation error, because nothing downstream would ever notice it.
 
 ---
 

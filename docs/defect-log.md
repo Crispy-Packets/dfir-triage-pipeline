@@ -2492,6 +2492,12 @@ described as "documented across five collections" until it is closed.
 
 ---
 
+**CLOSED 2026-09-20.** `clean_c` and `s1_v3` added to
+`docs/collection-manifest.md`, every field read from each collection's own KAPE
+console log -- nothing marked unknown. Times 2026-09-12T07:15:23Z and
+2026-09-13T12:18:18Z; files copied 637 and 741. The manifest now documents 5
+of 5.
+
 ## D-069  `evtx.defender` is typed but carries no details: four EIDs, zero keys
 
 Found 2026-09-20 while sorting external rule sets. Eight candidate rules from
@@ -2617,9 +2623,8 @@ affects how Person A reads it.
 **`phase:` is a mandatory schema key added inside a Person A file, and it is a
 schema change that the version string does not record.**
 
-Filed 2026-09-20, with the change. Status: point 2 RESOLVED the same day
-(schema 2.1.0, f655858 + the follow-up commit). Point 1 OPEN for Person A
-review; the code is committed and green.
+Filed 2026-09-20. Status: CLOSED the same day. Point 2 resolved by schema
+2.1.0; point 1 resolved by `rules/schema.md` section 2.1.
 
 **What was added.** A top-level `phase:` key on every rule, closed set
 `delivery` / `execute` / `persist` / `destroy`. Three lines of enforcement in
@@ -2631,7 +2636,8 @@ All 24 rules tagged. `Rule.phase` added to `core/ruleset.py`, defaulted to
 **Why this is filed rather than just done.** Two things about it are not
 routine, and both were decided rather than defaulted:
 
-1. **It crosses the ownership line that `class:` deliberately did not.**
+1. **RESOLVED. The two fields are enforced in different places, and there is
+   a reason.**
    `rules/**` is Person A's per `rules/schema.md:12` and
    `shared/CONTRACT-RULES.md` section 5. When `class:` was added on 2026-09-20
    the same question came up and was answered the other way: enforcement went
@@ -2697,6 +2703,52 @@ T1204.002 -- user execution via a shortcut carrying arguments. It stays
 three select the same event type, and that grouping was read as three exfil
 rules; the technique field is what settles it.
 
-**What would close this**: Person A's ruling on where enforcement belongs,
-a `schema.md` paragraph for `class:` and `phase:`, and a decision on whether
-the schema version moves.
+**Correction.** The original point 1 said the two fields were enforced in
+two places "for no reason intrinsic to either." That was wrong. `class:`
+changes a runtime computation, so it must be enforced where the score is
+computed -- a hand-built `Rule`, or any file reaching the engine without the
+checker, still must not score. `phase:` has no runtime consumer, so load-time
+validation is the only enforcement that means anything. `rules/schema.md`
+section 2.1 documents both, with the failure directions.
+
+## D-072
+
+**A Class 2 finding renders inside the verdict panel. The split is enforced in
+the score and nowhere else.**
+
+Filed 2026-09-20 by inspection of `core/report_html.py`, `core/run_json.py` and
+`core/manifest.py`. Not fixed here.
+
+| Layer | Class-aware? |
+|---|---|
+| `entity_score.aggregate` | **Yes** — `rule_class != "corpus-validated"` is skipped |
+| `run.json` | No — `rule_class` is never written |
+| `findings.csv` | No — not in `FINDINGS_CSV_COLUMNS` |
+| `report.html` verdict panel | No — `_finding_block` never reads it |
+
+`_verdict_panel` builds two things. Its **entity table** reads
+`doc["entities"]`, which is `entity_score` output, so the ranking is correctly
+Class 1 only. Its **findings list** reads `doc["findings"]` unfiltered, so
+every `known-behavior` finding renders as a full finding block under the
+heading "Verdict — rule findings", with the same styling as a corpus-validated
+one and nothing marking it as context.
+
+The consequence is narrow but real: a Class 2 rule cannot move the 99-vs-86
+separation, and that headline is safe. But a reader of the HTML sees nine
+rules' worth of unvalidated findings presented as verdict. The claim "Class 2
+lives in prioritisation" is currently true of the arithmetic and false of the
+document.
+
+`is_verdict: false` already exists in `run_json.py` but marks only the ML
+anomaly context, which is a different thing — it is beside a finding, not a
+property of one.
+
+**Prerequisite, not a bug in itself:** the prioritisation panel sources
+`doc["anomalies"]`, which is ML output. ML is not reached, so "Class 2 +
+percentiles" cannot be built as one panel yet; the Class 2 half does not
+depend on ML and could move on its own.
+
+**What would close this**: carry `rule_class` into `run.json` (a 1.1.0 ->
+1.2.0 field addition) and `findings.csv`, then render Class 2 findings outside
+the verdict panel or visibly marked as non-verdict.
+

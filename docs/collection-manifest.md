@@ -94,6 +94,8 @@ collections. Re-collection is consequently a rebuild, not a repeat.
 | `clean_a` | `collection_clean_a` | (none) | `admin_local`, elevated | 2026-08-24T17:44:56Z | 876 | Boot and settle. No user activity |
 | `clean_b` | `collection_clean_b` | (none) | `admin_local`, elevated | 2026-08-24T18:58:05Z | 900 | Benign user workload |
 | `scenario1` | `collection_s1_v2` | `janed` (download, execute, persist); then `admin_local` (log clear) | `admin_local`, elevated | 2026-08-23T23:31:48Z | 793 | HTTP delivery, execute, persist, log clear |
+| `clean_c` | `collection_clean_c` | (none) | `vboxuser`, elevated | 2026-09-12T07:15:23Z | 637 | Host 2 (`WINVM`). Clean baseline for the host-2 pair. KAPE `--tdest collection_clean_c_v2`; `collection_clean_c_first` is an earlier attempt retained beside it |
+| `scenario1_v3` | `collection_s1_v3` | `janed` (download, execute, persist); then elevated (log clear) | `vboxuser`, elevated | 2026-09-13T12:18:18Z | 741 | Host 2 (`WINVM`). Second run of the same four-step scenario |
 
 What each file-count figure measures. No number below was changed; each is labelled.
 
@@ -339,3 +341,16 @@ documented here and in `docs/lab-setup.md`.
 - Collection written to a fresh destination directory, never on top of an
   existing one
 - VM shut down cleanly after each collection so the volume flushes
+
+
+**Source of the host-2 rows.** The five fields above are read from each
+collection's own KAPE console log and copy log, not from recollection: the
+timestamp is the log filename (UTC; the log body is UTC+3), and the file count
+is KAPE's own `Copied N ... out of M` line — 637 of 701 for `clean_c` and 741
+of 833 for `s1_v3`, the difference being deduplication and skips. Both were
+taken from `WINVM` (Windows 10.0.19045) under `vboxuser` with target set
+`KapeTriage` and source `C:`, matching the parameters recorded above.
+
+This closes D-068 for these two collections. It does not establish C-06, which
+is a separate question about whether `clean_c`'s collection precedes the
+scenario run and is not answered by the manifest.
