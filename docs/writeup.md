@@ -135,24 +135,53 @@ capture, EID 4769, `NTDS.dit` — rather than resting on the category.
 ### 5.1 Ranking separation
 
 Measured 2026-09-20 through the CLI on all five collections, reading
-`run.json` (`run_json_version` 1.2.0):
+`run.json` (`run_json_version` 1.2.0). `SCORED_ENTITY_KINDS` is
+`entity.exe_name` and `entity.user`, and the two rank **separately** -- so the
+separation must be read per kind. Reporting one kind's spread as the result
+is the comparison error the tables below exist to prevent.
 
-| collection | top entity | score | severity |
+**Executables (`entity.exe_name`) -- the payload is the top row and the margin
+is clean:**
+
+| collection | top executable | score | severity |
 |---|---|---|---|
-| clean_a | `entity.user=youssef` | 97 | high |
-| clean_b | `entity.user=youssef` | 97 | high |
-| clean_c | `entity.user=vboxuser` | 92 | high |
-| **s1_v2** | `entity.exe_name=invoice_scan.exe` | **99** | **critical** |
-| **s1_v3** | `entity.exe_name=invoice_scan.exe` | **99** | **critical** |
+| clean_a | `cursorusersetup-x64-3.15.6.exe` | 86 | high |
+| clean_b | `7z2602-x64.exe` | 86 | high |
+| clean_c | `npp.8.9.8.installer.x64.exe` | 75 | high |
+| **s1_v2** | `invoice_scan.exe` | **99** | **critical** |
+| **s1_v3** | `invoice_scan.exe` | **99** | **critical** |
 
-The headline "99 vs 86" compares the scenario payload against the highest
-*executable* entity on a clean host. The 97 rows above are **user** entities,
-which rank high on both clean and scenario hosts because ordinary users
-accumulate autorun and account findings. Both figures are real and they answer
-different questions; quoting the first without the second overstates the gap.
+This is the 99-vs-86 headline, and it holds: the scenario payload outranks the
+highest-scoring clean executable by 13 points on host 1 and 24 on host 2, and
+is the only entity of either kind reaching `critical`.
+
+**Users (`entity.user`) -- the margin is much narrower, and on host 1 it
+inverts:**
+
+| collection | top user | score | severity |
+|---|---|---|---|
+| clean_a | `youssef` | 97 | high |
+| clean_b | `youssef` | 97 | high |
+| clean_c | `vboxuser` | 92 | high |
+| s1_v2 | `admin_local` | 93 | high |
+| s1_v3 | `vboxuser` | 88 | high |
+
+A clean host's ordinary user scores **97**, above the top user on either
+scenario collection. Users accumulate autorun and account findings through
+normal use, and nothing in the rule set distinguishes a busy legitimate user
+from a compromised one. **The user ranking does not separate the scenario at
+all** -- 99-vs-97 is the best case, and it is a comparison across kinds rather
+than within one.
+
+The honest statement of the result is therefore narrower than the headline:
+**the separation is a property of the executable ranking.** The pipeline
+identifies the payload, not the actor. That is the useful half for triage --
+an analyst is pointed at `invoice_scan.exe` -- but a reader who takes "99 vs
+86" as the tool's general discrimination will overestimate it, because the
+same corpus puts a clean user at 97.
 
 Class 2 findings appear in `findings.csv` and the context panel and contribute
-zero to every score above.
+zero to every score in both tables.
 
 ### 5.2 Coverage
 
