@@ -12,6 +12,7 @@ id: R-ATOMIC-0011
 type: atomic
 title: Registered service whose binary lives in a user-writable location
 enabled: true
+class: known-behavior
 
 description: >
   Fires on a service registered in the SYSTEM hive whose `ImagePath` resolves

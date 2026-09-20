@@ -12,6 +12,7 @@ id: R-ATOMIC-0010
 type: atomic
 title: Shortcut target on removable or network media
 enabled: true
+class: known-behavior
 
 description: >
   Fires on a Windows shortcut whose target lived on a removable volume or a

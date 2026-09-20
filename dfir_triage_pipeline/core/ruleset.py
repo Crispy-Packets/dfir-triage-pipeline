@@ -187,6 +187,20 @@ class Rule:
     expected: tuple[tuple[str, str], ...] = ()
     #: Burst condition, atomic rules only (schema 2.0.0, gap 1).
     aggregate: Aggregate | None = None
+    #: Rule class. `corpus-validated` (the default, and what every rule written
+    #: before 2026-09-20 is) means the rule fires on the scenario and not on
+    #: clean, and carries measured `expected:` figures. `known-behavior` means
+    #: it expresses a real intrusion behaviour this corpus never exercises, so
+    #: it ships a false-positive profile instead of a detection rate.
+    #:
+    #: **The class decides whether a finding contributes to `entity_score`.**
+    #: Only `corpus-validated` does. A known-behavior rule still produces
+    #: findings in `findings.csv`; it must never move the entity ranking,
+    #: because the 99-vs-86 separation is the project's headline result and a
+    #: rule with no measured true positive cannot be allowed to alter it.
+    #: Enforced in `entity_score.aggregate`, once, for the same reason D-058
+    #: excludes `entity.host` there rather than in each caller.
+    rule_class: str = "corpus-validated"
 
 
 def _conditions(node: Any, where: str) -> Conditions:
@@ -451,6 +465,7 @@ def load_rule(path: Path) -> Rule:
         window=window,
         order=order,
         expected=expected,
+        rule_class=str(data.get("class", "corpus-validated")),
     )
 
 

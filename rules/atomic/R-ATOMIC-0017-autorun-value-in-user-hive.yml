@@ -1,0 +1,83 @@
+# Atomic rule 0017. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0017
+type: atomic
+title: Autorun value written into a per-user hive
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on a Run/RunOnce value in a PER-USER hive (`NTUSER.DAT`) rather than
+  in the machine hive.
+
+  A per-user Run key needs no administrative rights. It is therefore the
+  persistence mechanism available to an actor who has not escalated, and it
+  is where a commodity payload writes itself. The machine hive requires
+  administrator and is more commonly vendor software.
+
+  R-ATOMIC-0006 fires on an autorun value pointing at a user-writable path or
+  an interpreter, regardless of hive. This rule asks a different question --
+  WHICH HIVE -- and fires on values whose target is a perfectly respectable
+  path, which R-ATOMIC-0006 will not match.
+
+severity: high
+weight: 50
+
+attack:
+  technique: T1547.001
+  name: Registry Run Keys / Startup Folder
+
+select:
+  event_type: [persistence_autorun]
+  source_artifact: [registry]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: persistence_autorun
+    - field: details.hive_type
+      op: equals
+      value: ntuser
+    - field: details.value_data
+      op: present
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five as written.
+
+    Related measured fact: R-ATOMIC-0006 fires 8/8/1/4/2 -- twice as many on
+    each clean host as on the scenario. `registry` carries 25
+    `persistence_autorun` rows across the two collections surveyed. This
+    rule's population overlaps that one but is neither a subset nor a
+    superset, and it has not been measured.
+
+false_positive_notes: >
+  1. Per-user application autostart. OneDrive, Teams, Cursor, Discord,
+     Spotify and most chat and sync clients install a per-user Run value by
+     design. This is the dominant benign population and it is large.
+
+  2. Vendor updaters that cannot assume administrative rights.
+
+  3. The hive distinction is about PRIVILEGE, not intent. A per-user Run key
+     means the writer did not need administrator -- which is true of an
+     unprivileged actor and equally true of every per-user application ever
+     installed.
+
+  WHAT MAKES A HIT WORTH READING: a per-user autorun whose value data points
+  outside the writing application's own install directory, or at an
+  interpreter. The first needs a comparison this schema cannot express
+  (field against field); the second is already R-ATOMIC-0006.
+
+references:
+  - https://attack.mitre.org/techniques/T1547/001/

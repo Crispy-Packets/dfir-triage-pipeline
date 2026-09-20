@@ -15,6 +15,7 @@ unrelated events.
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -667,3 +668,83 @@ class TestEntityKindsAreRankedSeparately:
         assert "entity.host" not in kinds
         # The flat view is exactly the union of the per-kind tables.
         assert sum(len(v) for v in kinds.values()) == len(doc["entities"])
+
+
+def _load_all_rules():
+    """Every rule in the repository, loaded the way the pipeline loads them."""
+    from pathlib import Path
+
+    from dfir_triage_pipeline.core.ruleset import load_rules
+
+    return load_rules(Path(__file__).resolve().parent.parent / "rules")
+
+
+class TestKnownBehaviorRulesDoNotScore:
+    """Class 2 rules produce findings but must never move the entity ranking.
+
+    A `known-behavior` rule expresses a real intrusion behaviour that THIS
+    corpus does not exercise, so it has no measured true positive anywhere.
+    Letting its weight into `entity_score` would move the clean ceiling
+    (86/86/75) toward the payload's 99 with no evidence that the movement is
+    correct -- and that separation is the project's headline result.
+
+    Excluded in `aggregate`, beside the entity-kind filter, for the same
+    reason D-058 excludes `entity.host` there: once, where no consumer can
+    reintroduce it.
+    """
+
+    def test_a_known_behavior_finding_adds_no_weight(self):
+        """The whole point. Same entity, two rules, only Class 1 counts."""
+        c1 = _finding_keys("R-A", 40, [("entity.exe_name", "setup.exe")])
+        c2 = _finding_keys("R-B", 60, [("entity.exe_name", "setup.exe")])
+        c2 = dataclasses.replace(c2, rule_class="known-behavior")
+
+        scored = entity_score.aggregate([c1, c2])
+
+        assert len(scored) == 1
+        assert scored[0].score == entity_score.combine_weights([40])
+        assert scored[0].rule_ids == ("R-A",)
+
+    def test_an_entity_named_only_by_class_2_is_not_scored_at_all(self):
+        """Not "scored at zero" -- absent. A zero-scored entity would still
+        appear in the table and in run.json, implying it was ranked."""
+        c2 = dataclasses.replace(
+            _finding_keys("R-B", 99, [("entity.exe_name", "onlyclass2.exe")]),
+            rule_class="known-behavior",
+        )
+        assert entity_score.aggregate([c2]) == []
+
+    def test_the_default_is_corpus_validated(self):
+        """Every Finding built by hand -- and every rule written before the
+        class existed -- must behave exactly as it did before."""
+        f = _finding_keys("R-A", 40, [("entity.exe_name", "setup.exe")])
+        assert f.rule_class == "corpus-validated"
+        assert len(entity_score.aggregate([f])) == 1
+
+    def test_every_rule_declares_a_known_class(self):
+        """A closed set, so `known-behaviour` (British spelling) or any other
+        typo fails here rather than silently scoring."""
+        rules = _load_all_rules()
+        allowed = {"corpus-validated", "known-behavior"}
+        bad = {r.rule_id: r.rule_class for r in rules
+               if r.rule_class not in allowed}
+        assert bad == {}, f"unknown rule_class: {bad}"
+
+    def test_a_rule_with_unmeasured_expectations_is_class_2(self):
+        """The guard against forgetting `class:` on a new Class 2 rule.
+
+        `validate_rules.py` cannot catch this -- it is Person A's file and does
+        not know the key -- so this is the only check that will. A rule
+        declaring `unmeasured` for any collection has, by definition, no
+        measured base rate there, and must not contribute to the ranking.
+        """
+        rules = _load_all_rules()
+        offenders = []
+        for rule in rules:
+            values = [v for _, v in rule.expected]
+            if "unmeasured" in values and rule.rule_class != "known-behavior":
+                offenders.append(rule.rule_id)
+        assert offenders == [], (
+            "rules carry `unmeasured` expectations but are not marked "
+            f"`class: known-behavior`: {offenders}"
+        )

@@ -74,6 +74,15 @@ class Finding:
     reason: str
     window_observed_seconds: float | None = None
     notes: tuple[str, ...] = field(default=())
+    #: The producing rule's class, carried so `entity_score` can exclude
+    #: known-behavior findings from the ranking without re-reading the rule
+    #: set. Defaults to `corpus-validated`, so a Finding built by hand -- every
+    #: unit test that does not go through `run()` -- behaves as before.
+    #:
+    #: NOT a `finding_id` input, deliberately: the id is a content hash over
+    #: the rule, the matched events and the entity keys, and reclassifying a
+    #: rule does not make it a different finding.
+    rule_class: str = "corpus-validated"
 
     def __post_init__(self) -> None:
         if not self.matched:

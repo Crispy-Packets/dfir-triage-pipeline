@@ -1,0 +1,79 @@
+# Atomic rule 0013. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0013
+type: atomic
+title: Jump list entry whose target was on removable or network media
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on a jump list entry recording a file that lived on a removable
+  volume or a network share.
+
+  A jump list is the per-application most-recently-used list, and it carries
+  the same volume metadata a `.lnk` does -- drive type, serial and label. It
+  therefore outlives the device, and unlike a Recent link it attributes the
+  access to a specific application via `app_id`.
+
+  R-ATOMIC-0010 makes the same claim from the `lnk` family. This is the
+  second, independent record of it: an attacker who clears Recent Items does
+  not necessarily clear per-application jump lists.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1052.001
+  name: Exfiltration over USB
+
+select:
+  event_type: [file_opened]
+  source_artifact: [jumplist]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_opened
+    - field: details.drive_type
+      op: in
+      value: [removable, remote]
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five.
+
+    The `jumplist` family carries 149 rows across the two collections
+    surveyed, with `drive_type` and `volume_serial` present. The corpus's
+    only removable volume is the evidence USB (D-064), so any hit here would
+    be the collection procedure, exactly as in R-ATOMIC-0010.
+
+false_positive_notes: >
+  1. The DFIR collection procedure itself, for the same reason recorded in
+     R-ATOMIC-0010: an examiner's USB stick is indistinguishable from an
+     actor's. Measured on this corpus for `lnk`; the same volume would
+     appear here.
+
+  2. Ordinary removable-media use -- opening a document from a USB stick
+     leaves a jump list entry in whichever application opened it.
+
+  3. Mapped network drives, `drive_type: remote`. On a domain-joined machine
+     this is routine work and the rule is noise. This corpus has no domain,
+     so that half is written from behaviour and is entirely unexercised.
+
+  4. Jump lists persist after the application is uninstalled and after the
+     file is deleted, so a hit may describe activity from months earlier.
+     The rule claims access, never recency.
+
+references:
+  - https://attack.mitre.org/techniques/T1052/001/

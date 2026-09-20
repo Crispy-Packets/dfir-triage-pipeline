@@ -1,0 +1,84 @@
+# Atomic rule 0016. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0016
+type: atomic
+title: Executable downloaded to a user-writable location
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on a browser download record whose target path is an executable in a
+  user-writable directory.
+
+  The browser history database records the source URL, the destination path,
+  the MIME type and the byte count. That is the delivery step of an intrusion
+  written down by the browser itself, and it survives on disk after the file
+  is gone.
+
+  R-CORR-0001 correlates download with execution. This is the delivery half
+  alone: a download that never ran is still an ingress event, and an actor
+  who staged a tool and deleted it before running leaves only this.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1105
+  name: Ingress Tool Transfer
+
+select:
+  event_type: [file_download]
+  source_artifact: [browser]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_download
+    - field: details.target_path
+      op: present
+    - field: path
+      op: is_user_writable
+      value: true
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five as an independent rule.
+
+    Related measured facts: `browser` carries 30 `file_download` rows across
+    the two collections surveyed, and R-CORR-0001 (download-to-execution)
+    fires 3/4/1/3/1 -- MORE on the clean hosts than on s1_v2. This rule drops
+    the execution requirement, so its population is strictly larger than that
+    and has not been measured.
+
+false_positive_notes: >
+  1. Every legitimate software download. This is the rule's whole problem
+     and it must not be understated: on the clean hosts of this corpus the
+     download population is `cursorusersetup-x64`, `7z2602-x64`,
+     `npp.8.9.8.installer`, `ssms-setup-enu` and `vs_community` -- all
+     benign, all matching this predicate exactly.
+
+  2. Browser and extension updates written to AppData.
+
+  3. The rule cannot distinguish a user downloading a tool from an actor
+     downloading one. `transition` and `referrer` are available in the
+     family and would help -- a download with no referring page is more
+     interesting than one reached by clicking a link -- but neither is used
+     here, because thresholding them on this corpus would be corpus-fitting.
+
+  WHERE IT EARNS ITS WEIGHT: as a correlation STEP rather than alone. Used
+  atomically on a workstation it fires on ordinary use; used as the first
+  step of a chain, the download becomes evidence.
+
+references:
+  - https://attack.mitre.org/techniques/T1105/

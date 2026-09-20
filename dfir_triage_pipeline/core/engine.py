@@ -428,6 +428,7 @@ def _burst_findings(rule: Rule, matched: Sequence[Any]) -> list[Finding]:
             findings.append(
                 Finding(
                     rule_id=rule.rule_id,
+        rule_class=rule.rule_class,
                     rule_version=rule.schema_version,
                     schema_version=rule.schema_version,
                     title=rule.title,
@@ -477,6 +478,7 @@ def evaluate_atomic(
         findings.append(
             Finding(
                 rule_id=rule.rule_id,
+        rule_class=rule.rule_class,
                 rule_version=rule.schema_version,
                 schema_version=rule.schema_version,
                 title=rule.title,
@@ -736,6 +738,7 @@ def _build_finding(
 
     return Finding(
         rule_id=rule.rule_id,
+        rule_class=rule.rule_class,
         rule_version=rule.schema_version,
         schema_version=rule.schema_version,
         title=rule.title,

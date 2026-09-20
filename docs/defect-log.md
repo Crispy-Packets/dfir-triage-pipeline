@@ -2488,3 +2488,125 @@ recorded as derived rather than attested.
 **What the entry establishes now:** the gap is measured and named, C-06's
 host-2 check is blocked on it, and no figure in the project should be
 described as "documented across five collections" until it is closed.
+
+
+---
+
+## D-069  `evtx.defender` is typed but carries no details: four EIDs, zero keys
+
+Found 2026-09-20 while sorting external rule sets. Eight candidate rules from
+SigmaHQ and Hayabusa targeted this family; all eight failed on fields, and the
+reason is a parser gap rather than a property of the technique.
+
+**What CD-007 declares.** Four EIDs, each with an event type:
+
+    Defender/Operational  1116  ->  evtx.defender  malware_detected
+    Defender/Operational  1117  ->  evtx.defender  malware_remediated
+    Defender/Operational  5001  ->  evtx.defender  defense_disabled
+    Defender/Operational  5007  ->  evtx.defender  defense_configured
+
+The parser's comment (`parsers/evtx_windows.py:138-147`) states the intent
+plainly: *"1116/1117 are a detection and its remediation -- the only family in
+this pipeline that records an AV verdict at all. 5001 is real-time protection
+being DISABLED, which is a defence-evasion artifact (T1562.001)."*
+
+**What it actually produces.** `_details_for` has **no branch for any of the
+four**. Measured across `clean_a` and `s1_v2`:
+
+    evtx.defender   event_types = {defense_configured: 1030}
+    details keys    = []   <- ZERO
+
+1,030 rows carrying an event type and nothing else. `ThreatName`, `Path`,
+`ProcessName`, `Action`, `NewValue`, `OldValue` and `FeatureName` are present
+in the EVTX record and are all discarded.
+
+**The consequence, which is the point of this entry.** A row that says
+`defense_configured` and nothing more cannot answer *which* setting changed,
+*from what*, or *to what*. So:
+
+  * **Defender exclusion paths are invisible.** An actor adding
+    `Add-MpPreference -ExclusionPath C:\Users\Public` before dropping a
+    payload produces a 5007, and this pipeline records that *something* was
+    configured. That is the single most common pre-drop evasion step and the
+    family that should catch it is blind to it.
+  * A detection (1116) cannot name the threat or the file, so the one family
+    that carries an AV verdict cannot report the verdict.
+  * **`defense_disabled` (5001) measured ZERO rows** on both collections
+    surveyed, against 1,030 for 5007. Whether that is correct or a second
+    gap is not established here.
+
+**This is the same shape as D-055 and D-065**, and it is the third instance:
+a channel parsed and typed while the fields that give it meaning are dropped,
+so the family looks covered from the grid and answers nothing at row level.
+D-065 was BITS, D-055 was `ps_classic`, this is Defender.
+
+**Not fixed here.** The fix is a `keep` tuple per EID plus a CD-012
+declaration in `docs/details-schema.md` before any key is emitted, and that is
+parser work, outside the scope of the rule batch that found it. It is
+tractable -- D-065 is the worked example, and the same `keep`-branch pattern
+applies.
+
+**Until it is fixed, `evtx.defender` supports no rule at all.** The eight
+external candidates are recorded in the sort output rather than written, and
+the technique-coverage grid should not read this family as available.
+
+
+---
+
+## D-070  A parser fix does not produce a rule, and nothing tracks the gap
+
+Found 2026-09-20, prompted by the observation that `evtx.bits` and
+`evtx.ps_classic` were both repaired in the parser work and neither acquired
+a rule.
+
+**Measured. Of the 38 families CD-007 declares, 14 are named by the `select`
+block of any rule:**
+
+    evtx.security 13   registry 5   recyclebin 3   evtx.system 3
+    browser 3   prefetch 2   lnk 2   srum 1   services 1
+    jumplist 1   evtx.wmi 1   evtx.rdp 1   evtx.powershell 1   amcache 1
+
+**Twenty-four families are parsed and read by no rule**, including both
+families whose parser defects were fixed specifically to make them usable:
+
+  * **`evtx.bits` (D-065, fixed 2026-09-19).** The fix landed `url`, size,
+    `hr`, `jobOwner` and a joinable `entity.exe_name` from EID 3's
+    `processPath`; D-066 corrected the EID 4/5 labels. Measured, the family
+    now carries 1,241 rows across five event types with 14 details keys.
+    **No rule selects it.** The reason is recorded and is not an oversight:
+    T1071.001 measured `measured-no-discriminator` because every BITS
+    transfer in the corpus is vendor update traffic, so there is no positive
+    class. The parser is fixed; the technique is still unwritable *here*.
+  * **`evtx.ps_classic` (D-055).** 1,489 rows across four event types with
+    seven details keys including `host_application` and `ps_command_line`.
+    **No rule selects it.** R-ATOMIC-0003 reads `evtx.powershell` (4104)
+    only, and was never widened to the classic channel -- which is what D-055
+    was found while investigating.
+
+**Why this is a defect and not a backlog item.** The grid tracks TECHNIQUE
+coverage, and the defect log tracks parser correctness. Neither tracks the
+state *"family parses correctly, carries usable fields, and no rule reads
+it"*. So a family can pass every check the project runs and contribute
+nothing, and the only way to notice is to grep the `select` blocks, which
+is what produced the table above.
+
+The two states are genuinely different and the distinction is the entry:
+
+  * **`evtx.bits`** -- no rule is CORRECT. C-05: the scenario never delivered
+    over BITS, so there is nothing to detect. Writing one would encode two
+    vendors' update endpoints.
+  * **`evtx.ps_classic`** -- no rule is an OMISSION. The channel records
+    engine start/stop and the host application for every PowerShell session,
+    including the interactive `powershell.exe` sessions the T1059.001 work
+    measured at 149 rows on s1_v2 and 65 on s1_v3. Nothing reads them.
+
+**Not fixed here.** The `ps_classic` gap is a candidate Class 2 rule and is
+NOT written in this batch, because the honest predicate is not obvious: the
+measured base rate is 1,141 `ps_provider_start` rows on two collections, and
+"a PowerShell session started" is not a detection on any host where
+PowerShell is used. Naming it costs nothing; writing a bad rule for it would.
+
+**What would close this**: a per-family column in the coverage grid recording
+*parsed / has usable fields / read by a rule*, so the gap is visible without
+grepping. Proposed, not built -- the grid is a shared document and the column
+affects how Person A reads it.

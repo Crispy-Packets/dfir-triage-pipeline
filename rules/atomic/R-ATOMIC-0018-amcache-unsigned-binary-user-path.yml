@@ -1,0 +1,88 @@
+# Atomic rule 0018. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0018
+type: atomic
+title: Program inventoried from a user-writable path with no publisher
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on an Amcache entry for a binary under a user-writable path that
+  carries no publisher string.
+
+  Amcache inventories programs the system has seen, recording the SHA-1, the
+  size, the binary type and -- when the file is signed and carries version
+  metadata -- a publisher. Legitimate software installed under a user profile
+  is nearly always signed and nearly always names its publisher. A binary in
+  the same place with neither is not proof of anything, but it is the
+  population an analyst wants to look at first.
+
+  The SHA-1 recorded here is what makes a hit actionable: it can be checked
+  against threat intelligence even after the file is gone.
+
+severity: medium
+weight: 40
+
+attack:
+  technique: T1036
+  name: Masquerading
+
+select:
+  event_type: [program_inventoried]
+  source_artifact: [amcache]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: program_inventoried
+    - field: details.publisher
+      op: absent
+    - field: path
+      op: is_user_writable
+      value: true
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five.
+
+    `amcache` carries 1,712 `program_inventoried` rows across the two
+    collections surveyed, with `publisher`, `sha1` and `binary_type`
+    present. Amcache inventories EVERY program the system has seen, so the
+    unfiltered family fires 3,464 times across the corpus -- which is why
+    R-ATOMIC-0009's notes record it as unusable as a standalone anchor and
+    why it is used as a correlation step in R-CORR-0003. The publisher and
+    path clauses are what make an atomic rule arguable at all, and their
+    effect has NOT been measured.
+
+false_positive_notes: >
+  1. Unsigned but legitimate software. Internal tools, scripts compiled to
+     executables, older utilities, portable applications, and a large part
+     of the open-source ecosystem ship unsigned.
+
+  2. Installer temporary files. Setup programs extract unsigned helper
+     binaries into `%TEMP%` routinely; this corpus's clean hosts carry
+     `codesetup-stable-*.tmp` in exactly that shape.
+
+  3. Developer build output under a user profile -- unsigned by definition
+     until a release is cut.
+
+  4. `publisher` is absent when Amcache simply did not record it, not only
+     when the binary is unsigned. Absence of the field is weaker evidence
+     than absence of a signature, and this rule tests the field.
+
+  CONSEQUENCE: expect a substantial hit count on any developer workstation.
+  This is triage context, not a finding, and its weight is set accordingly.
+
+references:
+  - https://attack.mitre.org/techniques/T1036/

@@ -1,0 +1,85 @@
+# Atomic rule 0015. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0015
+type: atomic
+title: Executable sent to the Recycle Bin from a user-writable location
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on a Recycle Bin record whose original path is an executable under a
+  user-writable directory.
+
+  The `$I` record preserves the file's original full path and its size, and
+  Windows writes the deletion FILETIME at the moment it moves the file -- a
+  `recorded` observation, not a presence inference. Deleting a payload after
+  it has run is the commonest anti-forensic step available to a non-
+  administrative actor, and the Recycle Bin is where it lands when the
+  deletion goes through Explorer.
+
+  R-CORR-0006 already correlates persistence with deletion. This is the
+  atomic half: the deletion alone, with no persistence step required.
+
+severity: medium
+weight: 45
+
+attack:
+  technique: T1070.004
+  name: File Deletion
+
+select:
+  event_type: [file_deleted]
+  source_artifact: [recyclebin]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_deleted
+    - field: details.original_path
+      op: present
+    - field: path
+      op: is_user_writable
+      value: true
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five as an independent rule.
+
+    Related measured fact: R-CORR-0006 (persistence-to-deletion) fires
+    0/0/0/1/1 -- the payload on both scenario hosts. This rule's population
+    is strictly larger, because it drops the persistence requirement, and
+    that larger population has NOT been measured. `recyclebin` carries 14
+    `file_deleted` rows across the two collections surveyed.
+
+false_positive_notes: >
+  1. Uninstallers and users clearing out old software. Deleting
+     `setup.exe` from Downloads after installing is ordinary behaviour and
+     produces exactly this record. On this corpus's clean hosts the
+     Downloads directory carries several installers.
+
+  2. Browser and application caches that place executables in AppData and
+     clean them up.
+
+  3. Developers deleting build output. A user-writable path plus an
+     executable extension describes `bin\Debug` precisely.
+
+  4. WHAT IT CANNOT SEE, and this is the important half: a file deleted with
+     SHIFT+DELETE, by an installer, or from a command line NEVER reaches the
+     Recycle Bin. An actor who deletes their payload programmatically --
+     which is the normal case -- leaves nothing here. A quiet result is not
+     evidence of absence; `usn`/`mft` cover that case and this rule does
+     not.
+
+references:
+  - https://attack.mitre.org/techniques/T1070/004/

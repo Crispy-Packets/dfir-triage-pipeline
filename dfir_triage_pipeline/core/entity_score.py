@@ -169,6 +169,10 @@ def _severity_rank(severity: str) -> int:
 #: a host table is one row, and a host aggregates every finding in the run.
 SCORED_ENTITY_KINDS: tuple[str, ...] = ("entity.exe_name", "entity.user")
 
+#: The only rule class whose findings contribute to the entity ranking.
+#: See `Rule.rule_class` and the exclusion in `aggregate`.
+SCORING_RULE_CLASS = "corpus-validated"
+
 #: Ranking order for the per-kind tables. Binaries first: that is the kind the
 #: corpus shows separating cleanly (86/86/75 high vs 99/99 critical), and the
 #: kind an analyst triages first.
@@ -195,6 +199,14 @@ def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
     """
     buckets: dict[tuple[str, str], list[Finding]] = {}
     for finding in findings:
+        # Class 2 (`known-behavior`) rules never move the ranking. They have no
+        # measured true positive anywhere, so any weight they add to an entity
+        # is unvalidated -- and the clean ceiling (86/86/75) against the
+        # payload (99) is the project's headline result. Excluded HERE, beside
+        # the entity-kind filter, so it happens once and no consumer can
+        # reintroduce it, exactly as D-058 does for `entity.host`.
+        if finding.rule_class != SCORING_RULE_CLASS:
+            continue
         for key, value in finding.entity_keys:
             if key not in SCORED_ENTITY_KINDS:
                 continue

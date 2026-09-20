@@ -1,0 +1,82 @@
+# Atomic rule 0012. Added 2026-09-20. CLASS 2 (known-behavior).
+#
+# Fields were verified against MEASURED details keys on clean_a and s1_v2,
+# not against the schema tables: a documented key and a key that survives
+# parsing are different claims.
+
+schema_version: "2.0.0"
+id: R-ATOMIC-0012
+type: atomic
+title: Recent-items shortcut carrying command-line arguments
+enabled: true
+class: known-behavior
+
+description: >
+  Fires on a `.lnk` under Recent Items whose target carries command-line
+  arguments.
+
+  Explorer writes a Recent link when a user opens a document or program. It
+  records the target path, and normally nothing else -- a double-clicked file
+  needs no arguments. A Recent shortcut that carries them was not written by
+  an ordinary double-click: it points at an interpreter or a binary with a
+  payload appended, which is the shape of a shortcut-delivered lure.
+
+severity: medium
+weight: 45
+
+attack:
+  technique: T1204.002
+  name: Malicious File
+
+select:
+  event_type: [file_opened]
+  source_artifact: [lnk]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: file_opened
+    - field: details.arguments
+      op: present
+    - field: details.lnk_location
+      op: equals
+      value: recent
+
+expected:
+  clean_a: unmeasured
+  clean_b: unmeasured
+  s1_v2: unmeasured
+  clean_c: unmeasured
+  s1_v3: unmeasured
+  note: >
+    CLASS 2 -- unmeasured on all five, per the standard.
+
+    What is known: `arguments` is present on 2 of 69 `lnk` rows on s1_v2
+    (recorded in R-ATOMIC-0010's notes). Those two were not read at row level
+    and are not claimed as anything. The scenario delivered its payload over
+    HTTP and executed it directly, so there is no shortcut-lure instance in
+    this corpus.
+
+false_positive_notes: >
+  1. Shortcuts created by installers. The dominant benign source. An
+     installer that places a Start Menu entry for `program.exe --profile=x`
+     produces arguments legitimately; if the user then opens it, a Recent
+     link inherits them. Restricting to `lnk_location: recent` narrows but
+     does not eliminate this.
+
+  2. Pinned and user-authored shortcuts. Anyone who has made a shortcut to
+     `cmd.exe /k something` or a browser with a specific profile flag will
+     trip this, and developers do it routinely.
+
+  3. Office and viewer applications that reopen documents through a wrapper
+     command line.
+
+  WHAT MAKES A HIT WORTH READING: arguments naming an interpreter
+  (`powershell`, `cmd`, `mshta`, `rundll32`) or containing a URL. This rule
+  does not encode that -- an interpreter-specific variant would be sharper
+  and is deliberately not written here, because the general shape is what
+  this corpus cannot validate either way.
+
+references:
+  - https://attack.mitre.org/techniques/T1204/002/
