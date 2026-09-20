@@ -47,11 +47,12 @@ where it is easiest to get half right: the score can be perfectly filtered
 while the report still lists every finding under a heading that says "verdict."
 A reader does not see your aggregation function. They see the page.
 
-> **Here.** Nine of twenty-four rules are Class 2. Enforcement lives in
-> `entity_score.aggregate`; the headline 99-vs-86 entity separation is
-> Class 1 only. The output half is **designed, not implemented** — `rule_class`
-> never reaches `run.json`, `findings.csv` or the HTML, so Class 2 findings
-> currently render inside the verdict panel (D-072).
+> **Here.** Nine of twenty-four rules are Class 2. The score filter lives in
+> `entity_score.aggregate`; the headline 99-vs-86 entity separation is Class 1
+> only. The output half was missing until D-072: the score was filtered and the
+> rendered findings list was not, so Class 2 findings appeared under a heading
+> that said "verdict". Now `rule_class` reaches `run.json` and `findings.csv`,
+> and they render in a separate context panel.
 
 ---
 
@@ -181,11 +182,16 @@ three things and keep them together: rows produced; distinct detail keys
 carried; and whether those keys include the fields a rule would need. Only the
 third answers the question that matters.
 
-> **Here.** Three known instances — a family taken for a field it never
-> extracts (D-055); one that records a complete download and keeps only the
+> **Here.** Three instances were known — a family taken for a field it never
+> extracts (D-055); one recording a complete download and keeping only the
 > timestamp (D-065); one typed with four event IDs and zero detail keys
-> (D-069). A systematic audit across all 38 families is **not yet run**; it is
-> an open workstream, and the count above is a floor, not a total.
+> (D-069). The audit was then run across all 38 families and five collections,
+> and found **two more** (D-073): a firewall channel emitting
+> `firewall_rules_deleted` on 983 rows with nothing saying which rules, and a
+> winlogon channel with 2,229 rows and no keys. It also found no family
+> declaring a key it never populates, and confirmed the thin families are thin
+> because the artifact is thin. Five instances, bounded — which is what running
+> the audit bought over estimating it.
 
 ---
 

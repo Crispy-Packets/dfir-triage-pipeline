@@ -2717,7 +2717,7 @@ section 2.1 documents both, with the failure directions.
 the score and nowhere else.**
 
 Filed 2026-09-20 by inspection of `core/report_html.py`, `core/run_json.py` and
-`core/manifest.py`. Not fixed here.
+`core/manifest.py`. **FIXED the same day.**
 
 | Layer | Class-aware? |
 |---|---|
@@ -2748,7 +2748,70 @@ property of one.
 percentiles" cannot be built as one panel yet; the Class 2 half does not
 depend on ML and could move on its own.
 
-**What would close this**: carry `rule_class` into `run.json` (a 1.1.0 ->
-1.2.0 field addition) and `findings.csv`, then render Class 2 findings outside
-the verdict panel or visibly marked as non-verdict.
+**Fix.** `rule_class` is carried into `run.json` (1.1.0 -> 1.2.0, additive)
+and `findings.csv`. `_verdict_panel` filters to corpus-validated findings; a
+new `_context_panel` renders known-behavior findings under "Context --
+known-behavior rules", stating that they do not contribute to the entity score,
+and each block carries a "context only" badge. The panel is omitted entirely
+when no Class 2 rule fires, because an empty panel would imply the run
+considered them and found nothing.
+
+`report_html` imports `SCORING_RULE_CLASS` from `entity_score` rather than
+repeating the string, so the panel split and the score filter cannot name
+different classes.
+
+Five tests in `TestClassTwoIsNotAVerdict`. The load-bearing one was confirmed
+to fail: reverting `_verdict_panel` to the unfiltered list turns it red, and
+restoring the filter turns it green. A green test never observed failing would
+have been the same defect class this entry is about.
+
+## D-073
+
+**`evtx.firewall` and `evtx.winlogon` are typed but carry no details keys.
+D-069's shape, two more instances.**
+
+Filed 2026-09-20 by the parser-depth audit. Not fixed here.
+
+The audit measured rows, distinct `details` keys and rule-readability for all
+38 curated families across all five collections (3.08M rows; the 98 generic
+`evtx.x.*` channel families are excluded, as they are a catch-all handler
+rather than curated parsers). Three families produce rows with **zero** detail
+keys:
+
+| family | rows | event_types emitted | read by a rule |
+|---|---|---|---|
+| `evtx.defender` | 2,048 | `defense_configured` | no (D-069) |
+| **`evtx.firewall`** | **983** | `firewall_rule_deleted`, `firewall_rules_deleted` | no |
+| **`evtx.winlogon`** | **2,229** | `logon_ui` | no |
+
+`evtx.firewall` is the significant one. It emits `firewall_rules_deleted`,
+which the phase map files under DESTROY as defense evasion, on 983 rows —
+and carries nothing that says **which** rules were deleted, by whom, or from
+what profile. The event type asserts a defense-evasion action; the payload
+cannot substantiate it. A rule here could only fire on "a firewall rule was
+deleted," which is what Windows records on routine software installation.
+
+`evtx.winlogon`'s `logon_ui` is closer to benign: the channel records logon-UI
+lifecycle, and it is not obvious that a useful rule exists even with full
+details. It is recorded for completeness rather than as lost capability.
+
+**What the audit also found, stated because a null result is a result:**
+
+* **No family declares a details key it never populates.** Every key present
+  in any row has a non-empty value in at least one row across the five
+  collections. There is no dead-key drift.
+* **The thin families are thin because the artifact is thin**, not because
+  fields were dropped. `usn` carries `file_name` and `usn_reason`, which is
+  what a USN record holds; `lsa_policy` carries `sid` and `well_known`;
+  `ntfs_logfile` carries `lsn`, `log_page`, `file_name`. Checked individually
+  rather than inferred from the count.
+* **Two new instances, not more.** D-055, D-065 and D-069 were the known
+  three; the audit adds two and finds no others. The pattern is real but
+  bounded, which is the question the audit existed to answer.
+
+**What would close this**: `evtx.firewall` needs the rule name, direction and
+profile from EID 2006/2033 before any rule can read it, and those keys must be
+declared in `details-schema.md` first (CD-012). `evtx.winlogon` needs a
+decision on whether `logon_ui` is worth extracting at all before any parser
+work.
 
