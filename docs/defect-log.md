@@ -2559,6 +2559,17 @@ the technique-coverage grid should not read this family as available.
 
 ---
 
+**FIXED 2026-09-20**, with D-073. Four keys declared in `details-schema.md`,
+then a `keep` tuple for EID 5007: `New Value` (present 1,928 of 2,048 rows),
+`Old Value` (1,062), `Product Name`, `Product Version`. Empty details go
+422/422 -> 0 on clean_a and 608/608 -> 0 on s1_v2.
+
+**The channel is 5007-only in this corpus.** 1116, 1117 and 5001 are declared
+in `DEFENDER_EIDS` but measure **zero rows** across all five collections:
+nothing was ever detected and real-time protection was never disabled. The
+branch covers what exists rather than what the EID map anticipates, and that
+is stated here so the absence is not later read as a parser gap.
+
 ## D-070  A parser fix does not produce a rule, and nothing tracks the gap
 
 Found 2026-09-20, prompted by the observation that `evtx.bits` and
@@ -2770,7 +2781,8 @@ have been the same defect class this entry is about.
 **`evtx.firewall` and `evtx.winlogon` are typed but carry no details keys.
 D-069's shape, two more instances.**
 
-Filed 2026-09-20 by the parser-depth audit. Not fixed here.
+Filed 2026-09-20 by the parser-depth audit. **`evtx.firewall` FIXED the same
+day; `evtx.winlogon` CLOSED as not-worth-extracting, measured.**
 
 The audit measured rows, distinct `details` keys and rule-readability for all
 38 curated families across all five collections (3.08M rows; the 98 generic
@@ -2809,9 +2821,40 @@ details. It is recorded for completeness rather than as lost capability.
   three; the audit adds two and finds no others. The pattern is real but
   bounded, which is the question the audit existed to answer.
 
-**What would close this**: `evtx.firewall` needs the rule name, direction and
-profile from EID 2006/2033 before any rule can read it, and those keys must be
-declared in `details-schema.md` first (CD-012). `evtx.winlogon` needs a
-decision on whether `logon_ui` is worth extracting at all before any parser
-work.
+**Correction: this entry's firewall diagnosis was wrong, and measuring it is
+what found that.** It said the channel "carries nothing that says which rules
+were deleted, by whom, or from what profile." The record carries all of it.
+Measured over five collections before writing the fix, EID 2006 carries
+`RuleName`, `RuleId`, `ModifyingUser` and `ModifyingApplication` on **936 of
+936** rows. The referent was in the evidence; the parser was discarding it.
+
+The family sat in `_CHANNELS` with an EID map and had **no branch in
+`_details_for`** -- D-065's exact shape, and principle 4.2's pattern: parse
+success without parse depth. What this entry got right was that the family was
+unreadable. What it got wrong was why.
+
+**Fix (`evtx.firewall`).** Five keys declared in `details-schema.md` first per
+CD-012, then a `keep` tuple for 2004/2005/2006/2033. EID 2033 carries no rule
+identity at all -- deleting every rule names none -- so it keeps `Store Type`
+plus the two modifying fields. Measured after:
+
+| collection | rows | empty details before | after |
+|---|---|---|---|
+| clean_a | 204 | 204 (100%) | **0** |
+| s1_v2 | 199 | 199 (100%) | **0** |
+
+`ModifyingApplication` is `svchost.exe` on every row in this corpus. That is
+the base rate, not a detection -- and it is the reason the family is now worth
+reading, because an attacker's `netsh.exe` is what would differ and nothing
+could previously tell them apart.
+
+**`evtx.winlogon`: CLOSED, not fixed, and the measurement is the reason.**
+EIDs 811 and 812 carry exactly two Name-keyed fields: `Event`, which is `0` on
+all 2,229 rows, and `SubscriberName`, which is `GPClient` on all 2,229 rows.
+No principal, no target, no variation. Extracting them would add declared keys
+that discriminate nothing, which is the corpus-fitting this project rejects.
+The existing code comment already said 811/812 do not name a principal; this
+confirms there is nothing else in them either. The rows stay typed and
+detail-less **by decision**, recorded here so the state is not mistaken for
+the omission it looks like.
 

@@ -455,6 +455,38 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
         # a rule could not tell the two apart, and every console logon on the
         # machine would read as remote access.
         keep = ("User", "SessionID", "Address")
+    elif eid in (2004, 2005, 2006, 2033):
+        # Windows Firewall. Added for D-073: the channel was typed but had no
+        # branch here, so 983 rows asserted `firewall_rules_deleted` -- a
+        # DESTROY-phase defence-evasion event type -- while carrying nothing
+        # that said WHICH rule, by whom, or with what binary. The event type
+        # made a claim the payload could not substantiate.
+        #
+        # Measured over all five collections before writing this: 2006 carries
+        # RuleName/RuleId/ModifyingUser/ModifyingApplication on 936 of 936
+        # rows; 2033 carries no rule identity at all, only Store Type and the
+        # two modifying fields, because deleting every rule names none.
+        #
+        # ModifyingApplication is the field that makes the family worth
+        # reading. It is the Windows svchost.exe path on every row in this
+        # corpus -- which is the base rate, not a detection: an attacker's
+        # netsh.exe or a script host is what would differ. ModifyingUser is
+        # always a service SID here for the same reason.
+        keep = ("RuleName", "RuleId", "ModifyingUser", "ModifyingApplication", "Store Type")
+    elif eid == 5007:
+        # Defender configuration change (D-069). `New Value` and `Old Value`
+        # are the registry path and value, and are the entire content of the
+        # record -- without them the row says only that some Defender setting
+        # changed at some time. Product Name is a resource string (%%827 on
+        # every row) and Product Version is the engine build; both are kept
+        # because they are what distinguishes a servicing change from a policy
+        # one when the values themselves are ambiguous.
+        #
+        # This channel is 5007-only in this corpus: 1116/1117/5001 are declared
+        # in DEFENDER_EIDS but measured at zero rows across all five
+        # collections. Nothing was detected and real-time protection was never
+        # disabled, so the branch covers what exists.
+        keep = ("New Value", "Old Value", "Product Name", "Product Version")
     else:
         keep = ()
     details = {k: data[k] for k in keep if k in data and data[k] != ""}

@@ -29,6 +29,15 @@ here before emission, same rule.
 
 | key | type | emitted by | meaning |
 |---|---|---|---|
+| `New Value` | str | `evtx.defender` | Registry path and value Defender changed to, from 5007. Measured present on 1,928 of 2,048 rows. The entire content of the record: without it a 5007 row says only that some setting changed. Emitted verbatim, including the `HKLM\SOFTWARE\...` prefix. |
+| `Old Value` | str | `evtx.defender` | The prior value, from 5007. Present on 1,062 of 2,048 rows -- absent when the setting had no previous value, which is why it is not required. |
+| `Product Name` | str | `evtx.defender` | Defender product resource string from 5007. Measured `%%827` on every row in this corpus: an unresolved MUI reference, emitted as recorded rather than resolved. |
+| `Product Version` | str | `evtx.defender` | Defender engine build from 5007, e.g. `4.18.1909.6`. Distinguishes a servicing-driven configuration change from a policy one when the values are otherwise ambiguous. |
+| `RuleName` | str | `evtx.firewall` | Display name of the firewall rule from 2004/2005/2006. Measured present on 936 of 936 deletion rows across all five collections. Frequently an indirect `@{Package_Version_...}` resource string rather than a literal name, because most rules on these hosts belong to store packages -- emitted as recorded, never resolved. |
+| `RuleId` | str | `evtx.firewall` | GUID of the firewall rule from 2004/2005/2006. Stable across the add/change/delete of one rule; the only field that identifies a rule when `RuleName` is an unresolved resource string. |
+| `ModifyingUser` | str | `evtx.firewall` | SID of the principal that changed the rule, from 2004/2005/2006/2033. Measured always a service SID on these hosts (`S-1-5-80-...`), which is the base rate any rule here must beat. Emitted as a raw SID; not resolved to a name, for the reason D-034 gives about `lsa_policy`. |
+| `ModifyingApplication` | str | `evtx.firewall` | Full path of the binary that changed the rule, from 2004/2005/2006/2033. Measured `C:\Windows\System32\svchost.exe` on every row in this corpus. This is the field that would separate an attacker's `netsh` from Windows servicing, and the reason the family is worth reading. |
+| `Store Type` | str(int) | `evtx.firewall` | Policy store the 2033 delete applied to, as recorded. `12` throughout this corpus. Kept because 2033 carries no rule identity at all, so without it the row says only that something deleted everything. |
 | `LogonType` | str(int) | `evtx.security` | Numeric logon type from 4624/4625. 2 interactive, 3 network, 10 RemoteInteractive. |
 | `IpAddress` | str | `evtx.security` | Source address from 4624/4625. May be `-` or `::1` as recorded; emitted as recorded. |
 | `WorkstationName` | str | `evtx.security` | Originating workstation as recorded in 4624/4625. |
