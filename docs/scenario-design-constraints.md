@@ -211,6 +211,71 @@ for. Where a technique is deliberately not exercised, say so in the manifest,
 so a later reader finds "not attempted" rather than inferring "attempted and
 not detected".
 
+## C-06  The clean baseline's collection timestamp must precede the scenario run
+
+**Where it came from.** Signal 2 of the ranking-signal evaluation
+(`docs/evidence/ranking-signals-2026-09-20.md`) proposed the most ordinary
+triage heuristic there is: an entity first seen *after* the clean baseline is
+more suspicious than one present since install. It could not be measured on
+this corpus, and the reason is a property of how the collections were taken,
+not of the idea.
+
+**The measurement.** From `docs/collection-manifest.md`:
+
+| collection | collected (UTC) |
+|---|---|
+| **s1_v2 (scenario)** | **2026-08-23T23:31Z** |
+| clean_a | 2026-08-24T17:44Z |
+| clean_b | 2026-08-24T18:58Z |
+
+**The scenario was collected roughly 18 hours before both host-1 clean
+baselines.** `clean_a` and `clean_b` are the machine restored to its
+pre-attack snapshot *after* the incident. So "first seen after the clean
+baseline" is anchored to a timestamp later than the attack itself, and every
+attack entity is *earlier* than the baseline rather than later. The anchor
+cannot be built in the direction the signal needs.
+
+**The precise claim, which is narrower than it first looks.** A post-restore
+baseline is **not** wrong in content — restoring the pre-attack snapshot is
+exactly how CD-014's reference baseline is supposed to be produced, and the
+content it yields is correct. What breaks is the **collection timestamp as a
+temporal anchor**: the artefact reproduces pre-attack state but carries a
+post-attack collection time, and any signal that compares "when was this first
+seen" against "when was the baseline taken" inverts.
+
+So the constraint is not "do not restore" and not "do not collect a baseline
+afterwards". It is:
+
+> **The clean baseline's collection timestamp must precede the scenario's
+> run.** Collect the baseline first, then run the scenario. A baseline
+> collected after a restore reproduces pre-attack *content* but carries a
+> post-attack *timestamp*, and no first-seen-versus-baseline comparison can be
+> anchored to it.
+
+**What it costs to satisfy.** Nothing but ordering. Snapshot, collect the
+baseline, run the scenario, collect the scenario. The current corpus took the
+baseline second because the clean collections were conceived as a control
+taken from the same machine rather than as a temporal anchor — a reasonable
+reading of "baseline" that happens to foreclose an entire class of signal.
+
+**Why it is worth writing down rather than filing as a limitation.** Unlike
+signals 1 and 3, nothing measured says the idea is wrong. Signal 2 is
+*structurally sound and unmeasurable here*. A corpus collected in the right
+order would let it be tested; this one cannot, and no amount of analysis
+recovers the anchor after the fact.
+
+**Secondary effect, predicted but untested.** On these hosts the top clean
+binaries (`cursorusersetup-x64`, `7z2602-x64`, `npp.8.9.8.installer`) are all
+post-install user software, so a naive "new since install" rule would fire on
+them. Satisfying C-06 makes the signal measurable; it does not by itself make
+it discriminating. See also [[C-04]] — provisioning that happens between the
+baseline and the scenario is indistinguishable from attacker activity on this
+axis too.
+
+**Check for host 2 blocked.** Whether `clean_c` and `s1_v3` satisfy C-06
+cannot be determined: `docs/collection-manifest.md` does not document either
+collection (D-068).
+
 ---
 
 ## Checklist for the next collection
@@ -227,6 +292,11 @@ not detected".
       by the scenario, delivered over the channel the rule reads and with the
       flags the rule looks for; techniques deliberately not exercised are named
       as such (C-05)
-- [ ] Manifest states which of the above were satisfied and which were not.
+- [ ] Clean baseline collected **before** the scenario runs, so its
+      collection timestamp precedes the attack; a post-restore baseline
+      carries a post-attack timestamp and cannot anchor a first-seen
+      comparison (C-06)
+- [ ] Manifest states which of the above were satisfied and which were not,
+      **and documents every collection taken** -- including on second hosts.
       An unmet constraint that is written down is a limitation; an unmet
       constraint that is not is a finding waiting to be believed

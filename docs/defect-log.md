@@ -2430,3 +2430,61 @@ test_a_generic_channel_does_not_borrow_bits_keys`.
 **Was "not fixed here" until 2026-09-19**, on the grounds that a `keep` tuple
 needed its details keys declared under CD-012 first. Both happened the same
 day; see the resolution recorded under D-065 above.
+
+
+---
+
+## D-068  The collection manifest documents three of the five collections
+
+Found 2026-09-20 during the ranking-signal evaluation, while looking for a
+collection timestamp for `clean_c` to test C-06 against. There is none.
+
+`docs/collection-manifest.md` documents `collection_clean_a`,
+`collection_clean_b` and `collection_s1_v2` — the three **host-1**
+collections. It carries their collection timestamps, operator accounts, file
+counts, KAPE CopyLog names and the provenance narrative for each.
+
+**`collection_clean_c` and `collection_s1_v3` appear nowhere in it.** Measured:
+zero occurrences of either name, and the only `collection_*` strings in the
+file are the three above. Both host-2 collections are used throughout the
+evidence documents — `clean_c` is the training baseline the anomaly layer is
+fitted on, and `s1_v3` is one of the two scenario collections every rule base
+rate is quoted against.
+
+**Why this is a defect and not a to-do.** The manifest is an attestation
+artifact: it is where a reader establishes what was collected, from which
+machine, by which operator, at what time, and under what constraints. Two
+fifths of the corpus is outside it. Every five-collection figure in this
+project — every base rate, the phase-span distribution, the D-058 entity
+scores — rests partly on collections the manifest does not attest.
+
+**This is the same class as D-059**, recorded in the verification-coverage
+pattern at the top of this log: *an audit that cannot fail on the thing it
+checks*. D-059's coverage test found EIDs absent from a map and could not see
+a mis-mapped one. Here the manifest attests provenance for the collections it
+lists and is silent — not wrong, silent — about the ones it does not. A reader
+checking "is this corpus documented" gets a yes from a document covering 60%
+of it. The failure mode is **partial coverage**, the second form in that
+table.
+
+**Consequence already hit.** C-06 (clean baseline must be collected before the
+scenario runs) is stated and checkable for host 1, where the manifest gives
+2026-08-23T23:31:48Z for `s1_v2` against 2026-08-24T17:44:56Z and
+2026-08-24T18:58:05Z for the two baselines — an 18-hour inversion. **It cannot
+be checked for host 2 at all**, because neither `clean_c` nor `s1_v3` has a
+recorded collection time. Whether host 2 repeats the same ordering mistake is
+currently unknowable from the repository.
+
+**Not fixed here.** Writing the missing rows requires the collection
+timestamps, operator accounts, file counts and CopyLog names for both host-2
+collections, and those are facts about how the collections were taken. They
+are not derivable from the repository, and **inferring them from `CLAUDE.md`'s
+summary table or from the evidence tree would be the stale-claim class this
+log exists to catch** — a document asserting a state it has not established.
+The correct fix is for whoever took the collections to supply the values, or
+for them to be read from the KAPE logs inside the collections themselves and
+recorded as derived rather than attested.
+
+**What the entry establishes now:** the gap is measured and named, C-06's
+host-2 check is blocked on it, and no figure in the project should be
+described as "documented across five collections" until it is closed.

@@ -76,6 +76,16 @@ on `clean_b` must not flag `clean_a` as broadly anomalous. If that fails, no
 **The anomaly layer ranks; it does not detect.** Nothing is flagged as an
 outlier in either host's scenario.
 
+**The ML workstream is CLOSED as of 2026-09-20, and the ablation is its
+result** (`docs/evidence/ml-scope-decision-2026-09-20.md`). `week2-plan.md` §7
+committed this component as an unsupervised anomaly baseline, not a detector,
+because one attack row in 24,323 cannot train or evaluate a classifier. The
+question it was to answer — does unsupervised anomaly detection contribute to
+forensic detection on disk collections — is answered: **not beyond triage
+ranking and a ~5% false-positive floor**. Extending `FAMILY_FEATURES` to the
+31 further families is a workstream that result does not justify, and is
+deliberately not started.
+
 **The anomaly layer is scoped to the original 7 families.** `FAMILY_FEATURES`
 declares feature sets for `amcache`, `browser`, `evtx.powershell`,
 `evtx.security`, `evtx.system`, `prefetch` and `registry` and for nothing

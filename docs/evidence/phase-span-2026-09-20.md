@@ -9,9 +9,10 @@ corroborated it, not how many.
 an attack chain separates better than one named in many families that all
 record the same behaviour.
 
-**Result: ACCEPT under V1, with scope.** On each scenario host the payload is
-the only entity spanning all four phases, and no clean collection has an
-entity above three.
+**Result: ACCEPT under V1, with scope. Status: validated-and-held — not
+implemented** (decision recorded at the end of this document). On each
+scenario host the payload is the only entity spanning all four phases, and no
+clean collection has an entity above three.
 
 Everything in "Method, fixed before measurement" — including the mapping, the
 corpus-fit statement, the acceptance criterion, the three sensitivity variants
@@ -533,3 +534,85 @@ The signal-3 verdict is unaffected: the count still ties at 10 on s1_v3. But
 the justification as written is wrong, and it is the same class of error the
 verification-coverage pattern records — a claim carried forward from a
 document rather than re-read against the evidence.
+
+---
+
+## Decision, 2026-09-20: **validated and held, not implemented**
+
+The signal is accepted. It is **not** being added to the entity rank. This is
+a decision, not a deferral, and the measurement behind it is below.
+
+### What implementing it would require
+
+Adding phase-span to the rank means choosing a **composition rule** — a
+weight, a tiebreak or a multiplier that combines a 0–4 span with a 0–100
+`entity_score`. That rule is the implementation. Choosing it requires
+evidence that some choice is better than the others.
+
+### Measured: composition reorders only the false positives
+
+Tested over the rules-side tables on all five collections, adding
+`span x w` to the score for w = 5, 10, 25, 50. **Twelve orderings change**
+across weights and collections, so the claim that composition is inert here is
+false. What changes is the point:
+
+    clean_a   rules only   cursorusersetup, npp, ssms-setup, cmd.exe, onedrive
+              +phase-span  cursorusersetup, npp, ssms-setup, onedrive, cmd.exe
+
+    clean_b   rules only   7z2602, cursorusersetup, npp, ssms-setup, cmd.exe
+              +phase-span  7z2602, cursorusersetup, npp, ssms-setup, onedrive
+
+    s1_v2     rules only   invoice_scan, npp, ssms-setup, onedrive, dismhost
+              +phase-span  invoice_scan, ssms-setup, npp, onedrive, dismhost
+
+**Every reordering is among clean-host false positives** — `cmd.exe` against
+`onedrive.exe`, `ssms-setup-enu.exe` against `npp`. On both scenario hosts the
+payload is rank 1 before and after, at every weight. `clean_c` and `s1_v3`
+never reorder at all.
+
+So the corpus can show that a weight *changes* the ranking and cannot show
+that any weight *improves* it. The only orderings available to be improved are
+between binaries that are all false positives, where there is no ground truth
+about which should rank higher — and the one ordering that matters is already
+correct without the signal.
+
+### Why that means hold
+
+The project's own standard, applied to rules, is that **a rule the corpus
+cannot validate is not documented coverage** — the reason option 3 was
+rejected in the T1059.001 fork. The same standard applied to a weight says:
+picking w = 10 over w = 25 here would be picking a number the evidence cannot
+distinguish, then shipping it as though it had been measured.
+
+The honest position is that phase-span is **validated as a discriminator and
+unvalidated as a rank component**, because this corpus separates the payload
+by rules alone and therefore offers the signal nothing to fix.
+
+### Un-hold trigger, stated so the decision is testable
+
+Implement phase-span in the rank when **any** of these holds:
+
+1. A collection where the rules-side top two binaries are **within 15 points**
+   of each other — a tie the rules cannot break and phase-span can.
+2. A collection where the payload is **not already `critical`** on the rules
+   score, so the rank has an error to correct rather than an ordering to
+   confirm.
+3. A true positive that the rules score **below** a clean-host binary. That is
+   the case the signal was proposed for and the corpus does not contain it.
+
+Absent all three, the additive value is unmeasurable and implementing it would
+assert an improvement that was never observed.
+
+### What may be shipped without composing
+
+Surfacing is not composition. `phase_span` and its per-phase carriers could be
+emitted **beside** each scored entity in `run.json` (1.1.0 -> 1.2.0, additive,
+no ordering change), so an analyst reads *which* chain phases corroborate an
+entity without any weight being asserted. That remains unwritten, is not part
+of this decision, and would need Person A's review of the run.json contract
+like any other schema change.
+
+### Status
+
+`validated-and-held`. Recorded here rather than in the defect log because it
+is not a defect: the signal works, and the corpus cannot show it helping.
