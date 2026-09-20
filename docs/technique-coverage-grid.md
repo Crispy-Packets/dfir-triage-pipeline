@@ -116,7 +116,7 @@ to it. These are the only rows where "write a rule" is the correct next action.
 |---|---|---|---|---|
 | ~~**T1070.004** File Deletion~~ | — | — | **moved to §2.1 — `covered` by R-CORR-0006, 2026-09-18** | See the row in §2.1 and `docs/evidence/recyclebin-predicate-2026-09-18.md` |
 | ~~**T1053.005** Scheduled Task~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | The user-writable shape predicate was measured and finds **exactly the same 5 tasks on all five collections**: four Windows Defender `MpCmdRun.exe` entries under `C:\ProgramData\Microsoft\Windows Defender\platform\` and one `OneDriveLauncher.exe` under `AppData\Local`. Microsoft ships both. 5/5/5/5/5 — the predicate identifies vendors that install outside Program Files, and no other discriminator is available: `<Date>` is absent from most tasks and `<Author>` is self-declared |
-| ~~**T1027** Obfuscated Files~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | Re-measured across 4,393 script blocks. `-EncodedCommand` with a substantial payload: **0 on all five collections** — R-ATOMIC-0003 already carries that branch and it is correctly a zero-base-rate pattern. `FromBase64String`: **123 / 123 / 67 / 0 / 0** — nearly twice as high on the CLEAN hosts, which R-ATOMIC-0003's `note_on_excluded_patterns` already recorded and rejected. Compression-stream markers: 0 everywhere. **No obfuscation indicator in this corpus points the right way**; the technique is covered as far as it can be by R-ATOMIC-0003's existing encoded branch |
+| ~~**T1027** Obfuscated Files~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-18) | Re-measured across 4,393 script blocks. `-EncodedCommand` with a substantial payload: **0 on all five collections** — R-ATOMIC-0003 already carries that branch and it is correctly a zero-base-rate pattern. `FromBase64String`: **123 / 123 / 0 / 67 / 0** in collection order (clean_a, clean_b, clean_c, s1_v2, s1_v3) — nearly twice as high on the CLEAN host-1 collections as on the scenario, which R-ATOMIC-0003's `note_on_excluded_patterns` already recorded and rejected. Compression-stream markers: 0 everywhere. **No obfuscation indicator in this corpus points the right way**; the technique is covered as far as it can be by R-ATOMIC-0003's existing encoded branch. **Re-verified 2026-09-20 against raw EVTX** — see the reading-method note below |
 | **T1074.001** Local Data Staging | disk-resident | writable-now | `observable-unwritten` | `usn`/`mft` — archive creation in a temp/download directory |
 | ~~**T1052.001** Exfiltration over USB~~ | disk-resident | writable-now | **`not-observable` in this corpus (D-064)** — moved out of the backlog 2026-09-18 on inspection | The capability is real: `lnk` and `jumplist` record a removable volume's serial and label, surviving the device's removal, and CD-013's point stands. **But this corpus's only removable-media activity is the operator's own.** `drive_type` measures 9 removable rows on `s1_v2` and 0 on the other four — apparently the best single-field base rate in the project — and the rows are `E:\collection_clean_a`, `E:\collection_clean_b`, `E:\collection_s1`, `E:\handoff` and personal media from 2020/2024. **It is the USB stick the collections were carried off on**, browsed on 2026-08-20, before the `s1` directory existed. A rule here detects the evidence-handling procedure. `s1_v3` has zero removable rows |
 | ~~**T1071.001** Web C2 / download~~ | disk-resident | writable-now | **`measured-no-discriminator`** (2026-09-19) — was `blocked (D-065)`; the parser defect is fixed and the technique is still unwritable | **The parser fix landed and did not unblock it.** `evtx.bits` now carries `url`, size, `hr`, `jobOwner` and a joinable `entity.exe_name` from EID 3's `processPath` (D-065 resolved; D-066 corrected EID 4/5). **But every BITS transfer in the corpus is vendor update traffic** — host counts sum to the full transfer count on all five collections: `msedge.b.tlu.dl.delivery.mp.microsoft.com`, `g.live.com`, `oneclient.sfx.ms`, `fs.microsoft.com`, `edgedl.me.gvt1.com`. Both scenarios delivered over `WebClient.DownloadFile`, not BITS, so **there is no positive class**. A rule here would encode two vendors' update endpoints. `webcache` `background_transfer` fails separately: its `url` holds a cache-entry GUID and every `cache_directory` is a Store/ContentDeliveryManager package |
@@ -361,8 +361,9 @@ are the output of the phase rather than its failure. Each carries a figure:
   `OneDriveLauncher.exe` under `AppData`. 5/5/5/5/5. The shape identifies
   vendors who install outside Program Files.
 * **T1027** — `-EncodedCommand` is 0 everywhere; `FromBase64String` is
-  123/123/67/0/0, **higher on clean hosts**, already rejected once in
-  R-ATOMIC-0003's notes.
+  123/123/0/67/0 (clean_a, clean_b, clean_c, s1_v2, s1_v3), **higher on the
+  clean host-1 collections than on the scenario**, already rejected once in
+  R-ATOMIC-0003's notes. Re-verified against raw EVTX 2026-09-20.
 * **T1078.003** — zero matches in a population of 7 accounts per host. Every
   RID ≥ 1000 account has non-zero logons; every `password_not_required`
   account is a disabled built-in.
@@ -383,6 +384,138 @@ firewall EID established it; these three confirm it on a larger sample.
 **What is left is not more rules but two parser defects** (D-065 for BITS,
 D-055 for `ps_classic` 400/403/600), one re-anchoring (T1136.001), and the
 D-058 implementation. None of those is a rule-authoring task.
+
+
+### 3.6 Reading-method check on T1027's closure (2026-09-20)
+
+T1027 and T1078.003 were re-opened on 2026-09-20 as outstanding backlog rows.
+**Both were already closed on 2026-09-18** and the backlog was already empty
+(§3.5). No new rule work followed. What did follow was a check of the *reading
+method* behind T1027's negative, per the standing rule that a negative result
+is only as good as the read that produced it.
+
+**The concern was real.** `script_block` text is capped at
+`SCRIPT_BLOCK_TEXT_CAP = 4096` bytes (`parsers/evtx_windows.py:338`), and the
+closure's regex ran over parsed — therefore truncated — text:
+
+| collection | script_block rows | truncated | longest raw block |
+|---|---|---|---|
+| clean_a | 992 | **400** | 20,953 B |
+| clean_b | 1,007 | **400** | 20,953 B |
+| clean_c | 470 | **314** | 20,839 B |
+| s1_v2 | 1,280 | **418** | 20,953 B |
+| s1_v3 | 644 | **422** | 20,696 B |
+
+**1,954 of 4,393 blocks — 44% — were read cut**, some at a fifth of their
+length. A zero measured that way could have been an artefact of the cap.
+
+**Re-measured against raw EVTX**, bypassing the parser and the cap entirely:
+
+| marker | clean_a | clean_b | clean_c | s1_v2 | s1_v3 |
+|---|---|---|---|---|---|
+| `-EncodedCommand` / `-Enc` | 0 | 0 | 0 | 0 | 0 |
+| `FromBase64String` | 123 | 123 | **0** | 67 | 0 |
+| `[Convert]::` | 0 | 0 | 0 | 0 | 0 |
+| `IEX` / `Invoke-Expression` | 2 | 2 | 0 | 4 | 0 |
+| `-join` | 6 | 6 | 6 | 7 | 1 |
+| `[char](` arithmetic | 0 | 0 | 0 | 0 | 0 |
+| `GzipStream` / `DeflateStream` | 0 | 0 | 0 | 0 | 0 |
+| `ConvertTo-SecureString` | 0 | 0 | 0 | 0 | 0 |
+
+**The conclusion is unchanged and the closure stands.** The cap did not hide
+an obfuscation indicator: every marker is either zero everywhere or higher on
+a clean collection.
+
+**Two stated facts in the closure were wrong, and are corrected above.**
+
+1. The row recorded `FromBase64String` as **123/123/67/0/0**, which reads as
+   67 on `clean_c` and 0 on both scenario hosts. Measured, it is
+   **123/123/0/67/0** — `clean_c` has **zero** and the 67 is on **`s1_v2`, a
+   scenario host**. R-ATOMIC-0003's own `note_on_excluded_patterns` had it
+   right ("123 blocks in each baseline against 67 in s1_v2"); the grid garbled
+   it when transcribing two figures into a five-collection list.
+2. The row said "nearly twice as high on the CLEAN hosts" without qualifying
+   which. It is twice as high on the two **host-1** clean collections;
+   `clean_c`, the other clean host, has none at all.
+
+**Neither error changes the verdict** — 123 clean against 67 scenario still
+points the wrong way — but the second made the corpus look more uniform than
+it is, and the first inverted which collections carry the evidence.
+
+**Row-level read, which the original closure did not record.** All
+`FromBase64String` hits on both hosts are the same two shapes:
+
+    52x / 27x   Set-Item -LiteralPath 'Env:_ZO_DOCTOR' -Value
+                ([System.Text.Encoding]::UTF8.GetString([System.Convert]::...
+     8x /  6x   Set-Location '...\AppData\Local\Programs\cursor'
+                # Execute user command
+
+That is `zoxide`'s shell integration and Cursor's shell wrapper — **the
+operator's own editor and shell tooling**, decoding to ordinary local paths.
+This is C-02 leakage, not obfuscation by an adversary. The technique is
+absent from the corpus rather than present-and-undetected.
+
+**Method point.** The grid's figure was measured, and was still wrong in two
+ways that a re-read caught: a transcription slip and an unchecked reading
+method. This is the same class as the `restricted` claim and the phase-span
+contrast claim — see the verification-coverage pattern at the top of
+`docs/defect-log.md`. A measured figure is not self-certifying; the read that
+produced it is part of the claim.
+
+### 3.7 T1078.003's closure reason is the right one (checked 2026-09-20)
+
+A `measured-no-discriminator` closure and a `not-observable` closure mean
+different things, and T1078.003 sits next to a technique whose evidence the
+scenario deliberately destroyed. The check: did the SAM predicate return zero
+because no staged account exists, or because `wevtutil cl security` removed
+the evidence it would have matched?
+
+Measured per collection, by `event_type`:
+
+| event_type | clean_a | clean_b | clean_c | s1_v2 | s1_v3 |
+|---|---|---|---|---|---|
+| `logon` (4624) | 906 | 919 | 625 | **58** | **11** |
+| `logon_failed` (4625) | 13 | 13 | 2 | 1 | 0 |
+| `account_created` (4720) | 4 | 5 | 2 | **0** | **0** |
+| `log_cleared` (1102) | 0 | 0 | 0 | **1** | **1** |
+| `local_account` (SAM) | 7 | 7 | 5 | **7** | **5** |
+| `privilege_granted` | 17 | 17 | 13 | 17 | 13 |
+| `logon_ui` (Winlogon) | 316 | 316 | 196 | 786 | 615 |
+| `rdp_session` | 13 | 13 | 9 | 33 | 15 |
+
+**Two evidence classes, opposite outcomes.**
+
+*The Security log was destroyed.* `logon` collapses from 906/919/625 on clean
+hosts to 58 and 11; `account_created` from 4/5/2 to **zero on both scenario
+hosts**; `log_cleared` fires 1 on each scenario host and 0 on every clean one.
+The scenario's step 4 did what it was designed to do. **Any T1078.003
+predicate built on 4624/4720 is not measurable on this corpus** — that would
+be a `not-observable` closure, the anti-forensic case
+`docs/artifact-attestation-matrix.md` §2.6 exists to cover.
+
+*SAM survived.* `local_account` is **7 / 7 / 5 / 7 / 5** — the scenario hosts
+carry exactly the same account population as their own clean baselines.
+`privilege_granted` (17/17/13/17/13) likewise. Registry-hive evidence is
+outside the channel `wevtutil cl security` clears.
+
+**Therefore the closure as recorded is correct, and for a stronger reason than
+it states.** The predicate is a SAM shape predicate (`rid >= 1000`,
+`well_known` absent, `password_not_required` or `logon_count: 0`). It ran
+against evidence the attack did not touch, over the full population of 7
+accounts per host on host 1 and 5 on host 2 — not a sample. Zero matches means
+no staged account is present, not that the record of one was erased.
+
+`measured-no-discriminator` is the right label. The distinction matters
+because the neighbouring rows close the other way: T1052.001 and T1071.001 are
+`not-observable`, and reading all three as the same kind of negative would
+misstate what this corpus can and cannot support.
+
+**A caveat the row should carry.** The off-channel survivors —
+`evtx.winlogon logon_ui`, `evtx.rdp rdp_session` — are *higher* on the
+scenario hosts (786 and 615 against 316/316/196; 33 and 15 against 13/13/9).
+That is the operator's own interactive and remote sessions during scenario
+construction, i.e. C-02 again, not the attack's use of a valid account. They
+are not an alternative anchor for this technique.
 
 ---
 

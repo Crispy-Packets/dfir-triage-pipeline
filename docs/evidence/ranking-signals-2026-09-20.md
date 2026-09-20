@@ -238,6 +238,18 @@ userassist, usn` — which is *one behaviour* (a program ran) recorded by ten
 families that all record program execution. The payload's set spans
 **download → execute → persist → delete**, which is four behaviours.
 
+> **CORRECTION, 2026-09-20 — the "one behaviour" claim above is wrong.**
+> Re-read at row level (`phase-span-2026-09-20.md`), clean `powershell.exe`
+> spans **two** phases, not one: `scheduled_task/task_registered` is
+> persistence, on all four collections where it appears. The family list
+> quoted above is also not the measured set — that contains `defender_mplog`
+> and `scheduled_task`, and no `usn`.
+>
+> The signal-3 verdict is unaffected: the count still ties at 10 on `s1_v3`.
+> The justification was wrong, not the conclusion. Recorded because the error
+> is the class the verification-coverage pattern names — a claim carried
+> forward from a document rather than re-read against the evidence.
+
 **The caveat that decides how this may be used.** On `s1_v2` the payload leads
 by 2 (13 vs 11). On `s1_v3` it **ties at 10** with `msedge.exe`,
 `powershell.exe` and `vboxtray.exe`, and wins only on the alphabetical
@@ -255,6 +267,19 @@ span distinct phases of a chain rather than restating one behaviour. That is a
 different signal from the one proposed, it is closer to what the correlation
 rules already encode, and **it has not been measured**. It should not be
 implemented on the strength of this document.
+
+> **Followed up 2026-09-20: measured as "phase-span", and it survives.**
+> See `phase-span-2026-09-20.md`. Under the adopted mapping the payload is the
+> unique four-phase entity on each scenario host (1 of 218,629 on `s1_v2`,
+> 1 of 194,694 on `s1_v3`), and no clean collection has an entity above three
+> (max 3 on each of 233,918 / 294,639 / 232,508). Per-collection figures, not
+> summed: `clean_a` and `clean_b` are one host restored from snapshot minutes
+> apart, which is the same constraint signal 1's verdict recorded.
+>
+> Accepted with scope, **not implemented** — it ranks a four-step intrusion
+> and is confirmatory rather than corrective on the rules-side pool. The "one
+> behaviour" premise this section used to motivate it was itself wrong; see
+> the correction above.
 
 ---
 
