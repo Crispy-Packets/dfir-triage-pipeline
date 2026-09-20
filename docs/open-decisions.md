@@ -5,36 +5,52 @@ Two decisions that were being carried by citation rather than by choice. Filed
 
 ---
 
-## OD-01 — ML scope. OPEN; owner decides.
+## OD-01 — ML scope. DECIDED: (b), report the measured answer.
 
-`week2-plan.md` §7 predates the ablation result and does not bind this. It is
-recorded here as an open decision with both options, not resolved.
+`week2-plan.md` §7 predates the ablation and does not bind this. The decision
+is made here on the ablation's result, not by citation.
 
-**Option (a) — build a working ML layer across the 38 families.** Extend
-`FAMILY_FEATURES` to the 31 families that have none, then run unsupervised
-anomaly detection over all of them.
+**Decision: do not extend `FAMILY_FEATURES` to the 31 further families. Report
+what unsupervised anomaly detection does on this corpus, as the result.**
 
-*Cost:* feature design for 31 families, each needing the same per-family
-measurement the existing 7 got. *Risk:* the measured ablation already showed
-the anomaly layer does not separate the scenario entity on the families it
-covers. Extending it to more families is a bet that coverage was the problem.
-Nothing measured so far supports that bet.
+`FAMILY_FEATURES` stays at 7.
 
-**Option (b) — report the measured answer about unsupervised anomaly
-detection on this corpus.** Treat the ablation as the result: state what was
-tried, what it scored, and why a disk-image triage corpus of this size and
-composition does not support the method.
+**Why.** The measured facts, none of which are new:
 
-*Cost:* the project ships without a working ML component. *Value:* a measured
-negative about method-corpus fit, which is a real finding and is defensible
-under questioning in a way a non-working layer is not.
+* The anomaly layer **ranks; it does not detect.** Nothing is flagged as an
+  outlier in either host's scenario collection.
+* **No family places the attack entity in its own top decile** — `bam` 33%,
+  `prefetch` 41%, `amcache` 89%. The 1-of-894 headline is the rules layer
+  placing the entity first, with the anomaly ranking appended behind it.
+* The ablation moved the wrong way when the event pool grew: 7.6% -> 18.3% on
+  host 2, because the entity denominator grew while the model stayed fitted on
+  seven families. Dilution, not damage — but it means more families is not
+  obviously the lever.
+* The layer carries a **~5% false-positive floor** on clean hosts.
 
-**The tradeoff in one line.** (a) is more implementation and a weaker claim;
-(b) is less implementation and a stronger one. The evidence in
-`docs/evidence/ml-scope-evidence-2026-09-20.md` currently favours (b), but
-that is an input to the decision, not the decision.
+Option (a) — feature design for 31 further families — is a bet that coverage
+was the limiting factor. Nothing measured supports that bet. The families
+already covered include the ones the attack entity appears in, and it ranks
+badly in all of them. Extending to families the attack does not touch cannot
+improve its rank; it enlarges the denominator, which the ablation already
+showed makes the percentile worse.
 
-**Not decided here.** Owner's call.
+**What (b) commits to saying.** Not "ML was out of scope" — that is the effort
+claim principle 2 rejects. The claim is narrower and defensible: on a
+five-collection disk-image triage corpus with one ground-truth entity and four
+attack events in 2,304, unsupervised per-family anomaly detection ranks rather
+than detects, and its ranking does not place the attack entity high enough to
+triage on. The deterministic rules do that. This is a measured negative about
+method-corpus fit and it stands on the record already in
+`docs/evidence/ml-stage-record-2026-09-13.md` and `ml-scope-evidence-2026-09-20.md`.
+
+**What would reopen this.** A corpus with enough labelled intrusion entities to
+compute lift rather than a single rank. That is a collection problem, not a
+feature-engineering one — which is itself the finding.
+
+**Not a rejection of the anomaly layer.** It stays in the pipeline, in the
+prioritisation panel, labelled as ranking. D-062's rule holds: a rank figure
+quoted without its pipeline version is the defect.
 
 ---
 
