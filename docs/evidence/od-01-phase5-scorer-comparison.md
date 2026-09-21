@@ -246,3 +246,117 @@ does not change the architecture or the headline: the anomaly layer still ranks
 rather than detects (14th is not surfaced), and the rules still detect. Isolation
 Forest remains the default; MODA*-G (numeric-only) is the measured alternative,
 adoption the user's call.
+
+# Engine attribution and robustness (2026-09-22): why MODA moved the rank
+
+The follow-ups above bound *what does not* compound the gain. These two probes
+locate *what does* — which of MODA's engines sees the payload where Isolation
+Forest did not — and test whether the 14/443 result is a lucky parameter.
+Neither probe selects anything: the default stays `isolation_forest`, and
+MODA's `k_temp` stays the paper's 3.0. Diagnostic only.
+
+Both use `return_components=True` on the concat (clean_c ∪ s1_v3, per family),
+seeded identically to the pipeline, with `sort_events` applied so row order
+matches the scored run. All four engines pass through `phi(d)=d/(d+κ) → [0,1)`,
+so the softmax gate compares engines on a **common scale** — a large gate weight
+is information, not units.
+
+*Tie convention:* percentiles here count `score ≤ payload` (ties in); the
+pipeline harness takes first index in descending order (ties out). This is the
+only reason these read 1.1 % / 24.5 % where the harness reported 1.0 % / 23.0 %
+— the prefetch family holds a 15-way tie on the payload's exact feature vector
+(below), and 14 of those fall the other side of the convention. Same rows, same
+scores.
+
+## §9 — engine attribution: MCD and Peña saturate on the payload
+
+Per-engine percentile of the payload within its family, and the payload's raw
+engine scores:
+
+    family     MCD    Peña   Gower   gated    raw: MCD / Peña / Gower
+    amcache    1.1 %  3.3 %  100.0 % 1.1 %    0.9997 / 1.0000 / 1.0000
+    prefetch   3.5 %  3.3 %  2.0 %   24.5 %   0.6277 / 1.0000 / 1.0000
+
+**amcache is the rank driver.** The entity rank is the payload's best-family
+percentile, and its best is amcache at ~1.0 %. There, MCD and Peña both
+**saturate** on the payload (0.9997, 1.0000): it is far from the robust MCD
+centre *and* extreme along Peña's kurtosis-maximising projections. Isolation
+Forest, splitting axis-aligned on the same columns, did not isolate it —
+amcache was 4.2 % under IF and 1.0 % under MODA, and that drop is the whole
+40 → 14 move. Gower is uninformative here: its score is 1.0 for **every** amcache
+query row (quantiles [1.0, 1.0, 1.0]) — the family sits on a Gower plateau, so
+kNN distance cannot discriminate. The payload's gate weights are near-uniform
+(0.33/0.33/0.33) only because all three numeric engines are saturated; the two
+that carry information (MCD, Peña) still set the gated score. The payload's
+feature vector is unique in the concat (1 identical row = itself), so this is a
+genuinely isolated point on the MCD/Peña axes, not a cluster artefact. This is
+Phase 3's "extreme but not rare" measured at the engine level: extreme along the
+robust-covariance and projection axes, which is exactly what an axis-aligned
+forest averages away.
+
+**Prefetch is a property of the gate, not a rank contribution.** All three
+engines individually rank the payload well (MCD 3.5 %, Peña 3.3 %, Gower 2.0 %),
+yet the gated score puts it at 24.5 % — *worse* than any single engine. This is
+not noise; it is the softmax-weighted average being **non-monotone**. Its
+derivative in engine *j* is `w_j·(1 + k(s_j − f))`, negative whenever
+`s_j < f − 1/k`. The payload scores MCD = 0.628 against Peña = Gower = 1.0, so
+its gated value is ≈ 0.93; a benign row reporting MCD ≈ 0.1 with Peña ≈ Gower
+≈ 0.99 scores ≈ 0.94 and **beats the payload while exceeding it on no single
+engine**. Measured: of the 248 prefetch rows that gate at or above the payload,
+only **35 (3.5 %)** are genuinely extreme on ≥ 1 engine; the other **213** are
+this drag effect (drag-row medians MCD 0.40, Peña 0.996, Gower 1.000). Prefetch
+does not set the rank (amcache's 1.0 % does), so this costs nothing here — but it
+is a documented cost of softmax gating over a family where one engine is weak,
+and it is the reason a per-family scorer choice looks tempting (see below).
+
+## §10 — k_temp robustness: 14 is not a tuned figure
+
+The MODA ablation re-run on host 2 across the paper's tested temperature range,
+default 3.0:
+
+    k_temp   ML rank
+    1.0      15/443
+    3.0      14/443   (default, shipped)
+    5.0      14/443
+    10.0      9/443
+
+The rank holds at 9–15 across a 10× range, so **14/443 is not a lucky
+setting** — it is robust to the one free parameter. The clean-host ceiling was
+not re-measured at k ≠ 3 because no other k is adopted; only the default matters
+and it is in band (0.048, entity count 443, unchanged).
+
+The k = 10 → 9/443 row is **not** an improvement to bank. As k → ∞ the softmax
+gate approaches max-of-engines, which is monotone and removes the §9 drag
+effect; the payload's prefetch percentile then approaches Gower's 2.0 % and pulls
+the entity rank down. k = 10 helps because it is approaching a *different
+algorithm* (any single-engine spike wins), not because 3.0 was mis-tuned.
+Adopting it would be selecting the parameter that best places the one
+ground-truth entity — the same move the project's standard forbids for features
+(`feature_ablation.py`'s own docstring rejects tuning to a single label). The
+default stays 3.0.
+
+## The lever named and not taken: a per-family scorer
+
+§9 makes the tempting next step explicit: MODA helps amcache and prefetch but
+hurts evtx.powershell (3.1 % → 7.3 %), and the prefetch gate demonstrably costs
+~20 points against its own engines. A per-family scorer — IF for powershell,
+MODA elsewhere, or max-of-engines instead of softmax on prefetch — would improve
+the combined rank. It is not taken, for the same reason k = 10 is not: with one
+ground-truth entity, choosing the scorer per family *is* tuning the pipeline to
+that entity's position. It would produce a better number and a worse method. The
+honest result is the single-scorer rank; the per-family gain is recorded here as
+a known, deliberately unused lever.
+
+## What §9–10 settle
+
+The 40 → 14 improvement is now explained, not just observed: MODA's MCD and Peña
+engines saturate on the payload's amcache vector — an isolated point on the
+robust-covariance and projection axes that an axis-aligned Isolation Forest
+averages away — and that single family sets the entity rank. The result is
+robust to `k_temp` across a 10× range. The gate's non-monotone drag on prefetch
+and the per-family scorer are documented as properties/levers, both deliberately
+unused because acting on either would tune to the one label. Nothing here changes
+the default, the architecture, or the headline: the layer ranks (14th is not
+surfaced), the rules detect. Isolation Forest remains the default; MODA*-G
+numeric-only is the measured, understood alternative, and adoption is the user's
+call.
