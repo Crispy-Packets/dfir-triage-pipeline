@@ -232,7 +232,9 @@ class TestAggregation:
 # --------------------------------------------------------------------------- #
 
 
-def _finding(rule_id, weight, severity="high", entity_value="a.exe", technique="T1000"):
+def _finding(
+    rule_id, weight, severity="high", entity_value="a.exe", technique="T1000", phase=""
+):
     return Finding(
         rule_id=rule_id,
         rule_version="1",
@@ -255,6 +257,7 @@ def _finding(rule_id, weight, severity="high", entity_value="a.exe", technique="
         entity_keys=(("entity.exe_name", entity_value),),
         time_claim="observed_occurrence",
         reason="r",
+        phase=phase,
     )
 
 
@@ -300,6 +303,60 @@ class TestEntityAggregation:
         a = [_finding("R-A", 50, entity_value="z.exe"), _finding("R-A", 50, entity_value="a.exe")]
         assert [e.value for e in entity_score.aggregate(a)] == ["a.exe", "z.exe"]
         assert [e.value for e in entity_score.aggregate(list(reversed(a)))] == ["a.exe", "z.exe"]
+
+    def test_severity_tier_leads_the_sort_over_score(self):
+        # A critical entity with a low score must still sort above a high entity
+        # with a high score: severity is the first key, not score.
+        findings = [
+            _finding("R-A", 95, severity="high", entity_value="high_score.exe"),
+            _finding("R-B", 10, severity="critical", entity_value="crit.exe"),
+        ]
+        order = [e.value for e in entity_score.aggregate(findings)]
+        assert order == ["crit.exe", "high_score.exe"]
+
+    def test_phase_span_outranks_rule_count_within_a_tier(self):
+        # Within one severity tier: an entity whose 2 rules cross 2 phases sorts
+        # above an entity whose 3 rules sit in 1 phase. Phase-span is the second
+        # key; rule count the third. Both same severity, so the tier does not
+        # decide it.
+        findings = [
+            # spanner.exe: 2 rules, 2 phases
+            _finding("R-A", 40, entity_value="spanner.exe", phase="execute"),
+            _finding("R-B", 40, entity_value="spanner.exe", phase="persist"),
+            # crowd.exe: 3 rules, 1 phase, and a higher combined score
+            _finding("R-C", 60, entity_value="crowd.exe", phase="execute"),
+            _finding("R-D", 60, entity_value="crowd.exe", phase="execute"),
+            _finding("R-E", 60, entity_value="crowd.exe", phase="execute"),
+        ]
+        result = entity_score.aggregate(findings)
+        order = [e.value for e in result]
+        # spanner has phase_span 2, crowd has 1 -> spanner first, despite crowd's
+        # higher score and rule count.
+        assert order == ["spanner.exe", "crowd.exe"]
+        assert result[0].phase_span == 2
+        assert result[1].phase_span == 1
+
+    def test_rule_count_outranks_score_within_a_tier(self):
+        # Same severity, same phase-span (both single-phase): the entity named by
+        # more distinct rules sorts first, even if the other has a higher score.
+        findings = [
+            _finding("R-A", 30, entity_value="three_rules.exe", phase="execute"),
+            _finding("R-B", 30, entity_value="three_rules.exe", phase="execute"),
+            _finding("R-C", 30, entity_value="three_rules.exe", phase="execute"),
+            _finding("R-D", 88, entity_value="one_rule.exe", phase="execute"),
+        ]
+        order = [e.value for e in entity_score.aggregate(findings)]
+        assert order == ["three_rules.exe", "one_rule.exe"]
+
+    def test_score_breaks_ties_the_earlier_keys_leave(self):
+        # Same severity, phase-span and rule count: score descending decides, so
+        # the score column never reads non-monotone within an otherwise-equal group.
+        findings = [
+            _finding("R-A", 40, entity_value="lower.exe", phase="execute"),
+            _finding("R-B", 90, entity_value="higher.exe", phase="execute"),
+        ]
+        order = [e.value for e in entity_score.aggregate(findings)]
+        assert order == ["higher.exe", "lower.exe"]
 
 
 # --------------------------------------------------------------------------- #

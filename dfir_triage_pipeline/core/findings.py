@@ -83,6 +83,13 @@ class Finding:
     #: the rule, the matched events and the entity keys, and reclassifying a
     #: rule does not make it a different finding.
     rule_class: str = "corpus-validated"
+    #: The producing rule's `phase:` (delivery/execute/persist/destroy/
+    #: exfiltrate), carried so `entity_score` can rank by how many distinct chain
+    #: phases an entity spans without re-reading the rule set. Metadata only:
+    #: nothing matches or scores on it, and like `rule_class` it is NOT a
+    #: `finding_id` input -- re-phasing a rule does not make it a different
+    #: finding. Defaults to "" so a hand-built Finding behaves as before.
+    phase: str = ""
 
     def __post_init__(self) -> None:
         if not self.matched:

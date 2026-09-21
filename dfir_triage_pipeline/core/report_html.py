@@ -255,6 +255,7 @@ def _verdict_panel(doc: dict[str, Any]) -> str:
         f"<td><span class='sev {_esc(e['severity'])}'>{_esc(e['severity'])}</span></td>"
         f"<td class=mono>{_esc(e['key'])}={_esc(e['value'])}</td>"
         f"<td>{_esc(', '.join(e['rule_ids']))}</td>"
+        f"<td class=num>{e.get('phase_span', 0)}</td>"
         f"<td class=num>{e['finding_count']}</td></tr>"
         for e in entities
     )
@@ -266,7 +267,8 @@ def _verdict_panel(doc: dict[str, Any]) -> str:
         + (
             "<h3>Entities, worst first</h3><table>"
             "<tr><th class=num>Score</th><th>Severity</th><th>Entity</th>"
-            f"<th>Rules</th><th class=num>Findings</th></tr>{entity_rows}</table>"
+            "<th>Rules</th><th class=num>Phases</th>"
+            f"<th class=num>Findings</th></tr>{entity_rows}</table>"
             "<h3 style='margin-top:18px'>Findings</h3>"
             if entities
             else ""

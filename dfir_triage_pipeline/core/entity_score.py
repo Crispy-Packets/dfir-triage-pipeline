@@ -109,6 +109,12 @@ class ScoredEntity:
     rule_ids: tuple[str, ...]
     #: ATT&CK techniques from those rules, sorted and de-duplicated.
     techniques: tuple[str, ...]
+    #: Number of distinct chain phases (delivery/execute/persist/destroy/
+    #: exfiltrate) the naming findings span. A presentation-only ranking signal:
+    #: an entity whose findings cross two phases is a stronger chain signal than
+    #: one whose findings sit in a single phase, even at equal rule count. It
+    #: never enters the score -- see the sort in `aggregate`.
+    phase_span: int = 0
     #: Every finding naming this entity, in the order they were given.
     findings: tuple[Finding, ...] = field(default_factory=tuple)
 
@@ -218,6 +224,7 @@ def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
         weights = [f.weight for f in by_rule.values()]
         severity = min((f.severity for f in group), key=_severity_rank)
         techniques = sorted({f.attack_technique for f in group if f.attack_technique})
+        phase_span = len({f.phase for f in group if f.phase})
         scored.append(
             ScoredEntity(
                 key=key,
@@ -227,14 +234,38 @@ def aggregate(findings: Iterable[Finding]) -> list[ScoredEntity]:
                 severity=severity,
                 rule_ids=tuple(sorted(by_rule)),
                 techniques=tuple(techniques),
+                phase_span=phase_span,
                 findings=tuple(group),
             )
         )
 
-    # Worst first: score descending, then severity, then value for determinism.
-    # The value tie-break matters -- two entities on the same score and severity
-    # would otherwise order by dict insertion, and two runs could disagree.
-    scored.sort(key=lambda e: (-e.score, _severity_rank(e.severity), e.value))
+    # Presentation ordering (not scoring -- the score is computed above and is
+    # untouched by this). Keys, in order:
+    #   1. severity tier          -- worst class of finding first
+    #   2. phase-span, descending -- more distinct chain phases = stronger chain
+    #   3. rule count, descending -- more independent rules agreeing
+    #   4. score, descending      -- tie-break only; without it an entity at
+    #      3 rules/88 would sort above one at 2 rules/94 and the score column
+    #      would read non-monotone within a tier, like a bug. It changes no
+    #      score, only breaks ties the earlier keys leave.
+    #   5. value                  -- alphabetical, for determinism: two entities
+    #      equal on every key above would otherwise order by dict insertion and
+    #      two runs could disagree.
+    #
+    # ML percentile is deliberately NOT a key. It is attached downstream per
+    # finding, is undefined for user rows and unfitted families, and ordering the
+    # verdict table by it would cross the two-panel boundary the report enforces
+    # (a verdict is not a population rank). It stays in its own prioritisation
+    # panel.
+    scored.sort(
+        key=lambda e: (
+            _severity_rank(e.severity),
+            -e.phase_span,
+            -len(e.rule_ids),
+            -e.score,
+            e.value,
+        )
+    )
     return scored
 
 

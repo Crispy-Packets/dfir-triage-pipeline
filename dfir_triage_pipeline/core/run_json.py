@@ -46,6 +46,15 @@ from .findings import Finding
 
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
+#: Bumped to 1.3.0 on 2026-09-21. ADDITIVE: every finding gains `phase` (the
+#: rule's chain stage) and every entity gains `phase_span` (distinct phases its
+#: findings span). Metadata only -- no score, no hash changes -- but the entity
+#: TABLE ORDER changed: the verdict tables now sort by severity, then
+#: phase-span, then rule count, then score, then value. A consumer that relied
+#: on the previous score-first order must re-read the ordering (the values are
+#: identical; only their sequence differs). ML percentile is deliberately not a
+#: sort key -- see entity_score.aggregate.
+#:
 #: Bumped to 1.2.0 on 2026-09-20 for D-072. ADDITIVE: every finding gains
 #: `rule_class`. Without it a consumer cannot tell a corpus-validated finding
 #: from a known-behavior one, so the Class 2 split existed in `entity_score`
@@ -55,7 +64,7 @@ from .findings import Finding
 #: name, its shape and its worst-first ordering, so an existing consumer is
 #: unaffected -- but it no longer contains `entity.host` rows, because the host
 #: is no longer scored. `entities_by_kind` is new. See entity_score.py.
-RUN_JSON_VERSION = "1.2.0"
+RUN_JSON_VERSION = "1.3.0"
 
 #: Events either side of a finding's first timestamp. Five minutes because the
 #: scenario's own tightest interval is 2m32s, so a window that narrow would cut
@@ -160,6 +169,7 @@ def _finding_json(
         "finding_id": finding.finding_id,
         "rule_id": finding.rule_id,
         "rule_class": finding.rule_class,
+        "phase": finding.phase,
         "rule_version": finding.rule_version,
         "title": finding.title,
         "severity": finding.severity,
@@ -277,6 +287,7 @@ def build(
                 "severity": e.severity,
                 "rule_ids": list(e.rule_ids),
                 "techniques": list(e.techniques),
+                "phase_span": e.phase_span,
                 "finding_count": e.finding_count,
                 "finding_ids": [f.finding_id for f in e.findings],
             }
@@ -299,6 +310,7 @@ def build(
                     "severity": e.severity,
                     "rule_ids": list(e.rule_ids),
                     "techniques": list(e.techniques),
+                    "phase_span": e.phase_span,
                     "finding_count": e.finding_count,
                     "finding_ids": [f.finding_id for f in e.findings],
                 }
