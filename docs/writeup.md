@@ -227,23 +227,38 @@ artifact is thin, not because fields were dropped.
 ### 5.4 The anomaly layer: a measured negative
 
 The unsupervised layer **ranks; it does not detect**. Nothing is flagged as an
-outlier in either scenario collection. No family places the attack entity in
-its own top decile — `bam` 33%, `prefetch` 41%, `amcache` 89%. The
-1-of-894 headline is the *rules* layer placing the entity first with the
-anomaly ranking appended behind it.
+outlier in either scenario collection. The 1-of-894 headline is the *rules*
+layer placing the entity first with the anomaly ranking appended behind it; the
+anomaly layer's own best position for the attack entity is 40th of 443.
 
-Ablation, quoted with its pipeline version because a rank figure without one is
-itself a defect:
+**Coverage was tested directly and is not the limit.** All 38 parsed families
+were evaluated for anomaly-model candidacy, not just the seven modelled:
 
-    2026-09-13   7 declared, 7 parsed     host 2:  40 of 525   (top 7.6%)
-    2026-09-18   7 declared, 38 parsed    host 2:  81 of 443   (top 18.3%)
-                                          host 1: 298 of 1189  (top 25.1%)
+| stage | families | result |
+|---|---|---|
+| parsed | 38 | every curated family |
+| declared with a feature set | 7 | the artifacts that carry behavioural numerics |
+| actually fit on clean_c | 3 | `amcache`, `prefetch`, `evtx.powershell` (the rest fail the row-count or distinct-vector guard) |
+| undeclared, no usable key | 27 of 31 | carry no numeric/shape field a forest column could be computed from |
+| undeclared, carry a key | 4 of 31 | `services`, `shimcache`, `evtx.bits`, `userassist` — tested |
+| survive declaration + guards | 1 | `evtx.bits`, which carries **no attack row** |
 
-The percentile worsened as the event pool grew, because the entity denominator
-grew while the model stayed fitted on seven families — dilution, not damage,
-and evidence that *coverage was not the limiting factor*. Extending features to
-the 31 remaining families would enlarge the denominator further without
-touching the families the attack entity actually appears in.
+The extension to all four candidates was built behind an off-by-default flag and
+measured both ways: it added exactly one fitted family, one the attack never
+touches, and moved the attack rank the wrong way. Coverage is not the limit
+because the unmodelled families either do not carry the attack entity, do not
+carry numeric variance, or carry it mid-distribution. The limit is that a disk
+artifact records, about a single execution, only that it was unusual — and on a
+real host, being unusual is not rare (`docs/evidence/od-01-phase3-feature-ceiling.md`).
+
+**One leakage defect was found by this work and fixed (D-074).** The two
+per-hour density features encoded *when the collection was taken* on the
+families whose rows are timestamped by collection rather than by a per-event
+clock. Removing them from the shared feature set — re-adding each only to the
+families where it measured clean — did not cost rank; it recovered it, moving
+the attack entity from 79th to 40th, because the leaking columns had been
+promoting a crowd of collection-timing outliers above the quiet payload. The
+fitted set was unchanged, so this is a cleaner ranking, not a different model.
 
 **No accuracy figure is computable and none is given.** Four attack events in
 2,304 is not a labelled test set, and labelling by collection would measure
@@ -300,11 +315,23 @@ against one intrusion's four steps. `s1_v3` re-ran that scenario on a second
 host and settled reproducibility; it could not settle generalisation, because
 re-testing the same hypothesis against the same shape cannot. The 99-vs-86
 separation is a real result *about that chain*. Whether it is a result about
-intrusions is unestablished, and unfalsifiable from inside this corpus.
-`docs/scenario-2-design.md` specifies the collection that would test it —
-designed, not collected.
+intrusions is unestablished, and unfalsifiable from inside this corpus. The
+corpus is final at five collections (`clean_a`, `clean_b`, `clean_c`, `s1_v2`,
+`s1_v3`); no second scenario was collected, and none is planned. A design
+sketch of what a second scenario would have required survives in
+`docs/scenario-2-design.md`, labelled as design only, but it is the record of
+an unrun experiment, not a pending one.
 
 **No accuracy, no lift, no ROC.** One ground-truth entity (§5.4).
+
+**The Class 2 rules are unvalidated, by design.** Nine of the twenty-four rules
+express real intrusion behaviours this corpus never exercises. They ship a
+measured false-positive profile in place of a detection rate, never contribute
+to the entity score, and are labelled `known-behavior` precisely so a rule with
+no positive instance cannot move the headline separation. Validating them would
+take a second scenario that performs those behaviours — which was not collected
+(§7, first item). They are included as documented capability, not as tested
+detection.
 
 **Base rates come from five collections on two hosts.** That is enough to
 reject a rule that fires on clean data; it is not a base-rate study.
@@ -319,9 +346,12 @@ recorded rather than the work hidden.
 
 ## 8. Future work
 
-1. **Scenario 2** — the only item that raises the ceiling.
-   `docs/scenario-2-design.md`. Would convert five Class 2 rules to Class 1 and
-   test generalisation directly.
+1. **A second, differently-shaped scenario** — the only thing that would raise
+   the single-scenario ceiling and validate the Class 2 rules against a corpus.
+   It was not collected for this project and is not planned; the corpus is
+   final. This is named as the largest open question, not as scheduled work.
+   `docs/scenario-2-design.md` records what such a collection would have
+   required, as design only.
 2. **`evtx.firewall` rules** — the family became readable only at the end of
    this work; base rates must be measured before any rule is written, in that
    order.
