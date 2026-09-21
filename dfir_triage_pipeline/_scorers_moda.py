@@ -49,41 +49,91 @@ class _MODAScorer:
         self._contamination = contamination
         self._random_state = random_state
         self._train: np.ndarray | None = None
+        self._train_cat: np.ndarray | None = None  # int-encoded, aligned with _train
+        self._cat_maps: list[dict[str, int]] = []  # one value->int map per cat column
         self._threshold: float | None = None
 
     def fit(self, rows: list[list[float]]) -> _MODAScorer:
         self._train = np.asarray(rows, dtype=float)
-        # Threshold for predict(): contamination quantile of the training rows'
-        # own scores, scored in the training-only context.
-        train_scores = self._score(self._train)
+        self._train_cat = None
+        train_scores = self._score(self._train, None)
         self._threshold = float(np.quantile(train_scores, self._contamination))
         return self
 
-    def _score(self, x: np.ndarray) -> np.ndarray:
+    def _score(self, x: np.ndarray, x_cat) -> np.ndarray:
         """Raw MODA*-G scores in OUR convention (lower = more anomalous).
 
-        Seeded before every call so the run is byte-reproducible."""
+        Seeded before every call so the run is byte-reproducible. `x_cat` is the
+        int-encoded categorical matrix or None (SDC inert when None)."""
         self._moda.moda_seed(self._random_state)
-        # All-numeric feature layer: X_cat is empty, so SDC is inert by design.
-        raw = self._moda.moda_star(x, X_cat=None)
+        raw = self._moda.moda_star(x, X_cat=x_cat)
         return -np.asarray(raw, dtype=float)
 
     def decision_function(self, rows: list[list[float]]):
-        x = np.asarray(rows, dtype=float)
+        return self._decision(np.asarray(rows, dtype=float), None)
+
+    def _decision(self, x: np.ndarray, x_cat):
         if self._train is None:
-            return self._score(x)
+            return self._score(x, x_cat)
         # Score train+query together so a query row's anomalousness is measured
         # against the clean baseline plus its own batch, then return the query
-        # tail. The closest a transductive method gets to IF's fit/score split.
+        # tail. The concat applies to BOTH matrices; SDC's category rarity is
+        # therefore measured over clean_c u the scored family (stated in the doc).
         n_train = self._train.shape[0]
         combined = np.vstack([self._train, x])
-        return self._score(combined)[n_train:]
+        combined_cat = None
+        if x_cat is not None and self._train_cat is not None:
+            combined_cat = np.vstack([self._train_cat, x_cat])
+        return self._score(combined, combined_cat)[n_train:]
 
     def predict(self, rows: list[list[float]]):
-        scores = self.decision_function(rows)
+        return self._apply_threshold(self.decision_function(rows))
+
+    def _apply_threshold(self, scores):
         thr = (
             self._threshold
             if self._threshold is not None
             else np.quantile(scores, self._contamination)
         )
         return np.where(scores <= thr, -1, 1)
+
+    # -- Table-aware path: fires SDC on the FeatureTable's categorical columns --
+    #
+    # AnomalyModel calls these when the estimator has them (duck-typed). The int
+    # encoding is built from the TRAINING table; a value unseen at score time
+    # maps to a reserved id, which is exactly the case score_sdc's p_unseen
+    # branch handles. Isolation Forest has none of these methods, so its path is
+    # untouched.
+    def _encode(self, table, fit_maps: bool):
+        if not table.categorical:
+            return None
+        cols = sorted(table.categorical)  # deterministic column order
+        if fit_maps:
+            self._cat_maps = []
+            for name in cols:
+                values = table.categorical[name]
+                mapping: dict[str, int] = {}
+                for v in values:
+                    mapping.setdefault(v, len(mapping))
+                self._cat_maps.append(mapping)
+        encoded = []
+        for j, name in enumerate(cols):
+            mp = self._cat_maps[j]
+            unseen = len(mp)  # reserved id for values not in training
+            encoded.append([mp.get(v, unseen) for v in table.categorical[name]])
+        return np.asarray(encoded, dtype=int).T  # (n_rows, n_cat_cols)
+
+    def fit_table(self, table) -> _MODAScorer:
+        self._train = np.asarray([list(r) for r in table.rows], dtype=float)
+        self._train_cat = self._encode(table, fit_maps=True)
+        train_scores = self._score(self._train, self._train_cat)
+        self._threshold = float(np.quantile(train_scores, self._contamination))
+        return self
+
+    def decision_function_table(self, table):
+        x = np.asarray([list(r) for r in table.rows], dtype=float)
+        x_cat = self._encode(table, fit_maps=False)
+        return self._decision(x, x_cat)
+
+    def predict_table(self, table):
+        return self._apply_threshold(self.decision_function_table(table))

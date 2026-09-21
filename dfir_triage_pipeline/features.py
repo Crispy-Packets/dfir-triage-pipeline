@@ -21,7 +21,7 @@ import math
 import os
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .model import Event
 
@@ -301,6 +301,27 @@ def _extended_enabled() -> bool:
     return os.environ.get(EXTENDED_FLAG, "").strip().lower() not in ("", "0", "false")
 
 
+#: Opts into emitting raw categorical columns on the FeatureTable for MODA*-G's
+#: SDC engine (OD-01 Phase 5, exp 2). Off by default; only MODA reads them, and
+#: the numeric `rows` are unchanged whether or not this is set, so the IF path
+#: and every hash are unaffected. Which raw detail field each family contributes,
+#: both leak-tested (browser mime_type acc=base=0.547; amcache publisher
+#: 0.576 vs 0.566 baseline, under the +6.0 bar).
+MODA_CATEGORICAL_FLAG = "DFIR_MODA_CATEGORICAL"
+_FAMILY_CATEGORICAL: dict[str, str] = {
+    "browser": "mime_type",
+    "amcache": "publisher",
+}
+
+
+def _moda_categorical_enabled() -> bool:
+    return os.environ.get(MODA_CATEGORICAL_FLAG, "").strip().lower() not in (
+        "",
+        "0",
+        "false",
+    )
+
+
 def _active_family_features() -> dict[str, tuple[str, ...]]:
     """The family->features map in force for this call.
 
@@ -366,6 +387,16 @@ class FeatureTable:
     names: tuple[str, ...]
     rows: list[tuple[float, ...]]
     events: list[Event]
+    #: OPTIONAL raw categorical columns, name -> one raw string per row, aligned
+    #: with `rows`. Empty by default and NOT part of `rows`, `names` or the
+    #: distinct-vector guard, so every existing consumer and every hash is
+    #: byte-identical whether or not this is populated. Filled by `build` only
+    #: when `DFIR_MODA_CATEGORICAL` is set, and only for the family that carries
+    #: a leak-tested categorical (browser: mime_type; amcache: publisher). Read
+    #: only by MODA*-G's SDC engine (OD-01 Phase 5, exp 2); Isolation Forest
+    #: never looks at it. Raw strings, not int codes: the leak-tested thing is
+    #: the string, and int-encoding is the scorer's private representation.
+    categorical: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -704,4 +735,13 @@ def build(
         keep = [FEATURE_NAMES.index(n) for n in names]
         rows = [tuple(row[i] for i in keep) for row in rows]
 
-    return FeatureTable(names=names, rows=rows, events=ordered)
+    # Optional raw categorical column for MODA*-G's SDC engine, gated and
+    # family-scoped. Never enters `rows`/`names`, so nothing above changes.
+    categorical: dict[str, tuple[str, ...]] = {}
+    field_name = _FAMILY_CATEGORICAL.get(family or "")
+    if field_name and _moda_categorical_enabled():
+        categorical[field_name] = tuple(
+            str((e.details or {}).get(field_name) or "") for e in ordered
+        )
+
+    return FeatureTable(names=names, rows=rows, events=ordered, categorical=categorical)

@@ -151,3 +151,98 @@ is the user's decision, not this measurement; the flag makes the switch one env
 var and the removal one deletion. DIF and HF-DIF remain untested for
 environment/availability reasons, either of which could be revisited if a
 compatible deep-learning stack or a public HF-DIF implementation appears.
+
+---
+
+# Phase 5 follow-ups (2026-09-22): three more scorer experiments
+
+Same protocol, same invariants (entity count 443, clean-host 368 / rate in
+band), same inertness discipline (flag-unset re-proven 40/443 with identical
+top-10 after the `AnomalyModel` changes these needed).
+
+## §6 — 4-candidate family extension under MODA*-G
+
+Re-ran the OD-01 Phase 4 extension (`DFIR_EXTENDED_FAMILIES=1`) under
+`moda_g` to check whether coverage helps a *different* scorer.
+
+| config | attack rank | fitted extra families | clean rate | entity count |
+|---|---|---|---|---|
+| MODA*-G, 7 families | 14/443 | — | 0.048 | 443 |
+| MODA*-G, extended | 16/443 | `evtx.bits` only | 0.049 | 443 |
+
+The guards are scorer-independent, so the fit set is identical to the IF case:
+`evtx.bits` is the only extra family that fits, and it carries no attack row.
+Rank moved 14 → 16 (2 worse), the same denominator non-result coverage gave
+under IF (40 → 41). **Coverage is a dead lever regardless of scorer**; the MODA
+gain is not enlarged by adding families.
+
+## §7 — MODA*-G with the SDC categorical engine fired
+
+MODA*-G is a mixed-data method; on the all-numeric feature layer its categorical
+engine (SDC) is inert (§ MODA caveat). This fires it, on the two categorical
+fields that pass the leakage bar, int-encoded and family-scoped:
+
+* leakage re-check (majority-collection-per-category, +6.0 bar): `mime_type`
+  (browser) acc 0.547 = baseline; `publisher` (amcache) 0.576 vs 0.566 — both
+  pass. (Method note: the map is built and scored on the pooled rows, which is
+  optimistic for a value seen only in one collection; with 19/31 distinct values
+  on ~1,000 rows the effect is small.)
+* implementation: a gated `categorical` attribute on `FeatureTable` (never in
+  `rows`/`names`/hashes; `DFIR_MODA_CATEGORICAL`), split into MODA's `X_cat` in
+  the wrapper via a train-built int map. IF's path is byte-identical (inertness
+  re-proven 40/443).
+
+| config | attack rank | clean-host | entity count |
+|---|---|---|---|
+| MODA*-G numeric-only | 14/443 | 368 | 443 |
+| MODA*-G + SDC | **60/443** | 368 | 443 |
+
+**SDC hurts, and the mechanism is instructive.** Firing it pushed the rank
+14 → 60. `invoice_scan.exe` carries a **None/empty publisher**, and an empty
+publisher is *common* on this corpus's amcache rows — so SDC scores the payload
+as an ordinary category, not a rare one. The softmax gate amplifies the
+dominant engine per row, so SDC's "ordinary" verdict pulls weight away from the
+MCD/Gower engines that had ranked the payload at 1.0% in amcache. In practice
+SDC fires on one column for two families (and browser does not even fit on
+clean_c), so it is exercised on amcache alone.
+
+The finding: **MODA*-G helps because of its numeric divergence engines, not its
+categorical one.** The full mixed-data method is *worse* here than its numeric
+subset — the opposite of the hoped-for direction, but a measured one. The
+`has_publisher` boolean (already in the numeric feature set) is the right way to
+use publisher on this corpus; the raw category via SDC is not.
+
+## §8 — IF + MODA*-G ensemble (percentile-rank average)
+
+A third registered scorer, `ensemble_if_moda`: fit both, average their
+within-batch percentile ranks (raw scores across two algorithms are not
+comparable; ranks are), lower = more anomalous.
+
+| config | attack rank | clean-host | entity count |
+|---|---|---|---|
+| IF | 40/443 | 368 | 443 |
+| MODA*-G | 14/443 | 368 | 443 |
+| ensemble | 17/443 | 368 | 443 |
+
+17 sits between the members, closer to MODA — the pre-committed flat outcome.
+An average of two ranks cannot beat the better member unless the two scorers
+rank *different* benign entities as anomalous and the average suppresses both
+crowds. It does not: they rank the same crowd, so the ensemble regresses toward
+the middle. **MODA*-G alone is the best single configuration measured.**
+
+## Phase 5 follow-ups — what they settle
+
+The algorithm is the one lever that moved the rank (14 vs IF's 40), and these
+three probes locate *why* and bound it:
+
+* not coverage (§6): extension is inert under MODA too.
+* not the categorical engine (§7): SDC hurts; the gain is the numeric
+  divergence engines.
+* not an ensemble (§8): averaging with IF regresses toward the middle.
+
+So the improvement is specifically MODA*-G's numeric MCD/Peña/Gower divergence
+scoring, and it is not compounded by any of the three obvious extensions. It
+does not change the architecture or the headline: the anomaly layer still ranks
+rather than detects (14th is not surfaced), and the rules still detect. Isolation
+Forest remains the default; MODA*-G (numeric-only) is the measured alternative,
+adoption the user's call.

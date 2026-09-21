@@ -258,3 +258,67 @@ class TestScorerRegistry:
         scored = anomaly.AnomalyModel(50).fit(table).score(table)
         most_anomalous = min(scored, key=lambda s: s.score)
         assert most_anomalous.event == len(rows) - 1
+
+
+class TestEnsembleAndCategoricalScorers:
+    """OD-01 Phase 5 experiments 2 (SDC categorical) and 3 (IF+MODA ensemble).
+
+    Both are registered scorers; both are lazy-imported and removable. These pin
+    that they are wired, sign-correct, and -- for the categorical path -- that
+    the FeatureTable's categorical attribute is inert on `rows` so the IF path
+    stays byte-identical.
+    """
+
+    def test_ensemble_is_registered(self):
+        assert "ensemble_if_moda" in anomaly._SCORER_REGISTRY
+
+    def test_ensemble_places_an_obvious_outlier_at_the_anomalous_end(self):
+        import numpy as np
+
+        from dfir_triage_pipeline.features import FeatureTable
+
+        np.random.seed(4)
+        names = ("a", "b")
+        rows = [tuple(np.random.randn(2)) for _ in range(40)] + [(60.0, 60.0)]
+        table = FeatureTable(names=names, rows=rows, events=list(range(len(rows))))
+        import os
+
+        os.environ["DFIR_ANOMALY_SCORER"] = "ensemble_if_moda"
+        try:
+            scored = anomaly.AnomalyModel(60).fit(table).score(table)
+        finally:
+            os.environ.pop("DFIR_ANOMALY_SCORER", None)
+        assert min(scored, key=lambda s: s.score).event == len(rows) - 1
+
+    def test_categorical_attribute_does_not_touch_rows(self):
+        # The MODA SDC path reads FeatureTable.categorical; it must never appear
+        # in rows/names, so the IF path and every hash are unchanged.
+        from dfir_triage_pipeline.features import FeatureTable
+
+        plain = FeatureTable(names=("a",), rows=[(1.0,)], events=[object()])
+        withcat = FeatureTable(
+            names=("a",), rows=[(1.0,)], events=[object()],
+            categorical={"mime_type": ("application/pdf",)},
+        )
+        assert plain.rows == withcat.rows
+        assert plain.names == withcat.names
+        assert plain.categorical == {}
+
+    def test_moda_sdc_ranks_a_rare_category_as_anomalous(self):
+        import numpy as np
+
+        from dfir_triage_pipeline._scorers_moda import make_moda_scorer
+        from dfir_triage_pipeline.features import FeatureTable
+
+        np.random.seed(5)
+        names = ("a", "b")
+        rows = [tuple(np.random.randn(2)) for _ in range(40)]
+        cat = tuple(["common"] * 39 + ["rare-unique-value"])
+        train = FeatureTable(names, rows[:39], list(range(39)),
+                             categorical={"mime_type": cat[:39]})
+        allt = FeatureTable(names, rows, list(range(40)),
+                            categorical={"mime_type": cat})
+        sc = make_moda_scorer(200, 0.05, 20260830)
+        sc.fit_table(train)
+        df = sc.decision_function_table(allt)
+        assert int(np.argmin(df)) == 39  # the rare-category row

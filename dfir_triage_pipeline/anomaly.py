@@ -93,6 +93,14 @@ def _make_moda_g(n_estimators: int):
     return make_moda_scorer(n_estimators, CONTAMINATION, RANDOM_SEED)
 
 
+def _make_ensemble_if_moda(n_estimators: int):
+    """IF + MODA*-G, averaged on within-batch percentile ranks. Lazy-imported;
+    removable like the others."""
+    from ._scorers_ensemble import make_ensemble_scorer
+
+    return make_ensemble_scorer(n_estimators, CONTAMINATION, RANDOM_SEED)
+
+
 #: Closed registry. An unknown name raises rather than falling back to IF
 #: silently -- a mistyped flag must fail loudly, not quietly score with the
 #: default and mislabel the run.
@@ -100,6 +108,7 @@ _SCORER_REGISTRY = {
     "isolation_forest": _make_isolation_forest,
     "dif": _make_dif,
     "moda_g": _make_moda_g,
+    "ensemble_if_moda": _make_ensemble_if_moda,
 }
 
 
@@ -203,7 +212,14 @@ class AnomalyModel:
         if not table.rows:
             raise ValueError("cannot fit on an empty feature table")
         self.feature_names = table.names
-        self._forest.fit([list(r) for r in table.rows])
+        # A scorer that consumes the table's categorical columns (MODA*-G's SDC
+        # engine) implements `fit_table`; every other estimator, Isolation
+        # Forest included, gets the numeric rows exactly as before -- its path is
+        # unchanged, which is why the inertness proof holds.
+        if hasattr(self._forest, "fit_table"):
+            self._forest.fit_table(table)
+        else:
+            self._forest.fit([list(r) for r in table.rows])
         return self
 
     def score(self, table: FeatureTable) -> list[Scored]:
@@ -222,9 +238,13 @@ class AnomalyModel:
         if not table.rows:
             return []
 
-        raw = [list(r) for r in table.rows]
-        scores = self._forest.decision_function(raw)
-        flags = self._forest.predict(raw)
+        if hasattr(self._forest, "decision_function_table"):
+            scores = self._forest.decision_function_table(table)
+            flags = self._forest.predict_table(table)
+        else:
+            raw = [list(r) for r in table.rows]
+            scores = self._forest.decision_function(raw)
+            flags = self._forest.predict(raw)
         return [
             Scored(event=event, score=float(s), is_outlier=bool(f == -1))
             for event, s, f in zip(table.events, scores, flags, strict=True)

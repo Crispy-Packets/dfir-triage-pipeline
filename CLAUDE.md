@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  958 passed, 21 skipped
+    python -m pytest -q               ->  962 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -141,14 +141,22 @@ reproduces 40/443 with the same top-10 order. `moda_g` (MODA*-G, vendored under
 `_vendor/`) was measured and **improved the attack rank to 14/443** with the
 clean-host rate in band (0.048) and entity count unchanged (443) — the first
 lever in OD-01 to move the rank. `dif` is wired but not runnable here (deepod's
-DIF version pins torch<1.13.1, unavailable for py3.11). Evidence:
-`docs/evidence/od-01-phase5-scorer-comparison.md`. **Do not switch the default
-to an alternative** without the user's decision; the flag makes adoption one env
-var. **Removal procedure** (the user asked to keep it): delete
-`dfir_triage_pipeline/_scorers_dif.py`, `_scorers_moda.py`, `_vendor/`, and the
-`"dif"`/`"moda_g"` lines in `anomaly._SCORER_REGISTRY` — the default path never
-imports them, so removal cannot affect Isolation Forest. `run.json` records
-which scorer produced its percentiles (`anomalies.scorer`, run_json v1.4.0).
+DIF version pins torch<1.13.1, unavailable for py3.11). `ensemble_if_moda`
+(IF+MODA rank average) and MODA's categorical engine (`DFIR_MODA_CATEGORICAL`,
+fires SDC) were both measured and both do WORSE than MODA numeric-only
+(ensemble 17/443; SDC 60/443 — the payload's empty publisher is a common, not
+rare, category). Evidence: `docs/evidence/od-01-phase5-scorer-comparison.md`
+(§6–8). The improvement is specifically MODA*-G's numeric divergence engines;
+coverage, the categorical engine and ensembling do not compound it. **Do not
+switch the default to an alternative** without the user's decision; the flag
+makes adoption one env var. **Removal procedure** (the user asked to keep it):
+delete `dfir_triage_pipeline/_scorers_dif.py`, `_scorers_moda.py`,
+`_scorers_ensemble.py`, `_vendor/`, and the `"dif"`/`"moda_g"`/
+`"ensemble_if_moda"` lines in `anomaly._SCORER_REGISTRY`; the `categorical`
+field on `FeatureTable` and its gated fill are inert unless
+`DFIR_MODA_CATEGORICAL` is set and can stay. The default path never imports any
+of it, so removal cannot affect Isolation Forest. `run.json` records which
+scorer produced its percentiles (`anomalies.scorer`, run_json v1.4.0).
 
 **No family places the attack entity in its own top decile** -- `bam` 33%,
 `prefetch` 41%, `amcache` 89%. The combined figure of 1/894 is the RULES layer
