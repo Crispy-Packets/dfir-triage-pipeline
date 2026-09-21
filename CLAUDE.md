@@ -94,9 +94,22 @@ single rank, which is a collection problem rather than a feature one.
 **The anomaly layer is scoped to the original 7 families.** `FAMILY_FEATURES`
 declares feature sets for `amcache`, `browser`, `evtx.powershell`,
 `evtx.security`, `evtx.system`, `prefetch` and `registry` and for nothing
-else. **Extending it to the 31 families added by the parser work is a separate
-workstream and has not been started.** An undeclared family is skipped with
-that reason recorded, never defaulted to the full feature vocabulary (D-063).
+else. An undeclared family is skipped with that reason recorded, never
+defaulted to the full feature vocabulary (D-063).
+
+**The 38-family extension was built, measured, and left OFF by default**
+(OD-01 Phase 4, `docs/evidence/od-01-phase4-flagged-ablation.md`). Setting
+`DFIR_EXTENDED_FAMILIES=1` opts into `features._EXTENDED_FAMILY_FEATURES`, which
+declares the only four undeclared families that carry any behavioural key at
+all. **Of the 31 undeclared families above the row floor, 27 carry no key a
+forest column could be computed from** — a column over them would be constant.
+Of the four that do, the leakage test drops the temporal columns (they encode
+collection identity), and the distinct-vector guard then rejects three of the
+four; the one that fits (`evtx.bits`) carries no attack row. Measured, flag ON
+moved the attack rank from 79/443 to 81/443 — worse, no gain (**both figures are
+pre-D-074**, on the leaking `_SHARED`; the ON side was not re-run after the
+D-074 fix). The flag stays off; it exists so the negative is measured rather
+than asserted. Do not enable it in the shipped pipeline.
 
 **The ablation at the current state is a BASELINE, not a ranking result**
 (D-062). It measures where the layer stands before any ML work, which is the
@@ -111,6 +124,14 @@ while the model stayed fitted on seven families -- dilution, not damage. A
 rank figure quoted without its pipeline version is the defect; see D-062
 before using any of these. **All of them are superseded when D-058 lands**,
 because the rules-side scoring they sit beside is what D-058 changes.
+
+**Post-D-074 (2026-09-21), the current honest ML-only rank is 40/443 (top 9.0%)
+on s1_v3**, up from 79/443 before the fix. Removing the two per-hour density
+columns from `_SHARED` (they ranked on collection-identity timing) did not cost
+rank — it recovered it, because those columns were demoting the quiet attack
+entity below a crowd of collection-timing outliers. Fitted set unchanged
+(`amcache`, `evtx.powershell`, `prefetch`). This is the figure to quote; the
+79/443 above it is pre-D-074.
 
 **No family places the attack entity in its own top decile** -- `bam` 33%,
 `prefetch` 41%, `amcache` 89%. The combined figure of 1/894 is the RULES layer

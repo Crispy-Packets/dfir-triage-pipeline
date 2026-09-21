@@ -306,6 +306,100 @@ class TestPerFamilyFeatureSets:
                 assert reduced_row == tuple(full_row[i] for i in keep)
 
 
+class TestExtendedFamiliesFlag:
+    """The opt-in 38-family extension (OD-01 re-opened 2026-09-20).
+
+    The flag exists so the 38-family config can be *measured* without the
+    committed 7-family headline being silently overwritten. These tests pin the
+    two properties that make that safe: off is inert, and on declares exactly
+    the four families the row survey found carry a behavioural key -- and only
+    those, so a family with no numeric column is never asserted as covered.
+    """
+
+    _EXTRA = ("services", "shimcache", "evtx.bits", "userassist")
+
+    def test_off_by_default_the_seven_families_are_the_whole_set(self, monkeypatch):
+        monkeypatch.delenv(features.EXTENDED_FLAG, raising=False)
+        assert set(features._active_family_features()) == set(features.FAMILY_FEATURES)
+        for fam in self._EXTRA:
+            assert not features.is_declared(fam)
+
+    def test_a_false_value_is_still_off(self, monkeypatch):
+        for value in ("", "0", "false", "False"):
+            monkeypatch.setenv(features.EXTENDED_FLAG, value)
+            assert not features.is_declared("services")
+
+    def test_on_declares_exactly_the_four_extra_families(self, monkeypatch):
+        monkeypatch.setenv(features.EXTENDED_FLAG, "1")
+        active = features._active_family_features()
+        assert set(active) == set(features.FAMILY_FEATURES) | set(self._EXTRA)
+        for fam in self._EXTRA:
+            assert features.is_declared(fam)
+
+    def test_on_does_not_declare_families_with_no_behavioural_key(self, monkeypatch):
+        monkeypatch.setenv(features.EXTENDED_FLAG, "1")
+        # These clear MIN_TRAINING_ROWS but carry no numeric details key, so a
+        # column over them would be constant. The flag must not claim them.
+        for fam in ("evtx.firewall", "evtx.winlogon", "scheduled_task"):
+            assert not features.is_declared(fam)
+
+    def test_extended_sets_use_only_existing_feature_columns(self):
+        # The extension adds FAMILIES, never new unmeasured columns: every
+        # column an extended family gets is an existing feature name whose
+        # per-family leakage was tested in the phase-4 doc (the temporal density
+        # columns that leaked on services/shimcache were dropped there).
+        for fam in self._EXTRA:
+            for name in features._EXTENDED_FAMILY_FEATURES[fam]:
+                assert name in features.FEATURE_NAMES
+
+    def test_leaking_temporal_columns_are_absent_from_extended_families(self):
+        # services and shimcache leaked on the per-hour density columns (phase-4
+        # leakage table); those must not appear in their extended sets. evtx.bits
+        # measured clean and keeps them (asserted in the D-074 class).
+        leaky = {"events_in_same_hour", "distinct_executables_in_same_hour"}
+        for fam in ("services", "shimcache"):
+            assert not (set(features._EXTENDED_FAMILY_FEATURES[fam]) & leaky)
+
+    def test_the_committed_map_is_never_mutated_by_the_extension(self):
+        # _EXTENDED_FAMILY_FEATURES is a separate dict; FAMILY_FEATURES must
+        # stay at its seven families whatever the flag is.
+        assert set(features.FAMILY_FEATURES) == {
+            "prefetch", "browser", "amcache", "registry",
+            "evtx.security", "evtx.system", "evtx.powershell",
+        }
+
+
+class TestD074TemporalDensityLeak:
+    """D-074: the per-hour density columns are opt-in by measurement.
+
+    They leaked on three of the four fitting committed families (amcache 0.83,
+    prefetch 0.71, evtx.powershell's `events_in_same_hour` 0.95) because those
+    families' rows are timestamped by when the collection ran. `_SHARED` no
+    longer carries them; a family gets a temporal column only by passing the
+    leakage test for it. Measured 2026-09-21.
+    """
+
+    _BOTH = {"events_in_same_hour", "distinct_executables_in_same_hour"}
+
+    def test_shared_set_is_rarity_only(self):
+        assert not (set(features._SHARED) & self._BOTH)
+
+    def test_leaking_families_carry_neither_temporal_column(self):
+        # amcache, prefetch, and the two families that do not fit but only ever
+        # had _SHARED: none may carry a per-hour density column now.
+        for fam in ("amcache", "prefetch", "evtx.security", "evtx.system", "registry"):
+            assert not (set(features.FAMILY_FEATURES[fam]) & self._BOTH)
+
+    def test_browser_keeps_both_it_measured_clean(self):
+        # A download carries its own event time; both columns are baseline there.
+        assert self._BOTH <= set(features.FAMILY_FEATURES["browser"])
+
+    def test_powershell_keeps_only_the_column_that_did_not_leak(self):
+        ps = set(features.FAMILY_FEATURES["evtx.powershell"])
+        assert "distinct_executables_in_same_hour" in ps
+        assert "events_in_same_hour" not in ps
+
+
 class TestScriptShapeFeatures:
     """PowerShell script-block features (2026-09-14, D-041).
 

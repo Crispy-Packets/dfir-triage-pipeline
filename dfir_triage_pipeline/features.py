@@ -18,6 +18,7 @@ happening around it. None of them can be computed from the collection label.
 from __future__ import annotations
 
 import math
+import os
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -152,9 +153,27 @@ FEATURE_NAMES: tuple[str, ...] = (
 #: This is the second half of the argument that produced `PerFamilyModel`:
 #: separate forests stopped families being compared against each other, but
 #: each forest was still handed columns its family cannot populate.
+# Rarity-only. The two per-hour density columns were REMOVED from the shared
+# set by D-074: on the families whose rows are timestamped by when the
+# collection ran rather than by a per-event clock, `events_in_same_hour` and
+# `distinct_executables_in_same_hour` encode collection identity. Measured
+# 2026-09-21 on the seven declared families, they leaked on amcache (0.83),
+# prefetch (0.71) and evtx.powershell (`events_in_same_hour` 0.95) -- three of
+# the four families that fit -- against a ~0.55 baseline. `browser` was clean
+# (0.547 = baseline) because a download carries its own event time.
+#
+# So the columns are opt-in by measurement now, not shared by default: a family
+# receives a temporal column only by passing the leakage test for it (below).
+# This is the D-063/D-041 shape applied to a column instead of a family.
 _SHARED = (
     "executable_rarity",
     "executable_is_unseen",
+)
+
+#: The per-hour density columns, re-added per family only where measured clean.
+#: `browser` passes on both; `evtx.powershell` passes on `distinct_...` (0.578)
+#: but not `events_in_same_hour` (0.951), so it gets only the one.
+_TEMPORAL_DENSITY = (
     "events_in_same_hour",
     "distinct_executables_in_same_hour",
 )
@@ -175,8 +194,11 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
     + ("run_count", "run_count_is_known", "exec_location_rarity")
     + _PATH_AND_INTERVAL,
     # Downloads: size and content type are defined; execution is not, and
-    # path_depth is constant because everything lands in Downloads\.
+    # path_depth is constant because everything lands in Downloads\. A download
+    # carries its own event time, so both per-hour density columns are clean
+    # here (0.547 = baseline, D-074) and are re-added.
     "browser": _SHARED
+    + _TEMPORAL_DENSITY
     + (
         "download_size_log10",
         "download_size_is_known",
@@ -196,7 +218,14 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
     # columns are undefined for them. What a 4104 record does carry is text,
     # and these four describe its shape. Measured: 0.009 distinct vectors per
     # row before, 0.823 after.
+    #
+    # D-074: of the two per-hour density columns, `distinct_executables_in_same_hour`
+    # is clean here (0.578 = baseline) and re-added; `events_in_same_hour` leaked
+    # (0.951) and is left out. The two behave differently because the count of
+    # 4104 rows in an hour tracks the collection, but the number of DISTINCT
+    # executables in that hour does not.
     "evtx.powershell": _SHARED
+    + ("distinct_executables_in_same_hour",)
     + (
         "script_length_log10",
         "script_entropy",
@@ -204,6 +233,82 @@ FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
         "script_is_truncated",
     ),
 }
+
+
+# -- Opt-in 38-family extension (OD-01 re-opened 2026-09-20) ------------------
+#
+# The committed decision is that FAMILY_FEATURES stays at 7 (CLAUDE.md, D-062,
+# the OD-01 evidence). This dict does NOT change that. It is an *experiment*
+# gated behind an environment variable, off by default, so the measured 7-family
+# headline (99 critical vs 86 clean-host top) is never silently overwritten.
+#
+# It exists to convert an *inferred* result into a *measured* one. Phase 1-3
+# concluded a literal 38-family model would dilute the attack entity's rank
+# rather than raise it; that conclusion rested on D-062's denominator effect and
+# Phase 2's drop tests, not on running the 38-family config end to end. This
+# lets the ablation run both ways and record the denominator cost directly.
+#
+# Only the families a forest column could actually be computed from are listed.
+# The row survey (docs/evidence/od-01-phase4-flagged-ablation.md) measured that
+# of the 31 undeclared families above MIN_TRAINING_ROWS, all but four carry no
+# behavioural details key at all -- a column over them would be constant and the
+# distinct-ratio guard would reject it. Declaring the empty ones would only
+# assert coverage the data cannot support. The four that carry a key:
+#
+#   services, shimcache, evtx.bits  -- path shape only (no run count, no bytes)
+#   userassist                      -- run_count (below the row floor on clean_c)
+#
+# Each set below is the LEAKAGE-TESTED subset for that family -- the columns are
+# not `_SHARED + _PATH_AND_INTERVAL` handed over wholesale. The phase-4 leakage
+# test (with the training-profile rarity fix) showed the temporal density
+# columns `events_in_same_hour` and `distinct_executables_in_same_hour` encode
+# collection identity on the inventory-snapshot families (services 0.84,
+# shimcache 1.00 accuracy vs a ~0.50 baseline; the same leak on the committed
+# families was fixed in D-074). They are dropped here. `evtx.bits` keeps its
+# temporal columns because they measured clean there (0.546 = baseline). The
+# columns left are the ones that both vary and do not separate the collections; most
+# families are then left with too few to clear the distinct-vector guard, which
+# is the recorded outcome, not a failure. Declaring a family is a request to
+# consider it; the three downstream guards (MIN_TRAINING_ROWS, MIN_DISTINCT_RATIO,
+# distinct vectors) decide whether it is actually modelled.
+_EXTENDED_FAMILY_FEATURES: dict[str, tuple[str, ...]] = {
+    **FAMILY_FEATURES,
+    "evtx.bits": (
+        "executable_rarity",
+        "executable_is_unseen",
+        "events_in_same_hour",
+        "distinct_executables_in_same_hour",
+        "seconds_since_previous_run_of_same_executable",
+        "previous_run_is_known",
+        "path_depth",
+    ),
+    "services": (
+        "executable_rarity",
+        "seconds_since_previous_run_of_same_executable",
+        "path_depth",
+    ),
+    "shimcache": ("executable_rarity", "path_depth"),
+    "userassist": ("run_count", "run_count_is_known"),
+}
+
+#: Environment variable that opts into the extended set. Read at CALL time, not
+#: import time, so a test can toggle it with monkeypatch.setenv within one
+#: process. Any value other than unset/empty/"0"/"false" enables it.
+EXTENDED_FLAG = "DFIR_EXTENDED_FAMILIES"
+
+
+def _extended_enabled() -> bool:
+    return os.environ.get(EXTENDED_FLAG, "").strip().lower() not in ("", "0", "false")
+
+
+def _active_family_features() -> dict[str, tuple[str, ...]]:
+    """The family->features map in force for this call.
+
+    The committed 7-family map unless the opt-in flag is set. Resolved per call
+    so the flag is honoured wherever it changes, and so both `features_for` and
+    `is_declared` -- the only gates `PerFamilyModel.fit` reaches -- agree.
+    """
+    return _EXTENDED_FAMILY_FEATURES if _extended_enabled() else FAMILY_FEATURES
 
 
 def features_for(family: str | None) -> tuple[str, ...]:
@@ -227,7 +332,7 @@ def features_for(family: str | None) -> tuple[str, ...]:
     """
     if family is None:
         return FEATURE_NAMES
-    return FAMILY_FEATURES.get(family, FEATURE_NAMES)
+    return _active_family_features().get(family, FEATURE_NAMES)
 
 
 def is_declared(family: str | None) -> bool:
@@ -241,8 +346,12 @@ def is_declared(family: str | None) -> bool:
     Declaring a family is a decision with a leakage test behind it
     (`docs/feature-decisions.md`), so the honest default for an undeclared one
     is to say so and score nothing.
+
+    Honours the `DFIR_EXTENDED_FAMILIES` opt-in (off by default): with it set,
+    the four extra families that carry a behavioural key become declared, and
+    the downstream guards decide whether each is actually modelled.
     """
-    return family is not None and family in FAMILY_FEATURES
+    return family is not None and family in _active_family_features()
 
 
 @dataclass(frozen=True, slots=True)

@@ -2858,3 +2858,109 @@ confirms there is nothing else in them either. The rows stay typed and
 detail-less **by decision**, recorded here so the state is not mistaken for
 the omission it looks like.
 
+
+## D-074
+
+**The per-hour density features leak collection identity on the families whose
+rows cluster in time by collection — including the committed `amcache` and
+`prefetch`.**
+
+Filed 2026-09-20 by the OD-01 Phase 4 leakage test (the 38-family flagged
+ablation). It predates and is independent of that flag; it is a property of the
+committed 7-family config.
+
+`events_in_same_hour` and `distinct_executables_in_same_hour` are `_SHARED`
+columns: every declared family receives them. They count activity in a row's
+hour bucket. On families whose rows are timestamped by *when the collection ran*
+rather than by a per-event clock, that bucket count separates the collections
+directly. Measured, best single-threshold accuracy separating clean_c from
+s1_v3 (baseline is the majority-class share):
+
+| family | acc | baseline | leaks? |
+|---|---|---|---|
+| `amcache` (committed, fits) | 0.828 | 0.566 | yes (+26) |
+| `prefetch` (committed, fits) | 0.706 | 0.576 | yes (+13) |
+| `services` (candidate) | 0.841 | 0.500 | yes (+34) |
+| `shimcache` (candidate) | 1.000 | 0.513 | yes (+49) |
+| `browser` (committed) | 0.547 | 0.547 | no |
+
+`browser` does not leak because a download carries its own event time. (The
+seven-family measurement in the FIXED section below found the leak is broader
+than "inventory/snapshot": it also hits the event-log family `evtx.powershell`.
+The scoping sentence here was the Phase-4 view from three families; the fix used
+the wider measurement.)
+
+**Not fixed here, by decision.** Removing two columns from the committed config
+changes the shipped ML result (the 79/443 headline), so it belongs in its own
+measured change, not folded into the flag work. What Phase 4 needed from it was
+only to *not* carry the same leak into the extended families, which it does not:
+the candidate families' temporal columns were dropped from their extended sets
+before declaration (`docs/evidence/od-01-phase4-flagged-ablation.md` §2).
+
+The fix, when taken: drop the two columns from `_SHARED`, or gate them to
+families with per-event timestamps (`browser`, and event-log families), then
+re-measure the OFF ablation — the rank may move either way, which is why it is a
+measurement and not a deletion.
+
+**FIXED 2026-09-21.** Measured first, across all seven declared families, before
+choosing the fix shape. Best single-threshold accuracy, training-profile rarity,
++6.0pp bar:
+
+| family | rows (clean_c) | `events_in_same_hour` | `distinct_...` | note |
+|---|---|---|---|---|
+| `amcache` | 400 | 0.828 / base 0.566 — **leaks** | 0.828 — **leaks** | fits |
+| `prefetch` | 747 | 0.706 / 0.576 — **leaks** | 0.706 — **leaks** | fits |
+| `evtx.powershell` | 470 | 0.951 / 0.578 — **leaks** | 0.578 — ok | fits |
+| `browser` | 633 | 0.547 / 0.547 — ok | 0.547 — ok | does not fit (ratio 0.106) |
+| `evtx.security` | 740 | 0.984 / 0.984 — degenerate¹ | 0.984 — degenerate¹ | does not fit (ratio 0.149) |
+| `evtx.system` | 18 | not measured² | not measured² | below row floor |
+| `registry` | 7 | not measured² | not measured² | below row floor |
+
+¹ `evtx.security` is 98.4% one collection, so the majority-class baseline is
+already 0.984 and no threshold can beat it. The row is uninformative, not a
+clean result; the family does not fit regardless.
+² 7 and 18 rows are below `MIN_TRAINING_ROWS`; a threshold over that many points
+is not a measurement, so no leak verdict is recorded.
+
+The leak is not confined to snapshot families — it hits three of the four that
+fit, including the event-log family `evtx.powershell`. So the fix inverts the
+default rather than removing per family: **`_SHARED` becomes rarity-only**
+(`executable_rarity`, `executable_is_unseen`), and a family receives a per-hour
+density column only by passing the test for it. Re-added: `browser` (both,
+0.547 = base), `evtx.powershell` (`distinct_...` only — `events_in_same_hour`
+stays out at 0.951). `evtx.bits` in `_EXTENDED_FAMILY_FEATURES` keeps its
+temporal columns (measured clean there at 0.546, flag-off regardless). This is
+the D-063/D-041 shape applied to a column: it earns its place by measurement.
+
+**Fitted set unchanged.** The watched risk was `amcache` (ratio 0.38, floor
+0.25) falling out after losing two of nine columns. Measured after the fix on
+clean_c: `amcache` 0.350 (still fits), `prefetch` 0.961, `evtx.powershell`
+0.823 — fitted set stays `{amcache, evtx.powershell, prefetch}`, identical to
+before. The attack entity keeps its s1_v3 amcache row; the ML result does not
+change character, only its leaking columns are gone.
+
+**OFF ablation, s1_v3, pre vs post-D-074:**
+
+| | attack rank (ML-only) | scored entities |
+|---|---|---|
+| pre-D-074 (leaking `_SHARED`) | 79/443 (top 17.8%) | 443 |
+| post-D-074 (rarity-only `_SHARED`) | **40/443 (top 9.0%)** | 443 |
+
+The rank **improved, 79 → 40.** This was not the expected direction, and it is
+the more informative result: the leaking columns were not helping the attack
+entity, they were *demoting* it. `events_in_same_hour` scored every binary that
+happened to run in a busy collection hour as unusual, and the attack entity —
+which ran twice, quietly — sat below that crowd of collection-timing outliers.
+Removing the columns removed the crowd, and the entity's real rarity/path signal
+surfaced 39 places higher. The clean host stays inert (368 entities, attack
+absent by construction). Entity count is unchanged at 443, so this is a pure
+ranking change, not a denominator effect.
+
+The 79 was never the honest number: it was partly an artefact of ranking on when
+the collection was taken. 40 is the rank the layer earns without that signal. It
+does not change the project's conclusion — the anomaly layer still ranks rather
+than detects, and the deterministic rules still place the entity 1st — but it is
+the correct baseline for any future ML statement. The flag-ON side is not re-run;
+`docs/evidence/od-01-phase4-flagged-ablation.md` is labelled pre-D-074 for its
+ML-only figures.
+
