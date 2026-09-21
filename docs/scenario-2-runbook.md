@@ -1,5 +1,9 @@
 # Scenario 2 — collection runbook
 
+**DESIGN ONLY. NEVER COLLECTED. NO COLLECTION IS PLANNED.** The corpus is final
+at five collections. This runbook is retained as the record of what a second
+scenario would have required to collect; it was never executed.
+
 Companion to `docs/scenario-2-design.md` (the *what* and *why*) and
 `tools/verify_scenario_2.py` (the row-level check). This is the *what to type*,
 in execution order, with the constraint checkpoints inline.

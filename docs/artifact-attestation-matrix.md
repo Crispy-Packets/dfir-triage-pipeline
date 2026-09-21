@@ -396,8 +396,10 @@ unchanged: not yet coverable, correctly stated as unsurveyed rather than
 - `txf_pending` — non-zero on exactly one collection (`s1_v3`) out of five; a
   rule here would be corpus-fitted to this project's own scenario host, the
   practice the user rejected earlier this project ("STOP... I need coverage").
-  Needs a second scenario with a different CBS-transaction shape before a
-  worst-case claim can be written safely.
+  A worst-case claim would need a second scenario with a different
+  CBS-transaction shape to calibrate against; the corpus is final at five
+  collections and no such scenario was collected, so this stays uncovered by
+  decision rather than pending.
 - `amcache` — D-028 already establishes it holds no record of the one
   execution this corpus has; a rule here has nothing to calibrate against and
   none is proposed.

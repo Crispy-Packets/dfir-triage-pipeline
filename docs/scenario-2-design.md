@@ -1,8 +1,11 @@
 # Scenario 2 — design specification
 
-**Status: DESIGNED, NOT COLLECTED.** Nothing in this document is a measurement.
-It specifies a collection that has not been taken, so that if it is taken, it
-answers a question the existing corpus cannot.
+**Status: DESIGN ONLY. NEVER COLLECTED. NO COLLECTION IS PLANNED.** The corpus
+is final at five collections (`clean_a`, `clean_b`, `clean_c`, `s1_v2`,
+`s1_v3`). Nothing in this document is a measurement; it is retained as the
+record of what a second scenario would have required, not as pending work.
+Everywhere below that reads "if it is taken" or "when collected" describes an
+experiment that was not run and will not be.
 
 ---
 

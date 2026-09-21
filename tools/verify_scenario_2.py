@@ -1,5 +1,11 @@
-"""Pre-collection verification for scenario 2. Run on the LIVE VM, after the
-scenario and BEFORE KAPE.
+"""Pre-collection verification for scenario 2.
+
+DESIGN ONLY -- scenario 2 was never collected and no collection is planned; the
+corpus is final at five collections. This script is retained as the record of
+what a row-level pre-collection check would have asserted. It was never run
+against a live collection.
+
+Run on the LIVE VM, after the scenario and BEFORE KAPE.
 
 C-05 says the scenario must produce the indicator the rule set is meant to
 detect -- not merely that the family which would record it is parsed. This
