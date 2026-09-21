@@ -25,11 +25,17 @@ from typing import Any
 
 #: Columns of the derived findings export. Deliberately close to
 #: `findings.FINDING_COLUMNS` so an existing consumer is not broken, plus the
-#: two columns the run document adds.
+#: columns the run document adds: `rule_class` and `phase` (rule metadata, same
+#: precedent -- D-072 added `rule_class` here), and the two anomaly columns.
+#: `phase_span` is deliberately NOT here: it is a per-entity quantity and this
+#: export is per-finding, so a consumer derives it by grouping rows on
+#: `entity_keys` and counting distinct `phase` -- the "CSVs are derived,
+#: run.json is the source of truth" property.
 FINDINGS_CSV_COLUMNS = (
     "finding_id",
     "rule_id",
     "rule_class",
+    "phase",
     "severity",
     "weight",
     "attack_technique",
@@ -79,6 +85,7 @@ def write_findings_csv(doc: dict[str, Any], path: Path) -> str:
                 "finding_id": finding["finding_id"],
                 "rule_id": finding["rule_id"],
                 "rule_class": finding["rule_class"],
+                "phase": finding.get("phase", ""),
                 "severity": finding["severity"],
                 "weight": str(finding["weight"]),
                 "attack_technique": finding["attack_technique"],

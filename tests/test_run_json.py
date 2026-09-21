@@ -32,7 +32,7 @@ def _event(offset_s, leaf="a.exe", artifact="prefetch"):
     )
 
 
-def _finding(rule_id="R-TEST-0001", entity="a.exe", weight=70, severity="high"):
+def _finding(rule_id="R-TEST-0001", entity="a.exe", weight=70, severity="high", phase=""):
     return Finding(
         rule_id=rule_id,
         rule_version="2.0.0",
@@ -55,6 +55,7 @@ def _finding(rule_id="R-TEST-0001", entity="a.exe", weight=70, severity="high"):
         entity_keys=(("entity.exe_name", entity),),
         time_claim="observed_occurrence",
         reason="because",
+        phase=phase,
     )
 
 
@@ -206,6 +207,19 @@ class TestDerivedExports:
         assert not any(
             c in manifest.FINDINGS_CSV_COLUMNS for c in ("risk", "verdict", "malicious")
         )
+
+    def test_findings_csv_carries_phase(self, tmp_path):
+        """`phase` reaches the CSV so a consumer can group by entity and count
+        distinct phases -- the per-finding way to derive phase-span, which is not
+        itself a CSV column (it is per-entity, run.json only)."""
+        assert "phase" in manifest.FINDINGS_CSV_COLUMNS
+        assert "phase_span" not in manifest.FINDINGS_CSV_COLUMNS
+        doc = _doc(tmp_path, findings=[_finding(phase="execute")])
+        path = tmp_path / "findings.csv"
+        manifest.write_findings_csv(doc, path)
+        header, row = path.read_text(encoding="utf-8").strip().splitlines()
+        col = header.split(",").index("phase")
+        assert row.split(",")[col] == "execute"
 
     def test_anomalies_csv_holds_every_scored_entity(self, tmp_path):
         doc = _doc(tmp_path, scores=[_Scored("a.exe", 1.0), _Scored("b.exe", 2.0)])
