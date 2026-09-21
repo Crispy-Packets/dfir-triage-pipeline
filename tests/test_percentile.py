@@ -195,3 +195,66 @@ class TestModellabilityGuards:
         just_under = anomaly.CONTAMINATION * anomaly.BASELINE_MISMATCH_FACTOR
         assert anomaly.baseline_warning(just_under) == ""
         assert anomaly.baseline_warning(just_under * 1.01) != ""
+
+
+class TestScorerRegistry:
+    """DFIR_ANOMALY_SCORER selects the anomaly algorithm (OD-01 Phase 5).
+
+    Isolation Forest is the default and the fallback; alternatives plug in
+    behind the flag through a closed registry. These pin the two properties that
+    keep the swap safe: the default path is the exact committed estimator, and
+    an unknown name fails loudly instead of silently scoring with the default.
+    """
+
+    def test_unset_flag_builds_the_committed_isolation_forest(self, monkeypatch):
+        from sklearn.ensemble import IsolationForest
+
+        monkeypatch.delenv(anomaly.SCORER_FLAG, raising=False)
+        m = anomaly.AnomalyModel(200)
+        assert m.scorer_name == "isolation_forest"
+        assert isinstance(m._forest, IsolationForest)
+        # The exact committed kwargs -- the inertness proof rests on these.
+        assert m._forest.n_estimators == 200
+        assert m._forest.contamination == anomaly.CONTAMINATION
+        assert m._forest.random_state == anomaly.RANDOM_SEED
+        assert m._forest.max_samples == 1.0
+
+    def test_explicit_default_matches_unset(self, monkeypatch):
+        monkeypatch.setenv(anomaly.SCORER_FLAG, "isolation_forest")
+        assert anomaly.AnomalyModel(200).scorer_name == "isolation_forest"
+
+    def test_unknown_scorer_raises_rather_than_falling_back(self, monkeypatch):
+        monkeypatch.setenv(anomaly.SCORER_FLAG, "not_a_scorer")
+        with pytest.raises(ValueError, match="unknown DFIR_ANOMALY_SCORER"):
+            anomaly.AnomalyModel(200)
+
+    def test_alternatives_are_registered_names(self):
+        # Registered so the flag accepts them; their wrappers are lazy-imported
+        # only when selected, so this does not require deepod or the MODA
+        # artifact to be installed.
+        assert "dif" in anomaly._SCORER_REGISTRY
+        assert "moda_g" in anomaly._SCORER_REGISTRY
+
+    def test_selecting_dif_without_deepod_fails_clearly(self, monkeypatch):
+        # If deepod is absent the error names the fix, not a traceback from
+        # inside the wrapper. No-op when deepod IS installed.
+        try:
+            import deepod  # noqa: F401
+        except ImportError:
+            monkeypatch.setenv(anomaly.SCORER_FLAG, "dif")
+            with pytest.raises(RuntimeError, match="deepod"):
+                anomaly.AnomalyModel(200)
+
+    def test_isolation_forest_puts_an_obvious_outlier_at_the_anomalous_end(self):
+        """Sign-convention guard: lower decision_function = more anomalous. A row
+        with an extreme value among a cloud of zeros must score most anomalous.
+        Any alternative scorer's wrapper must satisfy the same invariant, which
+        is why this is stated as a scorer property, not an IF detail."""
+        from dfir_triage_pipeline.features import FeatureTable
+
+        names = ("a", "b")
+        rows = [(0.0, 0.0)] * 30 + [(9999.0, 9999.0)]
+        table = FeatureTable(names=names, rows=rows, events=list(range(len(rows))))
+        scored = anomaly.AnomalyModel(50).fit(table).score(table)
+        most_anomalous = min(scored, key=lambda s: s.score)
+        assert most_anomalous.event == len(rows) - 1

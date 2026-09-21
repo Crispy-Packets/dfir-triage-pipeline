@@ -14,7 +14,9 @@ maintenance tasks, and the VirtualBox build difference (D-026).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from typing import Protocol
 
 from .features import FeatureTable
 
@@ -28,6 +30,89 @@ RANDOM_SEED = 20260830
 # scikit-learn versions, and a threshold that moves with a library upgrade is
 # not a threshold anyone can reason about.
 CONTAMINATION = 0.05
+
+
+# -- Pluggable scorers (OD-01 Phase 5) ---------------------------------------
+#
+# The question this exists to answer is "is the ALGORITHM the limit?" -- the
+# fourth lever after coverage, features and the temporal-leak fix. Isolation
+# Forest stays the default and the fallback; alternatives plug in behind a flag
+# and are removable by deleting one registry entry plus their wrapper, with the
+# default path never importing them.
+#
+# A scorer is anything with sklearn's outlier-estimator surface: fit(rows),
+# decision_function(rows) -> array where LOWER is more anomalous, and
+# predict(rows) -> array of {-1 outlier, 1 inlier}. Isolation Forest already
+# satisfies it; a wrapper for a method with the opposite sign convention (most
+# deep methods score HIGHER = more anomalous) must negate in decision_function
+# so `AnomalyModel.score` -- which is untouched -- stays correct.
+SCORER_FLAG = "DFIR_ANOMALY_SCORER"
+DEFAULT_SCORER = "isolation_forest"
+
+
+class Scorer(Protocol):
+    def fit(self, rows: list[list[float]]) -> Scorer: ...
+    def decision_function(self, rows: list[list[float]]): ...
+    def predict(self, rows: list[list[float]]): ...
+
+
+def _selected_scorer() -> str:
+    """The scorer name in force, read at call time so a test can toggle it."""
+    return os.environ.get(SCORER_FLAG, "").strip() or DEFAULT_SCORER
+
+
+def _make_isolation_forest(n_estimators: int):
+    """The committed estimator, unchanged. Kept as its own function so the
+    default path is provably identical to before the registry existed -- the
+    inertness proof rests on these being the exact same kwargs."""
+    from sklearn.ensemble import IsolationForest
+
+    return IsolationForest(
+        n_estimators=n_estimators,
+        contamination=CONTAMINATION,
+        random_state=RANDOM_SEED,
+        # Use every row rather than the default 256-row subsample. The
+        # collections are small enough that subsampling adds variance for
+        # no speed benefit worth having.
+        max_samples=1.0,
+    )
+
+
+def _make_dif(n_estimators: int):
+    """Deep Isolation Forest (deepod). Lazy-imported so the default path and the
+    gate never touch torch. Removable: delete this and its registry line."""
+    from ._scorers_dif import make_dif_scorer
+
+    return make_dif_scorer(n_estimators, CONTAMINATION, RANDOM_SEED)
+
+
+def _make_moda_g(n_estimators: int):
+    """MODA*-G research artifact. Lazy-imported; removable like DIF."""
+    from ._scorers_moda import make_moda_scorer
+
+    return make_moda_scorer(n_estimators, CONTAMINATION, RANDOM_SEED)
+
+
+#: Closed registry. An unknown name raises rather than falling back to IF
+#: silently -- a mistyped flag must fail loudly, not quietly score with the
+#: default and mislabel the run.
+_SCORER_REGISTRY = {
+    "isolation_forest": _make_isolation_forest,
+    "dif": _make_dif,
+    "moda_g": _make_moda_g,
+}
+
+
+def make_estimator(name: str, n_estimators: int):
+    """Build the estimator for `name`. Raises on an unknown name."""
+    try:
+        factory = _SCORER_REGISTRY[name]
+    except KeyError:
+        known = ", ".join(sorted(_SCORER_REGISTRY))
+        raise ValueError(
+            f"unknown {SCORER_FLAG}={name!r}; known scorers: {known}"
+        ) from None
+    return factory(n_estimators)
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,17 +191,12 @@ class AnomalyModel:
     """Isolation Forest wrapper that keeps scores attached to their evidence."""
 
     def __init__(self, n_estimators: int = 200) -> None:
-        from sklearn.ensemble import IsolationForest
-
-        self._forest = IsolationForest(
-            n_estimators=n_estimators,
-            contamination=CONTAMINATION,
-            random_state=RANDOM_SEED,
-            # Use every row rather than the default 256-row subsample. The
-            # collections are small enough that subsampling adds variance for
-            # no speed benefit worth having.
-            max_samples=1.0,
-        )
+        # The estimator is chosen through the registry. With the flag unset this
+        # returns the exact IsolationForest(**same kwargs) as before, so the
+        # default path is byte-identical -- the inertness proof depends on it.
+        # `self._forest` keeps its name so `score()` below is untouched.
+        self.scorer_name = _selected_scorer()
+        self._forest = make_estimator(self.scorer_name, n_estimators)
         self.feature_names: tuple[str, ...] = ()
 
     def fit(self, table: FeatureTable) -> AnomalyModel:
@@ -273,6 +353,11 @@ class PerFamilyModel:
         #: Families present at SCORE time with no fitted model, and how many
         #: events each held. Populated by `score`, empty until then.
         self.skipped_at_score: dict[str, int] = {}
+        #: The scorer selected ONCE at construction, so every per-family model
+        #: uses the same algorithm and the name recorded in run.json is provably
+        #: the one that scored -- not whatever the env var happened to be when a
+        #: later caller read it. Read the flag here, not per AnomalyModel.
+        self.scorer_name = _selected_scorer()
 
     def fit(self, events, rarity) -> PerFamilyModel:
         from . import features

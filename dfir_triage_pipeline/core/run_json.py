@@ -46,6 +46,11 @@ from .findings import Finding
 
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
+#: Bumped to 1.4.0 on 2026-09-21. ADDITIVE: `anomalies.scorer` names the
+#: algorithm that produced the percentiles (isolation_forest by default; dif or
+#: moda_g when measured behind DFIR_ANOMALY_SCORER). A percentile must never be
+#: read without knowing what generated it (OD-01 Phase 5).
+#:
 #: Bumped to 1.3.0 on 2026-09-21. ADDITIVE: every finding gains `phase` (the
 #: rule's chain stage) and every entity gains `phase_span` (distinct phases its
 #: findings span). Metadata only -- no score, no hash changes -- but the entity
@@ -64,7 +69,7 @@ from .findings import Finding
 #: name, its shape and its worst-first ordering, so an existing consumer is
 #: unaffected -- but it no longer contains `entity.host` rows, because the host
 #: is no longer scored. `entities_by_kind` is new. See entity_score.py.
-RUN_JSON_VERSION = "1.3.0"
+RUN_JSON_VERSION = "1.4.0"
 
 #: Events either side of a finding's first timestamp. Five minutes because the
 #: scenario's own tightest interval is 2m32s, so a window that narrow would cut
@@ -253,6 +258,7 @@ def build(
     ingest_stats: Any = None,
     engine_stats: Any = None,
     unscored_families: Any = None,
+    scorer: str = "isolation_forest",
     window: timedelta = DEFAULT_WINDOW,
 ) -> dict[str, Any]:
     """Assemble the canonical run document.
@@ -323,6 +329,11 @@ def build(
         # and a verdict are different claims and must not share a column.
         "anomalies": {
             "is_verdict": False,
+            # Which algorithm produced these percentiles. isolation_forest is
+            # the default and committed scorer; alternatives (dif, moda_g) are
+            # measured behind DFIR_ANOMALY_SCORER. Recorded so a percentile can
+            # never be read without knowing what generated it (OD-01 Phase 5).
+            "scorer": scorer,
             "meaning": (
                 "Anomaly prioritisation, not a malicious verdict. A percentile "
                 "is a rank within one artifact family: 0 is the most unusual "

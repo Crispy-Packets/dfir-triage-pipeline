@@ -129,28 +129,33 @@ def main(argv: list[str] | None = None) -> int:
 def _score_anomalies(baseline: Path, events):
     """Fit on the baseline collection and score `events`.
 
-    Returns (scores, unscored_families, warning). The warning is non-empty when
-    the outlier rate says the baseline does not apply to this collection --
-    most often because the two came from different machines.
+    Returns (scores, unscored_families, warning, scorer_name). The warning is
+    non-empty when the outlier rate says the baseline does not apply to this
+    collection -- most often because the two came from different machines. The
+    scorer_name comes from the model that actually scored, so run.json records
+    the algorithm used rather than re-reading the flag.
     """
     baseline_events, _ = collect_events(baseline)
     if not baseline_events:
-        return [], None, "baseline collection produced no events"
+        return [], None, "baseline collection produced no events", anomaly_layer._selected_scorer()
 
     rarity = feature_layer.build_rarity_index(baseline_events)
     model = anomaly_layer.PerFamilyModel().fit(baseline_events, rarity)
     scores = model.score(events, rarity)
     summary = anomaly_layer.summarise(scores)
     warning = anomaly_layer.baseline_warning(summary.get("outlier_rate", 0.0))
-    return scores, model.unscored_families, warning
+    return scores, model.unscored_families, warning, model.scorer_name
 
 
 def _write_run_artifacts(args, ordered, findings, stats, engine_stats) -> None:
     """Build run.json, derive the exports, and hash all four."""
     scores: list = []
     unscored = None
+    # The selected scorer, so run.json records it even on a run with no baseline
+    # (no scoring happened, but the config that would have been used is honest).
+    scorer_name = anomaly_layer._selected_scorer()
     if args.baseline:
-        scores, unscored, warning = _score_anomalies(args.baseline, ordered)
+        scores, unscored, warning, scorer_name = _score_anomalies(args.baseline, ordered)
         print()
         print(f"Anomalies  : {len(scores)} rows scored against {args.baseline.name}")
         if warning:
@@ -168,6 +173,7 @@ def _write_run_artifacts(args, ordered, findings, stats, engine_stats) -> None:
         ingest_stats=stats,
         engine_stats=engine_stats,
         unscored_families=unscored,
+        scorer=scorer_name,
     )
 
     out = args.run_json

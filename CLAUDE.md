@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  952 passed, 21 skipped
+    python -m pytest -q               ->  958 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -132,6 +132,23 @@ rank — it recovered it, because those columns were demoting the quiet attack
 entity below a crowd of collection-timing outliers. Fitted set unchanged
 (`amcache`, `evtx.powershell`, `prefetch`). This is the figure to quote; the
 79/443 above it is pre-D-074.
+
+**Pluggable scorers (OD-01 Phase 5, `DFIR_ANOMALY_SCORER`).** The anomaly
+algorithm is selectable behind a flag; **Isolation Forest is the default and
+must stay the default** (the user said so twice). Unset or `isolation_forest`
+is byte-identical to the committed pipeline — proven: the flag-unset ablation
+reproduces 40/443 with the same top-10 order. `moda_g` (MODA*-G, vendored under
+`_vendor/`) was measured and **improved the attack rank to 14/443** with the
+clean-host rate in band (0.048) and entity count unchanged (443) — the first
+lever in OD-01 to move the rank. `dif` is wired but not runnable here (deepod's
+DIF version pins torch<1.13.1, unavailable for py3.11). Evidence:
+`docs/evidence/od-01-phase5-scorer-comparison.md`. **Do not switch the default
+to an alternative** without the user's decision; the flag makes adoption one env
+var. **Removal procedure** (the user asked to keep it): delete
+`dfir_triage_pipeline/_scorers_dif.py`, `_scorers_moda.py`, `_vendor/`, and the
+`"dif"`/`"moda_g"` lines in `anomaly._SCORER_REGISTRY` — the default path never
+imports them, so removal cannot affect Isolation Forest. `run.json` records
+which scorer produced its percentiles (`anomalies.scorer`, run_json v1.4.0).
 
 **No family places the attack entity in its own top decile** -- `bam` 33%,
 `prefetch` 41%, `amcache` 89%. The combined figure of 1/894 is the RULES layer
