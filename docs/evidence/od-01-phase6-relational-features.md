@@ -57,13 +57,26 @@ Exactly **three** entities in s1_v3 have `download_precedes_exec = 1`:
     npp.8.9.8.installer.x64.exe [ 9 families, 81.4 h, dl<exec 1]
     vlc-3.0.23-win64.exe        [ 8 families, 34.8 h, dl<exec 1]
 
-That is the R-CORR download→exec correlation set — the same entities the rules
-already surface. A rare binary value is anomalous to any scorer (IF and MODA
-agree: both rank the payload 2/443), so the ML is not seeing the chain; it is
-re-deriving the one rule that already fires on it. `family_count` does not
+That is the set surfaced by **`R-CORR-0001` ("A downloaded file was executed",
+`rules/correlation/R-CORR-0001-download-to-execution.yml`)** — the ML feature is
+that exact rule recomputed from raw events. The rule's own file already records
+this population: "Every clean-host hit is a benign installer downloaded and then
+executed … [the signal comes] from WHAT was downloaded, not from the shape of the
+chain." A rare binary value is anomalous to any scorer (IF and MODA agree: both
+rank the payload 2/443), so the ML is not seeing the chain; it is re-deriving
+R-CORR-0001, the one rule that already fires on it. `family_count` does not
 isolate the payload either — `vboxtray.exe` spans 10 families and is benign, and
 the payload's `[11, 46.8, 1]` sits beside npp's `[9, 81.4, 1]`, not apart from
 it.
+
+**Extending the pseudo-family to the full chain would re-derive more rules, not
+fewer.** The rules separate the payload (rank 1) from npp (rank 3) because the
+payload's chain is *longer* — download→exec→persist→log-clear, each step another
+rule hit (R-CORR-0001, then R-CORR-0003 exec→runkey, then R-CORR-0006
+persistence→deletion). The relational features encode only the first two steps.
+Any raw-event version of "touched a Run key" or "cleared an event log" *is* one
+of those rules. So capturing the rest of the chain adds rules to the ML layer; it
+does not give the ML independent signal. The lever is closed, not paused.
 
 ### The payload is tied with the installers, not separated from them
 
