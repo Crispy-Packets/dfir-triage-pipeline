@@ -8,6 +8,7 @@ from pathlib import Path
 from . import anomaly as anomaly_layer
 from . import features as feature_layer
 from .core import manifest as manifest_mod
+from .core import narration as narration_mod
 from .core import report_html as report_html_mod
 from .core import run_json as run_json_mod
 from .core.engine import run as run_rules
@@ -175,6 +176,23 @@ def _write_run_artifacts(args, ordered, findings, stats, engine_stats) -> None:
         unscored_families=unscored,
         scorer=scorer_name,
     )
+
+    # LLM narration is optional and off by default (DFIR_NARRATION unset). When
+    # enabled it is written into `doc` HERE -- before run.json is serialised and
+    # hashed -- so the manifest covers it exactly like the derived CSVs and the
+    # report. It is non-authoritative (is_verdict false) and can never alter a
+    # finding; a backend failure is recorded as status='error', not raised, so a
+    # run never aborts for want of narration.
+    if narration_mod.narration_enabled():
+        doc["narration"] = narration_mod.narrate(doc)
+        status = doc["narration"].get("status")
+        print()
+        print(f"Narration  : {doc['narration']['backend']}:{doc['narration']['model']} -> {status}")
+        if status == "rejected":
+            unresolved = doc["narration"]["validation"]["unresolvable"]
+            print(f"  !! rejected -- unresolved citations: {unresolved}")
+        elif status == "error":
+            print(f"  !! error -- {doc['narration']['error']}")
 
     out = args.run_json
     hashes = {out.name: run_json_mod.write(doc, out)}

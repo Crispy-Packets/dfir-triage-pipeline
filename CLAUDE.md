@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  962 passed, 21 skipped
+    python -m pytest -q               ->  979 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -167,6 +167,34 @@ alternatives entirely, first change `anomaly.DEFAULT_SCORER` back to
 `"moda_g"`/`"ensemble_if_moda"` lines in `anomaly._SCORER_REGISTRY`. `run.json`
 records which scorer produced its percentiles (`anomalies.scorer`, run_json
 v1.4.0) — UI consumers should render it as ranking provenance.
+
+**LLM narration (OD-01 Phase 7, `DFIR_NARRATION`, OFF by default).** An optional,
+detachable prose summary of a run, in `core/narration.py`. **Unset the flag and
+nothing changes** — no `narration` key in run.json, no Ollama dependency, the
+gate stays fast and model-free. Enable with a spec string
+`DFIR_NARRATION=backend:model`; only `ollama` is registered (`null` is the
+default no-op), and an unknown backend raises. Ollama runs on ANOTHER machine —
+point `DFIR_NARRATION_ENDPOINT` at it (default `http://localhost:11434`); the
+code only makes an HTTP call, it never installs or runs Ollama here. Example:
+`DFIR_NARRATION=ollama:qwen2.5:7b DFIR_NARRATION_ENDPOINT=http://192.168.1.50:11434`.
+The narration is **non-authoritative** (`is_verdict` false), written into
+run.json BEFORE the manifest hash (so it is covered), and rendered in report.html
+only when accepted, labelled AI-generated and set apart from the verdict. It is
+**validated, not trusted**: `core/citations.py` (decoupled from any model) checks
+every rule id, executable and salient number the prose cites against the fact
+slice the model was shown; any miss → `status: "rejected"` and the prose is kept
+under `narration.rejected` (audit only, never rendered). Validator scope is
+honest — it catches fabricated ids/exes/numbers, not arbitrary free text; the
+prompt constrains the model to name entities only by executable. Determinism:
+temperature 0 + fixed seed + recorded model digest reproduce on the same
+host/model (not bit-identical across machines). A backend failure records
+`status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the
+model-comparison harness**: run the pipeline with each candidate tag and read
+`narration.validation.unresolvable` / `mentions_scorer` from each run.json —
+zero unresolvable wins; no separate benchmark script. **Removal**: delete
+`core/narration.py`, `core/citations.py`, the `__main__` hook, `_narration_panel`
+in report_html, and revert RUN_JSON_VERSION; the default path never imports any
+of it.
 
 **Relational / cross-family features were measured and NOT shipped (OD-01
 Phase 6, 2026-09-22, `docs/evidence/od-01-phase6-relational-features.md`).** The

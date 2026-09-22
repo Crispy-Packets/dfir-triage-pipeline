@@ -46,11 +46,14 @@ from .findings import Finding
 
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
-#: Bumped to 1.4.0 on 2026-09-21. ADDITIVE: `anomalies.scorer` names the
-#: algorithm that produced the percentiles (moda_g by default since 2026-09-22;
-#: isolation_forest or dif when selected via DFIR_ANOMALY_SCORER). A percentile
-#: must never be read without knowing what generated it (OD-01 Phase 5). UI
-#: consumers should render this field -- it is the provenance of the ranking.
+#: Bumped to 1.5.0 on 2026-09-22. ADDITIVE: an optional top-level `narration`
+#: block (LLM prose, off by default behind DFIR_NARRATION; written by
+#: core/narration.py before the manifest is hashed). Present only when narration
+#: is enabled; `is_verdict` is always false and the block is non-authoritative.
+#: 1.4.0 added `anomalies.scorer` -- the algorithm that produced the percentiles
+#: (moda_g by default since 2026-09-22; isolation_forest or dif via
+#: DFIR_ANOMALY_SCORER). A percentile must never be read without knowing what
+#: generated it. UI consumers should render both fields as provenance.
 #:
 #: Bumped to 1.3.0 on 2026-09-21. ADDITIVE: every finding gains `phase` (the
 #: rule's chain stage) and every entity gains `phase_span` (distinct phases its
@@ -70,7 +73,7 @@ from .findings import Finding
 #: name, its shape and its worst-first ordering, so an existing consumer is
 #: unaffected -- but it no longer contains `entity.host` rows, because the host
 #: is no longer scored. `entities_by_kind` is new. See entity_score.py.
-RUN_JSON_VERSION = "1.4.0"
+RUN_JSON_VERSION = "1.5.0"
 
 #: Events either side of a finding's first timestamp. Five minutes because the
 #: scenario's own tightest interval is 2m32s, so a window that narrow would cut
