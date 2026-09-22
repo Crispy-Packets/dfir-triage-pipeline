@@ -128,3 +128,57 @@ produce *better*: the rules separate the payload from the installers; the ML tie
 them). Isolation Forest stays the default; no flag is added for this lever. The
 headline is unchanged: the anomaly layer ranks, the rules detect, and the "both"
 layer at 1/444 is the deterministic rules doing the separating.
+
+## Closing check — does the feature fire on clean hosts? (the decisive test)
+
+The tie with the installers raised the one question that settles shipping: does
+`download_precedes_exec` fire on collections with **no attack**? If it names
+installers as anomalies on a clean host, it is not a chain detector — it is a
+"download happened" detector, and it manufactures false positives on any host
+where software was installed.
+
+Measured on all three clean collections, each trained and scored within its own
+host, restricted to that host's scored entity universe:
+
+    collection   scored   browser rows   download_precedes_exec == 1
+    clean_a       671       336           cursorusersetup-x64, npp.8.9.6.2.installer, ssms-setup-enu   (3)
+    clean_b       670       363           7z2602-x64, cursorusersetup-x64, npp.8.9.6.2.installer, ssms-setup-enu   (4)
+    clean_c       368       633           npp.8.9.8.installer, vlc-3.0.23-win64   (2)
+
+**The feature fires on every clean host, and every firer is a legitimate
+installer.** clean_a and clean_b contain no attack; the flag still lights up 3
+and 4 entities, all ordinary software installs (Notepad++, Cursor, SSMS, 7-Zip).
+This is the "download happened" detector, not the chain detector: any host where
+someone downloaded and ran an installer produces the same top-ranked relational
+"anomalies" as the attack host. Browser rows are plentiful on all three
+collections (336 / 363 / 633), so this is not host-1 browser sparsity — the
+signal genuinely fires everywhere. The result is decisive on its own: a feature
+that ranks benign installers first on clean hosts is a false-positive generator,
+and that alone is a reason not to ship, independent of the tie.
+
+## Verdict panel is unchanged (structural, not re-run)
+
+Adding relational to the ML layer cannot change the report the judges see. The
+verdict panel is rules-only: `entity_score.aggregate` takes `Finding` objects and
+scores them by rule weight; a grep of `core/entity_score.py` and `core/findings.py`
+for `percentile_in_family`, `EntityRank` and `rank_entities` returns nothing — no
+ML percentile enters the verdict score. The payload is 99/critical from the rules
+and stays 99/critical. This is the same boundary the multi-key entity-table sort
+already respected (commit `f29a884` deliberately omitted the ML percentile from
+the entity-table key because the verdict panel is rules-only and ML lives in the
+prioritisation panel). No pipeline variant was built to "prove" a non-effect;
+the non-effect is structural.
+
+## Bottom line
+
+The decision was made by the measurement, and the closing check confirms it from
+both directions. On the shipped default (Isolation Forest) the payload ranks
+40/443 **alone**; under the measured MODA*-G alternative it ranks 14/443 **alone**.
+The relational lever ranks it 1–2/443 but in a **3-way tie with two benign
+installers**, on a feature that fires on every clean host — a ranking that is both
+confused (tied) and noisy (false positives on clean hosts). Rank-alone beats
+rank-tied-with-false-positives. Relational is not shipped and gets no flag.
+
+This closes the untried-lever list. Every lever has now been measured — coverage,
+scorer, categorical engine, ensemble, and relational — and the headline is
+unchanged by all of them: **the anomaly layer ranks, the rules detect.**
