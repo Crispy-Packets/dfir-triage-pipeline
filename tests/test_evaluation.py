@@ -179,7 +179,10 @@ needs_collections = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def s1_scored():
-    """Fit on clean_b, score s1_v2 -- the configuration every result uses."""
+    """Fit on clean_b, score s1_v2 -- the configuration every result uses.
+    Runs under the default scorer (MODA*-G since 2026-09-22), so this fixture
+    is now a MODA fit on real evidence and takes minutes, not seconds; it is
+    gated behind @needs_collections and scoped per-module so it runs once."""
     train = collect_events(EVIDENCE / "collection_clean_b")[0]
     test = collect_events(EVIDENCE / "collection_s1_v2")[0]
     assert train and test, "a collection produced no events; tests would pass vacuously"

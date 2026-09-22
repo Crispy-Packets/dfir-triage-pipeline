@@ -146,9 +146,11 @@ clean host still shows nothing, and the deterministic rules still place the
 entity 1st. The finding is about the scorer, not the ceiling — the ceiling
 (what a disk artifact records about a single execution) is unchanged.
 
-Isolation Forest remains the default and the fallback. Whether to adopt MODA*-G
-is the user's decision, not this measurement; the flag makes the switch one env
-var and the removal one deletion. DIF and HF-DIF remain untested for
+Isolation Forest was the default when this section was written; the flag made
+adoption one env var and removal one deletion. **UPDATE 2026-09-22: the user
+adopted MODA*-G as the default (`DEFAULT_SCORER = "moda_g"`). Isolation Forest is
+now the explicit fallback (`DFIR_ANOMALY_SCORER=isolation_forest`), kept
+byte-exact.** DIF and HF-DIF remain untested for
 environment/availability reasons, either of which could be revisited if a
 compatible deep-learning stack or a public HF-DIF implementation appears.
 
@@ -357,9 +359,9 @@ robust to `k_temp` across a 10× range. The gate's non-monotone drag on prefetch
 and the per-family scorer are documented as properties/levers, both deliberately
 unused because acting on either would tune to the one label. Nothing here changes
 the default, the architecture, or the headline: the layer ranks (14th is not
-surfaced), the rules detect. Isolation Forest remains the default; MODA*-G
-numeric-only is the measured, understood alternative, and adoption is the user's
-call.
+surfaced), the rules detect. MODA*-G numeric-only is the measured, understood
+scorer — and as of 2026-09-22 it is the **default** (the user's call); Isolation
+Forest is the byte-exact fallback one env var away.
 
 # §11 — merged a+b+c baseline (2026-09-22): the within-host rule, measured for MODA
 

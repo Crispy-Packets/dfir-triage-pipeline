@@ -70,9 +70,10 @@ def _selected_scorer() -> str:
 
 
 def _make_isolation_forest(n_estimators: int):
-    """The committed estimator, unchanged. Kept as its own function so the
-    default path is provably identical to before the registry existed -- the
-    inertness proof rests on these being the exact same kwargs."""
+    """Isolation Forest, unchanged. No longer the default (MODA*-G took that on
+    2026-09-22), but kept byte-exact so `DFIR_ANOMALY_SCORER=isolation_forest`
+    still reproduces the pre-registry pipeline exactly -- the inertness proof
+    rests on these being the same kwargs, and that fallback must stay lossless."""
     from sklearn.ensemble import IsolationForest
 
     return IsolationForest(

@@ -138,7 +138,9 @@ It is **not** a shipping candidate, and not because it failed — because it
 succeeded at the wrong thing. Adding it would feed the verdict panel's own output
 back into the triage ranking and report a rank the rules already produce (and
 produce *better*: the rules separate the payload from the installers; the ML ties
-them). Isolation Forest stays the default; no flag is added for this lever. The
+them). No flag is added for this lever. (The default scorer became MODA*-G on
+2026-09-22; that is orthogonal to this finding — relational stays declined under
+either scorer.) The
 headline is unchanged: the anomaly layer ranks, the rules detect, and the "both"
 layer at 1/444 is the deterministic rules doing the separating.
 

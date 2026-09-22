@@ -250,11 +250,12 @@ class TestScorerRegistry:
             with pytest.raises(RuntimeError, match="deepod"):
                 anomaly.AnomalyModel(200)
 
-    def test_isolation_forest_puts_an_obvious_outlier_at_the_anomalous_end(self):
-        """Sign-convention guard: lower decision_function = more anomalous. A row
-        with an extreme value among a cloud of zeros must score most anomalous.
-        Any alternative scorer's wrapper must satisfy the same invariant, which
-        is why this is stated as a scorer property, not an IF detail."""
+    def test_the_default_scorer_puts_an_obvious_outlier_at_the_anomalous_end(self):
+        """Sign-convention guard on the DEFAULT scorer (MODA*-G since 2026-09-22):
+        lower decision_function = more anomalous. A row with an extreme value
+        among a cloud of zeros must score most anomalous. This is stated as a
+        scorer property, not an IF detail -- every registered scorer's wrapper
+        must satisfy it, and with the flag unset this now exercises MODA."""
         from dfir_triage_pipeline.features import FeatureTable
 
         names = ("a", "b")
@@ -277,7 +278,7 @@ class TestEnsembleAndCategoricalScorers:
     def test_ensemble_is_registered(self):
         assert "ensemble_if_moda" in anomaly._SCORER_REGISTRY
 
-    def test_ensemble_places_an_obvious_outlier_at_the_anomalous_end(self):
+    def test_ensemble_places_an_obvious_outlier_at_the_anomalous_end(self, monkeypatch):
         import numpy as np
 
         from dfir_triage_pipeline.features import FeatureTable
@@ -286,13 +287,14 @@ class TestEnsembleAndCategoricalScorers:
         names = ("a", "b")
         rows = [tuple(np.random.randn(2)) for _ in range(40)] + [(60.0, 60.0)]
         table = FeatureTable(names=names, rows=rows, events=list(range(len(rows))))
-        import os
 
-        os.environ["DFIR_ANOMALY_SCORER"] = "ensemble_if_moda"
-        try:
-            scored = anomaly.AnomalyModel(60).fit(table).score(table)
-        finally:
-            os.environ.pop("DFIR_ANOMALY_SCORER", None)
+        # monkeypatch.setenv RESTORES the prior value on teardown. A bare
+        # os.environ.pop here would DELETE the flag, and since the default is now
+        # moda_g an unset flag means MODA -- so a raw pop would silently switch
+        # every test that runs after this one in the same process to MODA, which
+        # is exactly the leak that made the gate hang after the default flip.
+        monkeypatch.setenv(anomaly.SCORER_FLAG, "ensemble_if_moda")
+        scored = anomaly.AnomalyModel(60).fit(table).score(table)
         assert min(scored, key=lambda s: s.score).event == len(rows) - 1
 
     def test_categorical_attribute_does_not_touch_rows(self):
