@@ -360,3 +360,108 @@ the default, the architecture, or the headline: the layer ranks (14th is not
 surfaced), the rules detect. Isolation Forest remains the default; MODA*-G
 numeric-only is the measured, understood alternative, and adoption is the user's
 call.
+
+# §11 — merged a+b+c baseline (2026-09-22): the within-host rule, measured for MODA
+
+Hypothesis tested (the user's): a bigger, richer baseline — clean_a + clean_b +
+clean_c merged into one training pool — helps MODA. It does not. It reproduces
+the 27.4% host-mixing failure CLAUDE.md's "train and score within one host" rule
+exists to prevent, and it does so *worse* for MODA than for Isolation Forest.
+
+The corpus makes this a confounded test by design: clean_a and clean_b are
+**host 1**, clean_c is **host 2**, and s1_v3 is **host 2**. So a+b+c mixes two
+machines' software/user/hostname profiles into the baseline, then scores a host-2
+scenario against it. "Bigger baseline" and "different host profile" cannot be
+separated with one clean collection per host — what a+b+c actually measures is
+host mixing.
+
+**Read the ceiling first — the rank is meaningless without it.**
+
+    training pool   scorer            clean_c ceiling   s1_v3 rank    verdict
+    clean_c only    isolation_forest  ~0.05             40/443 alone  valid (shipped)
+    clean_c only    moda_g            0.048             14/443 alone  valid (measured)
+    a+b+c           isolation_forest  0.037             18/446        diluted denominator
+    a+b+c           moda_g            0.129             (2/446)       NOT REPORTABLE
+
+**MODA on a+b+c flags 12.9% of a clean host as anomalous** — nearly triple the
+~0.05 contamination band. The "rank 2" and the ceiling blow-up are the same
+phenomenon: mixing host 1 into the baseline makes host-2 rows look anomalous —
+the attack row and ordinary clean_c rows alike. A rank that arrives with a 13%
+clean-host false-positive rate is not a better rank; it is the ranking of a model
+that has lost the clean baseline. It is stated after the ceiling and labelled not
+reportable, never as "2/446".
+
+### The 13% is the clean host's own software (composition)
+
+MODA fitted on a+b+c, scored on clean_c (a host with no attack):
+
+    per-family clean_c outlier rate (band ~0.05)
+      amcache            0.005   (2/400)
+      evtx.powershell    0.562   (264/470)   <-- the blow-up
+      evtx.security      0.000   (0/740)
+      evtx.system        0.000   (0/18)
+      prefetch           0.055   (41/747)
+      OVERALL            0.129
+
+    top-10 clean_c entities flagged (a host with NO attack)
+      1. msedge.exe               prefetch
+      2. registry                 evtx.security
+      3. vboxguest.sys            evtx.system      (the VM's own guest driver)
+      4. vlc-3.0.23-win64.exe     amcache
+      5. runtimebroker.exe        prefetch
+      6. identity_helper.exe      amcache
+      7-10. dot.exe, gdbus.exe, gegl.exe, gimp-debug-tool-3.2.exe   amcache  (GIMP)
+
+The 12.9% is not spread evenly — it is **one family, `evtx.powershell` at 56%**
+(264 of 470 clean rows), with amcache and prefetch near-normal. And the named
+entities are ordinary host-2 software: Edge, the registry, VLC, RuntimeBroker,
+and a cluster of GIMP binaries — plus `vboxguest.sys`, the VirtualBox guest
+driver. These are programs present on host 2 and **absent or different on host 1**.
+When host 1's 1.38M events dominate the training mass, host 2's own normal
+software falls far from that mass and MODA calls it anomalous. That is the
+host-mixing mechanism named exactly: the merged baseline makes a clean host look
+like an intrusion because it is a *different* clean host. "MODA on the merged
+baseline names a clean machine's own OS, VM tooling and installed apps as its top
+anomalies" is the one-sentence proof that a+b+c is not a baseline — it is two
+baselines the model cannot reconcile.
+
+### Isolation Forest did not blow up — the sensitivity is MODA-specific
+
+This is the one new finding. IF's clean_c ceiling on the same merged baseline is
+**0.037**, in band; MODA's is **0.129**. IF's axis-aligned splits tolerate a
+bimodal two-host distribution; MODA's distance and covariance engines (MCD's
+robust centre, Gower's kNN) do not — a baseline with two software profiles gives
+them two clusters, and host-2 points sit far from the host-1 mass. This is an
+argument *for* the within-host rule, not against MODA: MODA on c-only is still
+14/443 alone at a 0.048 ceiling. The merge breaks MODA specifically because its
+strength — distance-to-the-mass — is exactly what host mixing corrupts.
+
+### The payload's own vector did not improve
+
+`executable_rarity` for the payload is **0.0 under both the c-only and the a+b+c
+index** — the floor. The payload is *unseen* in every training pool, so its
+rarity is saturated and the merge cannot move it. The rank change is entirely in
+the *other* rows (clean_c false positives and s1_v3 competitors moving under the
+host-mixed distribution), never in the payload's own signal. Nothing about the
+merge made the attack more isolable; it made the clean host less clean.
+
+### Denominator caveat on the IF 18/446
+
+IF's 18/446 is not a clean improvement over 40/443 either: the merged baseline's
+3× rows push `evtx.security` and `evtx.system` over the row floor, so **five
+families fit instead of three** and the entity count is **446, not 443**. That is
+a different pipeline version (D-062), not a rank gain on the same one — a rank
+quoted against a changed denominator is the defect D-062 names.
+
+## What §11 settles
+
+The within-host training rule holds, and is now measured for MODA specifically,
+not just IF. Merging clean_a+b+c does not help: it mixes two hosts, and MODA's
+divergence engines are more sensitive to that than IF's splits, so the clean-host
+ceiling leaves the band (0.129) and the rank becomes an artifact. The obvious
+next move — a host-normalised merge or a per-host rarity index — is the fourth
+"tune it until the scenario surfaces" lever this line of work has surfaced, and
+it is declined for the same reason as the others: it engineers the baseline
+toward the one ground-truth entity. **Train within one host. MODA on clean_c
+alone (14/443, ceiling 0.048) remains the best measured configuration; Isolation
+Forest on clean_c (40/443) remains the shipped default.**
