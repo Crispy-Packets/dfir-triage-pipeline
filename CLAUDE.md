@@ -158,6 +158,19 @@ field on `FeatureTable` and its gated fill are inert unless
 of it, so removal cannot affect Isolation Forest. `run.json` records which
 scorer produced its percentiles (`anomalies.scorer`, run_json v1.4.0).
 
+**Relational / cross-family features were measured and NOT shipped (OD-01
+Phase 6, 2026-09-22, `docs/evidence/od-01-phase6-relational-features.md`).** The
+last untried feature family -- `family_count`, `activity_span_hours`,
+`download_precedes_exec` per entity over all 38 families -- ranks the payload
+1-2/443, above any single artifact family. But the rank is carried entirely by
+`download_precedes_exec`, which selects exactly the 3-entity R-CORR download->exec
+set, and the payload lands in a 3-way tie with two benign installers (npp, vlc).
+The ML re-derives the rule rather than seeing the chain independently, so it is
+not wired in and gets no flag -- adding it would feed the verdict panel's own
+output back into triage ranking. `phase_span` was excluded up front as rule
+output, not a raw-event feature. This is why the lever was deferred three times,
+now measured. No code change; the finding is the negative.
+
 **No family places the attack entity in its own top decile** -- `bam` 33%,
 `prefetch` 41%, `amcache` 89%. The combined figure of 1/894 is the RULES layer
 placing it first with the anomaly ranking appended behind it. Detection comes
