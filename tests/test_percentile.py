@@ -206,22 +206,27 @@ class TestScorerRegistry:
     an unknown name fails loudly instead of silently scoring with the default.
     """
 
-    def test_unset_flag_builds_the_committed_isolation_forest(self, monkeypatch):
+    def test_unset_flag_uses_the_moda_default(self, monkeypatch):
+        # Default switched to MODA*-G on 2026-09-22 (user decision). Unset flag
+        # now selects moda_g; Isolation Forest is one env var away (below).
+        monkeypatch.delenv(anomaly.SCORER_FLAG, raising=False)
+        assert anomaly.AnomalyModel(200).scorer_name == "moda_g"
+        assert anomaly.DEFAULT_SCORER == "moda_g"
+
+    def test_isolation_forest_is_still_the_exact_committed_estimator(self, monkeypatch):
+        # IF stays fully available and byte-exact when selected. The inertness
+        # proof (flag=isolation_forest reproduces the committed pipeline) rests
+        # on these kwargs, so they are still asserted after the default switch.
         from sklearn.ensemble import IsolationForest
 
-        monkeypatch.delenv(anomaly.SCORER_FLAG, raising=False)
+        monkeypatch.setenv(anomaly.SCORER_FLAG, "isolation_forest")
         m = anomaly.AnomalyModel(200)
         assert m.scorer_name == "isolation_forest"
         assert isinstance(m._forest, IsolationForest)
-        # The exact committed kwargs -- the inertness proof rests on these.
         assert m._forest.n_estimators == 200
         assert m._forest.contamination == anomaly.CONTAMINATION
         assert m._forest.random_state == anomaly.RANDOM_SEED
         assert m._forest.max_samples == 1.0
-
-    def test_explicit_default_matches_unset(self, monkeypatch):
-        monkeypatch.setenv(anomaly.SCORER_FLAG, "isolation_forest")
-        assert anomaly.AnomalyModel(200).scorer_name == "isolation_forest"
 
     def test_unknown_scorer_raises_rather_than_falling_back(self, monkeypatch):
         monkeypatch.setenv(anomaly.SCORER_FLAG, "not_a_scorer")

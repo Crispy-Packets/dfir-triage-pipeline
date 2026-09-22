@@ -47,9 +47,10 @@ from .findings import Finding
 #: Version of the run.json structure itself, independent of the rule schema.
 #: A consumer that reads this file needs to know when its shape changes.
 #: Bumped to 1.4.0 on 2026-09-21. ADDITIVE: `anomalies.scorer` names the
-#: algorithm that produced the percentiles (isolation_forest by default; dif or
-#: moda_g when measured behind DFIR_ANOMALY_SCORER). A percentile must never be
-#: read without knowing what generated it (OD-01 Phase 5).
+#: algorithm that produced the percentiles (moda_g by default since 2026-09-22;
+#: isolation_forest or dif when selected via DFIR_ANOMALY_SCORER). A percentile
+#: must never be read without knowing what generated it (OD-01 Phase 5). UI
+#: consumers should render this field -- it is the provenance of the ranking.
 #:
 #: Bumped to 1.3.0 on 2026-09-21. ADDITIVE: every finding gains `phase` (the
 #: rule's chain stage) and every entity gains `phase_span` (distinct phases its
@@ -258,7 +259,7 @@ def build(
     ingest_stats: Any = None,
     engine_stats: Any = None,
     unscored_families: Any = None,
-    scorer: str = "isolation_forest",
+    scorer: str = "moda_g",
     window: timedelta = DEFAULT_WINDOW,
 ) -> dict[str, Any]:
     """Assemble the canonical run document.
@@ -329,10 +330,10 @@ def build(
         # and a verdict are different claims and must not share a column.
         "anomalies": {
             "is_verdict": False,
-            # Which algorithm produced these percentiles. isolation_forest is
-            # the default and committed scorer; alternatives (dif, moda_g) are
-            # measured behind DFIR_ANOMALY_SCORER. Recorded so a percentile can
-            # never be read without knowing what generated it (OD-01 Phase 5).
+            # Which algorithm produced these percentiles. moda_g is the default
+            # since 2026-09-22; isolation_forest and dif are selectable via
+            # DFIR_ANOMALY_SCORER. Recorded so a percentile can never be read
+            # without knowing what generated it (OD-01 Phase 5). UI: render it.
             "scorer": scorer,
             "meaning": (
                 "Anomaly prioritisation, not a malicious verdict. A percentile "

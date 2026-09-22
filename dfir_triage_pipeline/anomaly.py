@@ -47,7 +47,15 @@ CONTAMINATION = 0.05
 # deep methods score HIGHER = more anomalous) must negate in decision_function
 # so `AnomalyModel.score` -- which is untouched -- stays correct.
 SCORER_FLAG = "DFIR_ANOMALY_SCORER"
-DEFAULT_SCORER = "isolation_forest"
+# Default switched to MODA*-G on 2026-09-22 (user decision). It ranked the attack
+# 14/443 vs Isolation Forest's 40/443 on s1_v3, with the clean-host ceiling in
+# band (0.048) -- see docs/evidence/od-01-phase5-scorer-comparison.md. Isolation
+# Forest stays fully available and is one env var away: DFIR_ANOMALY_SCORER=
+# isolation_forest. Revert this default if a clean-host ceiling ever leaves the
+# ~0.05 band or the entity count moves off 443 (the invariant guards catch it).
+# NOTE: MODA*-G is markedly slower than IF on the full corpus -- callers that
+# need interactive latency can select isolation_forest via the flag.
+DEFAULT_SCORER = "moda_g"
 
 
 class Scorer(Protocol):

@@ -134,29 +134,39 @@ entity below a crowd of collection-timing outliers. Fitted set unchanged
 79/443 above it is pre-D-074.
 
 **Pluggable scorers (OD-01 Phase 5, `DFIR_ANOMALY_SCORER`).** The anomaly
-algorithm is selectable behind a flag; **Isolation Forest is the default and
-must stay the default** (the user said so twice). Unset or `isolation_forest`
-is byte-identical to the committed pipeline — proven: the flag-unset ablation
-reproduces 40/443 with the same top-10 order. `moda_g` (MODA*-G, vendored under
-`_vendor/`) was measured and **improved the attack rank to 14/443** with the
-clean-host rate in band (0.048) and entity count unchanged (443) — the first
-lever in OD-01 to move the rank. `dif` is wired but not runnable here (deepod's
-DIF version pins torch<1.13.1, unavailable for py3.11). `ensemble_if_moda`
-(IF+MODA rank average) and MODA's categorical engine (`DFIR_MODA_CATEGORICAL`,
-fires SDC) were both measured and both do WORSE than MODA numeric-only
-(ensemble 17/443; SDC 60/443 — the payload's empty publisher is a common, not
-rare, category). Evidence: `docs/evidence/od-01-phase5-scorer-comparison.md`
-(§6–8). The improvement is specifically MODA*-G's numeric divergence engines;
-coverage, the categorical engine and ensembling do not compound it. **Do not
-switch the default to an alternative** without the user's decision; the flag
-makes adoption one env var. **Removal procedure** (the user asked to keep it):
-delete `dfir_triage_pipeline/_scorers_dif.py`, `_scorers_moda.py`,
-`_scorers_ensemble.py`, `_vendor/`, and the `"dif"`/`"moda_g"`/
-`"ensemble_if_moda"` lines in `anomaly._SCORER_REGISTRY`; the `categorical`
-field on `FeatureTable` and its gated fill are inert unless
-`DFIR_MODA_CATEGORICAL` is set and can stay. The default path never imports any
-of it, so removal cannot affect Isolation Forest. `run.json` records which
-scorer produced its percentiles (`anomalies.scorer`, run_json v1.4.0).
+algorithm is selectable behind a flag. **The default is `moda_g` (MODA*-G) as of
+2026-09-22 — the user's decision** (this reverses the earlier "Isolation Forest
+stays the default" instruction; the reversal is deliberate, not drift). MODA*-G
+ranked the attack **14/443** vs Isolation Forest's 40/443 on s1_v3, with the
+clean-host rate in band (0.048) and entity count unchanged (443) — the first and
+only lever in OD-01 to move the rank, and it is understood (§9: amcache's
+MCD+Peña engines saturate on the payload). It is vendored under `_vendor/`
+(MIT). **Isolation Forest stays fully available and byte-exact** — one env var:
+`DFIR_ANOMALY_SCORER=isolation_forest` reproduces the old committed pipeline
+(40/443, same top-10), proven by the inertness test. `dif` is wired but not
+runnable here (deepod's DIF version pins torch<1.13.1, unavailable for py3.11).
+`ensemble_if_moda` and MODA's categorical engine (`DFIR_MODA_CATEGORICAL`) were
+measured and both do WORSE than MODA numeric-only (ensemble 17/443; SDC 60/443).
+Merging clean_a+b+c as one baseline is host-mixing and NOT valid (§11: MODA's
+clean ceiling blows to 0.129) — train within one host. Evidence:
+`docs/evidence/od-01-phase5-scorer-comparison.md` (§6–11).
+
+**COST OF THE MODA DEFAULT: it is markedly slower than IF.** MODA*-G is
+transductive (fit stores train; score stacks train+query and runs MCD/Gower kNN
+per family), so every model fit is minutes on the full corpus, not seconds. The
+test suite is correspondingly slower now that the unset default is MODA — set
+`DFIR_ANOMALY_SCORER=isolation_forest` when running the gate for speed, or when a
+caller (e.g. an interactive UI) needs low latency. Revert the default if a
+clean-host ceiling ever leaves the ~0.05 band or the entity count moves off 443.
+
+**Removal procedure** (the user asked to keep the rollback option): set
+`DFIR_ANOMALY_SCORER=isolation_forest` to fall back instantly, or to remove the
+alternatives entirely, first change `anomaly.DEFAULT_SCORER` back to
+`"isolation_forest"`, then delete `dfir_triage_pipeline/_scorers_dif.py`,
+`_scorers_moda.py`, `_scorers_ensemble.py`, `_vendor/`, and the `"dif"`/
+`"moda_g"`/`"ensemble_if_moda"` lines in `anomaly._SCORER_REGISTRY`. `run.json`
+records which scorer produced its percentiles (`anomalies.scorer`, run_json
+v1.4.0) — UI consumers should render it as ranking provenance.
 
 **Relational / cross-family features were measured and NOT shipped (OD-01
 Phase 6, 2026-09-22, `docs/evidence/od-01-phase6-relational-features.md`).** The
