@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  990 passed, 21 skipped
+    python -m pytest -q               ->  991 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -199,7 +199,20 @@ if none is critical) must appear in the prose or it is rejected with
 prose that credits the anomaly layer with detecting. Prompt v2. The lesson is
 general: a citation validator measures faithfulness to the facts it was given,
 never whether those were the right facts — precision and emphasis are separate
-axes and each needs its own check. Determinism:
+axes and each needs its own check.
+**Measured limit, left in deliberately.** Prompt v2 passes every check and still
+contains a false claim: it says `invoice_scan.exe` is "ranked first in the
+moda_g prioritisation ranking" — it is not, and it does not appear in the
+ranking slice at all (`dllhost.exe` leads it). The model inferred that the
+critical verdict must also top the ranking, which is exactly the conflation the
+two-panel split exists to prevent and which OD-01 measured to be false. Nothing
+is fabricated, nothing required is omitted, attribution is correct — it is a
+false RELATIONAL claim between facts each supplied correctly, a third failure
+mode a closed-vocabulary validator cannot structurally reach. Pinned by
+`test_a_false_relational_claim_still_validates`; **do not "fix" it** — it is the
+honest boundary and the reason narration stays `is_verdict: false`, labelled,
+and separated from the verdict panel. Reference output:
+`docs/evidence/narration-s1v3-promptv2.json`. Determinism:
 temperature 0 + fixed seed + recorded model digest reproduce on the same
 host/model (not bit-identical across machines). A backend failure records
 `status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the

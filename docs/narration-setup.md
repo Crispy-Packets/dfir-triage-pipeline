@@ -122,6 +122,59 @@ narration can be perfectly faithful and still describe the wrong thing. Emphasis
 is a second axis and needs its own check — here, a deterministic recall test
 against the same closed vocabulary.
 
+### Second live run: prompt v2, and a residual error the validator cannot catch
+
+Same collection, same model, prompt v2. Every check passes — `accepted`,
+`unresolvable: []`, `missing_mentions: []`,
+`describes_ranking_as_detection: false`, `mentions_scorer: true` — and the
+narration now leads with the verdict:
+
+> "`invoice_scan.exe` has been detected with a critical severity score of 99,
+> triggered by rules R-ATOMIC-0006, R-CORR-0003, and R-CORR-0006. **This file is
+> ranked first in the anomaly scorer moda_g prioritisation ranking**, which
+> orders entities based on their percentile within their family. The ranking
+> includes entities like `dllhost.exe` and `onedrivesetup.exe` with a percentile
+> of 0.0, indicating they are considered less suspicious compared to
+> `invoice_scan.exe`."
+
+The bolded clause is **false**. `invoice_scan.exe` is not ranked first in the
+prioritisation ranking — `dllhost.exe` is. `invoice_scan.exe` does not appear in
+the top-10 ranking slice **at all**; the model was never shown a rank for it. It
+inferred one, presumably because an entity that is the critical verdict "ought
+to" also top the ranking.
+
+That inference is exactly the conflation the two-panel architecture exists to
+prevent, and the disagreement it papers over is this project's own OD-01
+finding: the rules detect `invoice_scan.exe`, while the anomaly layer ranks
+benign OS binaries first. The narration asserts the two agree. They do not.
+
+The last sentence is wrong in the same direction: a *lower* percentile is *more*
+anomalous under this scorer, so "percentile of 0.0 ... less suspicious" inverts
+the meaning. The number 0.0 is real and resolves, so it validates.
+
+**Why no check catches this, and why that is the finding.** The claim fabricates
+nothing (every rule id, exe and number resolves), omits nothing (the critical
+entity is named), and attributes correctly (it says the ranking *orders*, not
+detects). It is a **false relational claim between two facts that were each
+supplied correctly** — a third failure mode, beyond precision and recall, and
+one a closed-vocabulary validator is structurally unable to reach: validating it
+would mean checking an assertion *about the relationship between* facts, not the
+facts themselves, and the space of such assertions is not enumerable.
+
+This is left in deliberately rather than patched away with a prompt rule. It is
+the honest boundary of the approach:
+
+> Citation validation bounds what a narration can *invent*. It cannot bound what
+> a narration can *imply*. A narration that cites only real facts, omits nothing
+> required, and attributes each panel correctly can still assert a relationship
+> between those facts that is false — and no amount of vocabulary checking will
+> see it.
+
+Which is why the narration is `is_verdict: false`, rendered behind an
+AI-generated label, separated from the verdict panel, and never substituted for
+the findings it describes. The architecture already assumed the prose could be
+wrong. This run is the measurement showing that assumption was correct.
+
 ## Benching models (this module IS the harness)
 
 To compare candidates, run the same pipeline once per model tag and read the

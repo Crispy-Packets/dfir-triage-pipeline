@@ -1,0 +1,38 @@
+{
+  "collection": "collection_s1_v3",
+  "scorer": "moda_g",
+  "run_json_version": "1.5.0",
+  "narration": {
+    "backend": "ollama",
+    "endpoint": "192.168.10.217:11434",
+    "generated_at": "2026-09-23T13:18:50.457931+00:00",
+    "is_verdict": false,
+    "model": "qwen2.5:7b",
+    "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "prompt_sha256": "cd217685e0613fabd40f35faf6cd7ce391e7b006a25176354a5ad0cac4da3986",
+    "prompt_version": "2",
+    "seed": 20260830,
+    "status": "accepted",
+    "temperature": 0.0,
+    "text": "The `invoice_scan.exe` file has been detected with a critical severity score of 99, triggered by rules R-ATOMIC-0006, R-CORR-0003, and R-CORR-0006. This file is ranked first in the anomaly scorer moda_g prioritisation ranking, which orders entities based on their percentile within their family. The ranking includes entities like `dllhost.exe` and `onedrivesetup.exe` with a percentile of 0.0, indicating they are considered less suspicious compared to `invoice_scan.exe`.",
+    "validation": {
+      "citations": {
+        "exes": [
+          "dllhost.exe",
+          "invoice_scan.exe",
+          "onedrivesetup.exe"
+        ],
+        "rule_ids": [
+          "R-ATOMIC-0006",
+          "R-CORR-0003",
+          "R-CORR-0006"
+        ]
+      },
+      "describes_ranking_as_detection": false,
+      "mentions_scorer": true,
+      "missing_mentions": [],
+      "unresolvable": [],
+      "validated": true
+    }
+  }
+}

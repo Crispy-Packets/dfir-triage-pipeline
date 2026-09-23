@@ -184,6 +184,36 @@ class TestCompleteness:
         )
         assert r.describes_ranking_as_detection is False
 
+    def test_a_false_relational_claim_still_validates(self):
+        """The documented limit of citation validation, pinned so it is not
+        mistaken for a bug and 'fixed'.
+
+        Second live run (qwen2.5:7b, prompt v2) said invoice_scan.exe was
+        "ranked first in the moda_g prioritisation ranking". It is not -- it does
+        not appear in the ranking slice at all; dllhost.exe leads it. The claim
+        fabricates nothing, omits nothing, and attributes correctly, so every
+        check passes. It is a false relational claim BETWEEN facts that were each
+        supplied correctly -- a third failure mode a closed-vocabulary validator
+        is structurally unable to reach.
+
+        If this test ever fails, the validator gained a capability it is not
+        designed to have; check that it is sound before changing the docs.
+        """
+        facts = _facts()
+        facts["prioritisation_ranking_not_detections"] = [
+            {"entity": "dllhost.exe", "family": "prefetch", "percentile_in_family": 0.0},
+        ]
+        text = (
+            "invoice_scan.exe was scored 99 (critical) by R-CORR-0003 and "
+            "R-CORR-0006, and is ranked first in the moda_g prioritisation "
+            "ranking."  # false: invoice_scan.exe is not in the ranking at all
+        )
+        r = citations.validate(text, facts)
+        assert r.validated is True
+        assert r.unresolvable == []
+        assert r.missing_mentions == []
+        assert r.describes_ranking_as_detection is False
+
     def test_percentile_written_suffix_first_is_checked(self):
         # `a percentile of 0.0986` was invisible to the original number regex.
         r = citations.validate(
