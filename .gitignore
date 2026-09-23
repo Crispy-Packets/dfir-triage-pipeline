@@ -28,3 +28,8 @@ graphify-out/
 repomix-output.*
 repomix.config.json
 .repomixignore
+
+# live-run scratch output at repo root (derived; run.json is regenerated per run)
+/run*.json
+/report.html
+/manifest.sha256
