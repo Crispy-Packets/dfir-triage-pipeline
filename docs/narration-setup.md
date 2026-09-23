@@ -65,7 +65,9 @@ A top-level `narration` block (run_json v1.5.0), e.g.:
         "validated": true,
         "citations": {"rule_ids": [...], "exes": [...]},
         "unresolvable": [],
-        "mentions_scorer": true
+        "mentions_scorer": true,
+        "missing_mentions": [],                    // verdict entities not named
+        "describes_ranking_as_detection": false    // advisory, non-fatal
       },
       "text": "invoice_scan.exe was flagged by R-CORR-0001 ..."
     }
@@ -77,6 +79,48 @@ A top-level `narration` block (run_json v1.5.0), e.g.:
   what failed.
 - `status: error` — Ollama was unreachable or errored; `error` holds the reason.
   The run itself still succeeded; only narration is absent.
+
+## Measured: the first live run, and what it changed
+
+`qwen2.5:7b`, prompt v1, collection_s1_v3 scored against clean_c. The narration
+came back **`accepted`, `validated: true`, `unresolvable: []`** — zero fabricated
+citations. It was still wrong:
+
+> "The moda_g scorer analysed 132 anomalies... The anomaly layer **detected**
+> rules such as R-ATOMIC-0002 and R-ATOMIC-0006, with dllhost.exe ranking
+> highest, followed by onedrivesetup.exe and runtimebroker.exe..."
+
+It described the **anomaly ranking** and never mentioned `invoice_scan.exe` —
+the 99/critical entity the rules actually detected. It also credited the anomaly
+layer with detecting, inverting the two-panel rule this pipeline is built on.
+
+Two separate defects, and neither was the model's fault:
+
+1. **The fact slice led with the ranking.** `_facts()` put `top_anomalies` in
+   front of a flat list of rule ids and never said which entity was the verdict.
+   The anomaly layer's own measured behaviour is that it *ranks* and leads with
+   benign OS binaries (see the OD-01 work) — so handing it to a model first
+   guarantees the model narrates benign noise. Fixed: `_facts()` is built from
+   `entities` (the scored verdict panel) with severity/score/rule_ids per entity,
+   worst-severity first; the ranking follows under the key
+   `prioritisation_ranking_not_detections`.
+2. **The validator checked precision, not recall.** It verified that everything
+   cited *existed*. It never checked that the thing that mattered *was cited*, so
+   an omission passed. Fixed: `required_mentions` — every `critical` verdict
+   entity (or the top-scoring one if none is critical) must appear in the prose
+   or the narration is **rejected** with `missing:<entity>`.
+
+Re-validating that exact narration under the new rules returns
+`validated: false`, `missing_mentions: ["invoice_scan.exe"]`,
+`describes_ranking_as_detection: true`. Prompt bumped to v2 (verdict-first
+instructions), and the failed text is frozen as a test fixture in
+`tests/test_narration.py::TestCompleteness`.
+
+**The generalisable point:** a citation validator measures *faithfulness to the
+facts it was given*. It cannot measure whether those were the right facts, and a
+narration can be perfectly faithful and still describe the wrong thing. Emphasis
+is a second axis and needs its own check — here, a deterministic recall test
+against the same closed vocabulary.
 
 ## Benching models (this module IS the harness)
 
@@ -91,9 +135,14 @@ validation block from each run.json — no separate script:
       python -c "import json;d=json.load(open('/tmp/run_${M}.json'));v=d['narration']['validation'];print('unresolvable',v['unresolvable'],'scorer',v['mentions_scorer'],'status',d['narration']['status'])"
     done
 
-**Pick the smallest model with `unresolvable: []`, `mentions_scorer: true`, and
-acceptable latency.** Zero fabricated citations is the bar. That is the same
-measure-don't-assert rule the scorer choice used — a number, not a model table.
+**Pick the smallest model with `unresolvable: []` (which now includes
+`missing:` — it must name the verdict), `describes_ranking_as_detection: false`,
+`mentions_scorer: true`, and acceptable latency.** Zero fabrications AND the
+verdict named is the bar. That is the same measure-don't-assert rule the scorer
+choice used — a number, not a model table.
+
+If a model still buries the verdict when the facts hand it over plainly, that is
+the model, and it fails the bench. That is what the bench is for.
 
 ## Removal
 

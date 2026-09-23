@@ -51,17 +51,24 @@ _TIMEOUT_S = 300
 
 #: Bump this when the prompt changes; the value is recorded in run.json so a
 #: narration can be tied to the exact instruction that produced it.
-PROMPT_VERSION = "1"
+PROMPT_VERSION = "2"
 _PROMPT = (
     "You are a DFIR triage report assistant. Write a concise, factual narration "
     "(<= 200 words) of the triage result described by the JSON facts below. "
     "Rules:\n"
-    "- Refer to entities ONLY by their executable name as written in the facts.\n"
-    "- Cite rule ids (e.g. R-CORR-0001) and numbers (ranks, percentiles, scores) "
-    "EXACTLY as they appear in the facts. Invent nothing.\n"
+    "- LEAD with `verdict_entities`: the highest-severity entity first, naming its "
+    "severity, its score, and the rule ids that fired on it. This is the detection "
+    "and it is the point of the narration.\n"
+    "- `prioritisation_ranking_not_detections` is SECONDARY context: an ordering "
+    "the anomaly scorer produced to prioritise analyst attention. Describe it as a "
+    "ranking only. Never say the anomaly layer detected, flagged or identified "
+    "anything -- the RULES detect, the anomaly layer only RANKS.\n"
+    "- Mention the ranking only after the verdict, and only briefly.\n"
+    "- Refer to entities ONLY by their name as written in the facts.\n"
+    "- Cite rule ids (e.g. R-CORR-0001) and numbers (scores, percentiles) EXACTLY "
+    "as they appear in the facts. Invent nothing. Do not characterise activity the "
+    "facts do not describe.\n"
     "- Name the anomaly scorer that produced the ranking.\n"
-    "- The rules DETECT; the anomaly layer only RANKS. Do not call a ranking a "
-    "verdict.\n"
     "- Plain prose, no markdown headers.\n\nFACTS:\n"
 )
 
@@ -169,28 +176,66 @@ def narration_enabled() -> bool:
     return bool(spec) and _parse_spec(spec)[0] != "null"
 
 
+#: Severity order, worst first -- the narration must lead with the worst.
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+
 def _facts(doc: dict[str, Any]) -> dict[str, Any]:
     """The small, closed slice of run.json the narrator sees and the validator
-    allows. Never raw evidence -- only what run.json already asserts."""
+    allows. Never raw evidence -- only what run.json already asserts.
+
+    Shaped VERDICT-FIRST, deliberately. The first live run (qwen2.5:7b, prompt
+    v1) fabricated nothing yet narrated the wrong panel: the fact slice led with
+    the anomaly ranking, so the model described benign OS binaries and never
+    mentioned the 99/critical entity the rules actually detected. The anomaly
+    layer's own measured behaviour is that it RANKS and leads with benign noise
+    -- so handing it to a model first guarantees that failure. `entities` (the
+    scored verdict panel) leads now; the ranking follows under a key name that
+    states what it is not.
+    """
     anomalies = doc.get("anomalies", {})
     scored = anomalies.get("scored_entities", [])
+    entities = doc.get("entities", []) or []
     findings = doc.get("findings", [])
-    rule_ids = sorted({f.get("rule_id") for f in findings if f.get("rule_id")})
-    verdict_entities = sorted(
-        {
-            e.get("value")
-            for f in findings
-            for e in f.get("entity_keys", [])
-            if e.get("key") == "entity.exe_name" and e.get("value")
-        }
+
+    ranked = sorted(
+        (e for e in entities if e.get("value")),
+        key=lambda e: (
+            _SEVERITY_RANK.get(str(e.get("severity", "")).lower(), 9),
+            -(e.get("score") or 0),
+        ),
     )
+    verdict_entities = [
+        {
+            "entity": e.get("value"),
+            "severity": e.get("severity"),
+            "score": e.get("score"),
+            "rule_ids": e.get("rule_ids", []),
+            "techniques": e.get("techniques", []),
+        }
+        for e in ranked[:10]
+    ]
+    # Fall back to the findings' own entity keys only when the verdict panel is
+    # absent (an older run.json), so the validator's vocabulary is never empty.
+    if not verdict_entities:
+        verdict_entities = [
+            {"entity": v, "severity": None, "score": None, "rule_ids": [], "techniques": []}
+            for v in sorted(
+                {
+                    e.get("value")
+                    for f in findings
+                    for e in f.get("entity_keys", [])
+                    if e.get("key") == "entity.exe_name" and e.get("value")
+                }
+            )
+        ]
+
     return {
         "collection": doc.get("collection", {}).get("name"),
         "scorer": anomalies.get("scorer"),
-        "finding_count": len(findings),
-        "rule_ids": rule_ids,
         "verdict_entities": verdict_entities,
-        "top_anomalies": [
+        "rule_ids": sorted({f.get("rule_id") for f in findings if f.get("rule_id")}),
+        "prioritisation_ranking_not_detections": [
             {
                 "entity": e.get("entity"),
                 "family": e.get("family"),
@@ -211,7 +256,11 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
     backend, model = _parse_spec(spec)
 
     facts = _facts(doc)
-    prompt = _PROMPT + json.dumps(facts, indent=2, sort_keys=True)
+    # NOT sort_keys: the fact slice is ordered verdict-first ON PURPOSE, and
+    # alphabetising would put `prioritisation_ranking_not_detections` ahead of
+    # `verdict_entities` -- reinstating the exact bug prompt v2 exists to fix.
+    # `_facts()` builds a fixed key order, so the prompt stays deterministic.
+    prompt = _PROMPT + json.dumps(facts, indent=2)
     block: dict[str, Any] = {
         "is_verdict": False,
         "backend": backend,
@@ -238,6 +287,8 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         "citations": result.citations,
         "unresolvable": result.unresolvable,
         "mentions_scorer": result.mentions_scorer,
+        "missing_mentions": result.missing_mentions,
+        "describes_ranking_as_detection": result.describes_ranking_as_detection,
     }
     if result.validated:
         block["status"] = "accepted"

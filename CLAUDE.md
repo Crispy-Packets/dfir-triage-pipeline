@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  979 passed, 21 skipped
+    python -m pytest -q               ->  990 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -185,13 +185,28 @@ every rule id, executable and salient number the prose cites against the fact
 slice the model was shown; any miss → `status: "rejected"` and the prose is kept
 under `narration.rejected` (audit only, never rendered). Validator scope is
 honest — it catches fabricated ids/exes/numbers, not arbitrary free text; the
-prompt constrains the model to name entities only by executable. Determinism:
+prompt constrains the model to name entities only by executable.
+**The fact slice is VERDICT-FIRST, and that is load-bearing.** The first live run
+(qwen2.5:7b, prompt v1) fabricated nothing and still narrated the wrong panel: it
+described the anomaly ranking — which measurably leads with benign OS binaries —
+and omitted the 99/critical `invoice_scan.exe` the rules detected. Two fixes, both
+kept: `_facts()` now builds `verdict_entities` from `doc["entities"]` (severity,
+score, rule_ids, worst first) and renames the ranking key to
+`prioritisation_ranking_not_detections`; and the validator gained a
+**completeness** check — every `critical` verdict entity (or the top-scoring one
+if none is critical) must appear in the prose or it is rejected with
+`missing:<entity>`. `describes_ranking_as_detection` is an advisory flag for
+prose that credits the anomaly layer with detecting. Prompt v2. The lesson is
+general: a citation validator measures faithfulness to the facts it was given,
+never whether those were the right facts — precision and emphasis are separate
+axes and each needs its own check. Determinism:
 temperature 0 + fixed seed + recorded model digest reproduce on the same
 host/model (not bit-identical across machines). A backend failure records
 `status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the
 model-comparison harness**: run the pipeline with each candidate tag and read
-`narration.validation.unresolvable` / `mentions_scorer` from each run.json —
-zero unresolvable wins; no separate benchmark script. **Removal**: delete
+`narration.validation.unresolvable` / `missing_mentions` / `mentions_scorer` from
+each run.json — zero unresolvable AND the verdict named wins; no separate
+benchmark script. **Removal**: delete
 `core/narration.py`, `core/citations.py`, the `__main__` hook, `_narration_panel`
 in report_html, and revert RUN_JSON_VERSION; the default path never imports any
 of it.
