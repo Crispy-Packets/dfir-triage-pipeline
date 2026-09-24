@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  991 passed, 21 skipped
+    python -m pytest -q               ->  1017 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -200,19 +200,40 @@ prose that credits the anomaly layer with detecting. Prompt v2. The lesson is
 general: a citation validator measures faithfulness to the facts it was given,
 never whether those were the right facts — precision and emphasis are separate
 axes and each needs its own check.
-**Measured limit, left in deliberately.** Prompt v2 passes every check and still
-contains a false claim: it says `invoice_scan.exe` is "ranked first in the
-moda_g prioritisation ranking" — it is not, and it does not appear in the
-ranking slice at all (`dllhost.exe` leads it). The model inferred that the
-critical verdict must also top the ranking, which is exactly the conflation the
-two-panel split exists to prevent and which OD-01 measured to be false. Nothing
-is fabricated, nothing required is omitted, attribution is correct — it is a
-false RELATIONAL claim between facts each supplied correctly, a third failure
-mode a closed-vocabulary validator cannot structurally reach. Pinned by
-`test_a_false_relational_claim_still_validates`; **do not "fix" it** — it is the
-honest boundary and the reason narration stays `is_verdict: false`, labelled,
-and separated from the verdict panel. Reference output:
-`docs/evidence/narration-s1v3-promptv2.json`. Determinism:
+**Measured, corrected 2026-09-24.** Prompt v2 passed every check and still
+contained a false claim: it said `invoice_scan.exe` was "ranked first" in the
+moda_g ranking. The record says **rank 14 of 443**. An earlier note here claimed
+the entity was absent from the ranking entirely and that no validator could
+catch such a claim — **both were wrong**. The entity is at rank 14; `_facts()`
+passed only `scored[:10]`, so the model was never shown the rank it needed and
+invented one. A fact withheld is a fact hallucinated. Person A (viewer) then
+wrote a stdlib checker that rejected the text this validator had accepted,
+disproving the "unreachable" claim by construction.
+Three fixes, all shipped: `_facts()` now attaches each verdict entity's real
+`anomaly_rank` (rank, of, family, percentile); **code writes every ranking
+sentence** (`_ranking_sentences`) and prompt v3 forbids the model from ranking
+prose at all; and the validator gained **relation checks** ported from Person
+A's checker — rank claims vs the record (with subject carry-over across
+sentences), comparative-suspicion vocabulary, and the merged `severity score`
+phrasing. All three are fatal and land in `relation_errors`.
+The real boundary, stated correctly: **relation claims over enumerable
+structured fields (rank, score, band, count) are checkable by construction;
+claims over open semantics (intent, motive, causation) are not** — there is no
+field to compare them against. `test_open_semantic_claims_remain_uncheckable`
+pins that, and it is why narration stays `is_verdict: false`, labelled, and
+separated from the verdict panel. **Prompt v4/v5 (2026-09-24):** v3 was
+correct but two sentences of rule codes, because the model had rule ids and
+not their meaning. `_facts()` now carries `verdict_findings` (rule, title,
+entities, observed-only `time_utc`) and an entity `kind`; the validator adds
+verified score superlatives, order-word refusal, time/date checks, a
+user-account-is-never-executed check and rule-to-subject pairing. The worked
+example is now a **template with `<blanks>`** (prompt v7): v4's was written
+from s1_v3 and was copied whole; v5's invented example leaked "System event
+log", v6's leaked the host "host-7". A 7B model copies any concrete detail it
+is shown. Findings carry `evidence` paths; the validator checks the named event
+log (by `.evtx` file name) and the host in "log on X", and rejects an
+unfilled `<blank>`. Iterate on prompts with a narration-only call on an
+existing run.json, not the full ~6-minute pipeline. Determinism:
 temperature 0 + fixed seed + recorded model digest reproduce on the same
 host/model (not bit-identical across machines). A backend failure records
 `status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the

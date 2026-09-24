@@ -122,58 +122,141 @@ narration can be perfectly faithful and still describe the wrong thing. Emphasis
 is a second axis and needs its own check — here, a deterministic recall test
 against the same closed vocabulary.
 
-### Second live run: prompt v2, and a residual error the validator cannot catch
+### Second live run: prompt v2, the rank error, and the correction
 
-Same collection, same model, prompt v2. Every check passes — `accepted`,
-`unresolvable: []`, `missing_mentions: []`,
-`describes_ranking_as_detection: false`, `mentions_scorer: true` — and the
-narration now leads with the verdict:
+Same collection, same model, prompt v2. Every check passed — `accepted`,
+`unresolvable: []`, `missing_mentions: []` — and the narration led with the
+verdict as intended. It also said:
 
-> "`invoice_scan.exe` has been detected with a critical severity score of 99,
-> triggered by rules R-ATOMIC-0006, R-CORR-0003, and R-CORR-0006. **This file is
-> ranked first in the anomaly scorer moda_g prioritisation ranking**, which
-> orders entities based on their percentile within their family. The ranking
-> includes entities like `dllhost.exe` and `onedrivesetup.exe` with a percentile
-> of 0.0, indicating they are considered less suspicious compared to
-> `invoice_scan.exe`."
+> "`invoice_scan.exe` ... **This file is ranked first in the anomaly scorer
+> moda_g prioritisation ranking** ... `dllhost.exe` and `onedrivesetup.exe` with
+> a percentile of 0.0, indicating they are considered **less suspicious**"
 
-The bolded clause is **false**. `invoice_scan.exe` is not ranked first in the
-prioritisation ranking — `dllhost.exe` is. `invoice_scan.exe` does not appear in
-the top-10 ranking slice **at all**; the model was never shown a rank for it. It
-inferred one, presumably because an entity that is the critical verdict "ought
-to" also top the ranking.
+Three errors, none of which the validator caught at the time:
 
-That inference is exactly the conflation the two-panel architecture exists to
-prevent, and the disagreement it papers over is this project's own OD-01
-finding: the rules detect `invoice_scan.exe`, while the anomaly layer ranks
-benign OS binaries first. The narration asserts the two agree. They do not.
+1. **"ranked first"** — the record says **rank 14 of 443**.
+2. **"percentile 0.0 ... less suspicious"** — inverted. `anomalies.meaning` in
+   run.json states *"0 is the most unusual row of its kind"*. dllhost.exe at 0.0
+   is the MOST unusual, not the least.
+3. **"critical severity score of 99"** — merges two fields. 99 is the **triage
+   score**; critical is the **severity band**.
 
-The last sentence is wrong in the same direction: a *lower* percentile is *more*
-anomalous under this scorer, so "percentile of 0.0 ... less suspicious" inverts
-the meaning. The number 0.0 is real and resolves, so it validates.
+**Root cause: a withheld fact, not a model failure.** `_facts()` passed only
+`scored[:10]` of the ranking. invoice_scan.exe sits at rank 14, so it was not in
+the slice — the model had no rank for the entity it was describing and supplied
+one. *A fact withheld is a fact hallucinated.*
 
-**Why no check catches this, and why that is the finding.** The claim fabricates
-nothing (every rule id, exe and number resolves), omits nothing (the critical
-entity is named), and attributes correctly (it says the ranking *orders*, not
-detects). It is a **false relational claim between two facts that were each
-supplied correctly** — a third failure mode, beyond precision and recall, and
-one a closed-vocabulary validator is structurally unable to reach: validating it
-would mean checking an assertion *about the relationship between* facts, not the
-facts themselves, and the space of such assertions is not enumerable.
+**An earlier version of this document drew the wrong conclusion from it.** It
+claimed the entity was "not in the ranking at all" and that a closed-vocabulary
+validator was *structurally unable* to check such a claim. Both were wrong.
+Person A (viewer side) wrote a stdlib reference checker that rejected this exact
+text on all three errors, and accepted a corrected summary — the check that was
+said to be impossible, in about 80 lines.
 
-This is left in deliberately rather than patched away with a prompt rule. It is
-the honest boundary of the approach:
+**What shipped in response (prompt v3):**
 
-> Citation validation bounds what a narration can *invent*. It cannot bound what
-> a narration can *imply*. A narration that cites only real facts, omits nothing
-> required, and attributes each panel correctly can still assert a relationship
-> between those facts that is false — and no amount of vocabulary checking will
-> see it.
+- `_facts()` attaches each verdict entity's **real** `anomaly_rank`
+  (`rank`, `of`, `family`, `percentile_in_family`) instead of a truncated top-N.
+- **Code writes every ranking sentence** (`_ranking_sentences`), from the record,
+  in a fixed template. Prompt v3 forbids the model from ranking prose entirely.
+  A template cannot misstate a rank, and it keeps rules-detect/anomalies-rank
+  true by construction.
+- The validator gained **relation checks**, ported from Person A's checker: rank
+  claims against the record (carrying the subject across sentences, so "This
+  file is ranked first" is caught), comparative-suspicion vocabulary, and the
+  merged `severity score` phrasing. All fatal, reported in `relation_errors`.
+- Prompt v3 also fixes the wording: **triage score** for the number, **severity
+  / band** for the label, entity named in every sentence, no intent claims.
 
-Which is why the narration is `is_verdict: false`, rendered behind an
-AI-generated label, separated from the verdict panel, and never substituted for
-the findings it describes. The architecture already assumed the prose could be
-wrong. This run is the measurement showing that assumption was correct.
+**The boundary, stated correctly this time:**
+
+> A citation validator measures faithfulness to the facts it was given. Relation
+> claims over **enumerable structured fields** — rank, score, band, count — are
+> checkable by construction, because the record names the one true value.
+> Claims over **open semantics** — intent, motive, causation, "sophisticated" —
+> are not, because there is no field to compare them against.
+
+That is a narrower and more useful claim than "relations are unreachable", and
+both sides measured it. `test_open_semantic_claims_remain_uncheckable` pins the
+part that genuinely cannot be checked, which is why narration remains
+`is_verdict: false`, labelled AI-generated, and separated from the verdict panel.
+
+### Third to fifth runs: too short, then a copied example
+
+**v3** fixed all three errors and came back **two sentences of rule codes**:
+*"invoice_scan.exe has triage score 99 (critical), from three corpus-validated
+rules: R-ATOMIC-0006, R-CORR-0003, and R-CORR-0006. vboxuser has triage score 88
+(high), from R-ATOMIC-0002 and R-ATOMIC-0006."* True, and useless to a reader. An
+earlier v3 attempt was longer and wrong in a new way: *"vboxuser ... This entity
+was executed"* (vboxuser is a user account) and it attached R-ATOMIC-0006 to a
+description of a different rule. Same root cause as the rank error: **the model
+had rule ids and not what they mean**, so it either listed codes or guessed.
+
+**v4** gives the model `verdict_findings`: one entry per corpus-validated
+finding on a verdict entity, with its rule, **title** (what it found), the
+entities, and `time_utc` — given only for observed times; a presence-only time
+is a registry key's last-write time and is withheld. Entities carry a `kind`
+(program / user account). Findings are ordered by rule id, not time, so the list
+does not invite a story. Validator additions, all fatal:
+
+| Check | Catches |
+|---|---|
+| score superlative **verified** against the scores | "onedrive.exe has the highest triage score" (v3 had *banned* the phrase and so rejected true statements — 99 is the highest) |
+| order words (then, after, before, followed by …) | "downloaded, then deleted" — the record has the deletion at 10:30, *before* the download at 10:44 |
+| clock times and dates must be in the record | an invented "09:14 UTC" |
+| a user account is never "executed" | "vboxuser ... This entity was executed" |
+| a rule cited in a sentence must belong to its subject | R-CORR-0001 cited for invoice_scan.exe |
+
+Checked against five texts: the shipped v2 text and the v3 "vboxuser executed"
+text are **rejected**; v3's bare text, Person A's hand-corrected summary and the
+prompt's example are **accepted**.
+
+v4's output was correct in every clause — and nearly **verbatim the prompt's
+worked example**, which had been written from this same run. A correct output
+that proves nothing: the answer was in the question. **v5** replaces the example
+with invented names, scores and times (`updater_x.exe`, `alice`, `host-7`), and
+`test_prompt_example_carries_no_evidence` keeps real corpus names out of it.
+
+### Sixth and seventh runs: every concrete example leaks
+
+The invented example leaked too — just different details. **v5** wrote *"the
+System event log"* for a clear recorded in `Security.evtx`, copying "System"
+from the example. The facts had never said *which* log was cleared (the rule
+title is only "Windows event log cleared"); v4 had only been right because it
+was copying. **v6** added each finding's `evidence` paths (so the log name is
+in the record) and a log-name check (reading the `.evtx` file name, not the
+path — every log path contains `System32`). It then wrote *"an event log on
+host-7"*: the example's host. The record says `winvm`.
+
+| Prompt | Example | What leaked |
+|---|---|---|
+| v4 | written from this run | the whole answer — correct, and proves nothing |
+| v5 | invented instance | "System event log" |
+| v6 | invented instance, no log name | host "host-7" |
+| v7 | **template with `<blanks>`** | nothing |
+
+**A 7B model copies whatever concrete detail its example contains.** Swapping
+which fake details appear only swaps which ones leak. v7's example is a
+template — `<program>`, `<score>`, `<log name>`, `<host>` — so there is nothing
+to copy, and an unfilled `<blank>` in the output is rejected. Host names in
+"log on X" are now checked against the findings' entities.
+
+**v7 output** (accepted; every clause checked against run.json):
+
+> invoice_scan.exe has the highest triage score in this run (99, critical),
+> from 3 corpus-validated rules. invoice_scan.exe was executed (last run 11:50
+> UTC) and is registered to run at logon (R-ATOMIC-0006). For the user account
+> vboxuser (triage score 88, high), the Security event log on the host was
+> cleared at 12:15 UTC (R-ATOMIC-0002).
+
+"Security" came from the evidence path this time, not an example. The
+validator's first verdict on this text was a false reject — it read "on the
+host **was**" as a host named "was"; fixed with a stop-list and a test.
+
+**Method note:** iterate on prompts with a narration-only call against an
+existing run.json (~3 min on CPU), not the full pipeline (~6 min+). And test
+the validator against every past output after each change — several fixes
+here each introduced a false reject that only showed up on a real text.
 
 ## Benching models (this module IS the harness)
 

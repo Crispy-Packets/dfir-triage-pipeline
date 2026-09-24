@@ -1,0 +1,43 @@
+{
+  "collection": "collection_s1_v3",
+  "scorer": "moda_g",
+  "prompt_version": "7",
+  "first_validation_at_generation": {
+    "status": "rejected",
+    "unresolvable": [
+      "host:was"
+    ],
+    "why": "validator false positive: read \"log on the host was\" as a host named \"was\"; fixed with a stop-list (test_an_unnamed_host_is_not_read_as_a_host_name)"
+  },
+  "narration": {
+    "is_verdict": false,
+    "backend": "ollama",
+    "model": "qwen2.5:7b",
+    "endpoint": "192.168.10.217:11434",
+    "temperature": 0.0,
+    "seed": 20260830,
+    "prompt_version": "7",
+    "prompt_sha256": "c8f08d4b16387a8b3a48c04790cf19a2d37ac2360cbe8740c54f36498885aefc",
+    "generated_at": "2026-09-24T01:01:33.776357+00:00",
+    "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "validation": {
+      "validated": true,
+      "citations": {
+        "rule_ids": [
+          "R-ATOMIC-0002",
+          "R-ATOMIC-0006"
+        ],
+        "exes": [
+          "invoice_scan.exe"
+        ]
+      },
+      "unresolvable": [],
+      "mentions_scorer": false,
+      "missing_mentions": [],
+      "describes_ranking_as_detection": false,
+      "relation_errors": []
+    },
+    "status": "accepted",
+    "text": "invoice_scan.exe has the highest triage score in this run (99, critical), from 3 corpus-validated rules. invoice_scan.exe was executed (last run 11:50 UTC) and is registered to run at logon (R-ATOMIC-0006). For the user account vboxuser (triage score 88, high), the Security event log on the host was cleared at 12:15 UTC (R-ATOMIC-0002)."
+  }
+}

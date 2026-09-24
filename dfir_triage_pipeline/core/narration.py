@@ -51,27 +51,81 @@ _TIMEOUT_S = 300
 
 #: Bump this when the prompt changes; the value is recorded in run.json so a
 #: narration can be tied to the exact instruction that produced it.
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "7"
+#: v7: the example is a TEMPLATE with <blanks>, not a made-up instance. Every
+#: concrete example leaked into the output: v4's real facts were copied whole,
+#: v5 copied "System event log", v6 copied the host "host-7" (the record says
+#: winvm). A 7B model copies whatever concrete detail it is shown; a blank
+#: carries none, and a blank left in the output is rejected mechanically.
+#: v6: findings carry their evidence paths, and the example names no log. v5's
+#: example said "the System event log"; the facts never said WHICH log was
+#: cleared (the rule title is only "Windows event log cleared"), so the model
+#: took "System" from the example. The record says Security.evtx.
+#: v5: the worked example uses MADE-UP names, numbers and times. v4's example
+#: was written from collection_s1_v3 itself, and the model reproduced it almost
+#: verbatim -- a correct output that proved nothing, because the answer was in
+#: the prompt. An example must teach the style and carry none of the content.
+#: v4: the model is told WHAT each rule found (finding titles, times, entity
+#: kind). v3 had only rule ids, so it either listed codes or guessed their
+#: meaning ("vboxuser was executed" -- vboxuser is a user account).
+#: v3 rewrites the wording rules after the second live run: the model said
+#: "ranked first" (record: rank 14 of 443), called percentile 0.0 "less
+#: suspicious" (0 is MOST unusual), and merged two fields as "severity score".
+#: Ranking prose is now written by code and forbidden here; the rest is
+#: wording the record can be checked against.
 _PROMPT = (
-    "You are a DFIR triage report assistant. Write a concise, factual narration "
-    "(<= 200 words) of the triage result described by the JSON facts below. "
-    "Rules:\n"
-    "- LEAD with `verdict_entities`: the highest-severity entity first, naming its "
-    "severity, its score, and the rule ids that fired on it. This is the detection "
-    "and it is the point of the narration.\n"
-    "- `prioritisation_ranking_not_detections` is SECONDARY context: an ordering "
-    "the anomaly scorer produced to prioritise analyst attention. Describe it as a "
-    "ranking only. Never say the anomaly layer detected, flagged or identified "
-    "anything -- the RULES detect, the anomaly layer only RANKS.\n"
-    "- Mention the ranking only after the verdict, and only briefly.\n"
-    "- Refer to entities ONLY by their name as written in the facts.\n"
-    "- Cite rule ids (e.g. R-CORR-0001) and numbers (scores, percentiles) EXACTLY "
-    "as they appear in the facts. Invent nothing. Do not characterise activity the "
-    "facts do not describe.\n"
-    "- Name the anomaly scorer that produced the ranking.\n"
-    "- Plain prose, no markdown headers.\n\nFACTS:\n"
+    "You are a DFIR triage report assistant. Write a concise, factual summary "
+    "(<= 200 words) of the triage result described by the JSON facts below.\n"
+    "\nWHAT TO WRITE:\n"
+    "- LEAD with `verdict_entities`: the highest-priority entity first. Name it, "
+    "its priority band, its triage score, and the rule ids that fired on it. "
+    "The RULES are what detected it, and that is the point of the summary.\n"
+    "- Then the other verdict entities, briefly, highest priority first.\n"
+    "- Write 3 to 5 sentences. Say WHAT the rules found, using the `title` of "
+    "each entry in `verdict_findings` (rephrase plainly, keep the meaning "
+    "exactly), with its rule id in brackets.\n"
+    "- An entity of kind 'user account' is never executed or run. Say what "
+    "was recorded for that account.\n"
+    "- Name a log, file or registry key only as it appears in `evidence`. "
+    "Which event log was cleared is in the .evtx file name there.\n"
+    "- Give a time only as it appears in `time_utc` (HH:MM UTC). Where "
+    "`time_utc` is null, the time is a registry key's last-write time: say "
+    "the value is 'present', never when it was created or written.\n"
+    "\nWORDING (these are not style preferences):\n"
+    "- The number is the TRIAGE SCORE; the label (critical/high/medium) is the "
+    "PRIORITY BAND. They are two different fields. Never write 'severity score' "
+    "or 'priority score' -- write 'triage score 99 (critical)'.\n"
+    "- A triage score is the summed weight of the rules that matched. It marks "
+    "where to look first. It is NOT a judgement that the entity is malicious.\n"
+    "- Name the entity in every sentence. Never 'this file', 'it' or 'the "
+    "binary' carried across a sentence boundary.\n"
+    "\nDO NOT:\n"
+    "- Do NOT write about the anomaly ranking at all. Ranking sentences are "
+    "already written for you and appear verbatim in the report; restating, "
+    "paraphrasing or summarising them is an error. Never say an entity is "
+    "'first', 'top' or 'ranked' in the anomaly ranking.\n"
+    "- You MAY say which entity has the highest triage score; that claim is "
+    "checked against the scores below.\n"
+    "- Do NOT use order words between findings (then, after, before, later, "
+    "followed by, subsequently). The recorded order is not the obvious one; "
+    "the report's timeline states it.\n"
+    "- Do NOT compare entities by suspicion, risk, safety or unusualness ('less "
+    "suspicious', 'more anomalous', 'safer'). Those are not facts in the "
+    "record.\n"
+    "- Do NOT state intent, motive or attribution ('the attacker wanted', "
+    "'designed to evade'). Report what the rules matched, nothing beyond.\n"
+    "- Do NOT invent a number, a rule id or a name. Cite only what is below.\n"
+    "- Plain prose, no markdown headers.\n"
+    "\nTEMPLATE of the required style. Every <blank> must be filled from "
+    "FACTS below; never leave a <blank> in your summary, and never add a "
+    "detail FACTS does not contain.\n"
+    "<program> has the highest triage score in this run (<score>, <band>), "
+    "from <n> corpus-validated rules. <program> was executed (last run "
+    "<HH:MM> UTC) and is registered to run at logon (<rule id>). For the user "
+    "account <user> (triage score <score>, <band>), the <log name> event log "
+    "on <host> was cleared at <HH:MM> UTC (<rule id>).\n"
+    "\nFACTS:\n"
 )
-
 
 class Narrator(Protocol):
     """A backend that turns the fact slice into prose. One method, so another
@@ -198,6 +252,23 @@ def _facts(doc: dict[str, Any]) -> dict[str, Any]:
     entities = doc.get("entities", []) or []
     findings = doc.get("findings", [])
 
+    # Every scored entity's rank in the anomaly ranking, by name. The model is
+    # given the rank of the entities it actually writes about -- NOT a truncated
+    # top-N. The first live failure was caused by exactly that truncation:
+    # invoice_scan.exe sits at rank 14/443, the slice passed only the top 10, so
+    # the model had no rank for the entity it was describing and invented one
+    # ("ranked first"). A fact withheld is a fact hallucinated.
+    ranks: dict[str, dict[str, Any]] = {}
+    for i, e in enumerate(scored, 1):
+        name = e.get("entity")
+        if name and name not in ranks:
+            ranks[name] = {
+                "rank": i,
+                "of": len(scored),
+                "family": e.get("family"),
+                "percentile_in_family": e.get("percentile_in_family"),
+            }
+
     ranked = sorted(
         (e for e in entities if e.get("value")),
         key=lambda e: (
@@ -205,21 +276,31 @@ def _facts(doc: dict[str, Any]) -> dict[str, Any]:
             -(e.get("score") or 0),
         ),
     )
-    verdict_entities = [
-        {
-            "entity": e.get("value"),
-            "severity": e.get("severity"),
-            "score": e.get("score"),
+    verdict_entities = []
+    for e in ranked[:10]:
+        name = e.get("value")
+        item = {
+            "entity": name,
+            "kind": _KIND.get(str(e.get("key")), "entity"),
+            "priority_band": e.get("severity"),
+            "triage_score": e.get("score"),
             "rule_ids": e.get("rule_ids", []),
             "techniques": e.get("techniques", []),
         }
-        for e in ranked[:10]
-    ]
+        if name in ranks:
+            item["anomaly_rank"] = ranks[name]
+        verdict_entities.append(item)
     # Fall back to the findings' own entity keys only when the verdict panel is
     # absent (an older run.json), so the validator's vocabulary is never empty.
     if not verdict_entities:
         verdict_entities = [
-            {"entity": v, "severity": None, "score": None, "rule_ids": [], "techniques": []}
+            {
+                "entity": v,
+                "priority_band": None,
+                "triage_score": None,
+                "rule_ids": [],
+                "techniques": [],
+            }
             for v in sorted(
                 {
                     e.get("value")
@@ -235,15 +316,98 @@ def _facts(doc: dict[str, Any]) -> dict[str, Any]:
         "scorer": anomalies.get("scorer"),
         "verdict_entities": verdict_entities,
         "rule_ids": sorted({f.get("rule_id") for f in findings if f.get("rule_id")}),
-        "prioritisation_ranking_not_detections": [
-            {
-                "entity": e.get("entity"),
-                "family": e.get("family"),
-                "percentile_in_family": e.get("percentile_in_family"),
-            }
-            for e in scored[:10]
-        ],
+        "verdict_findings": _verdict_findings(findings, verdict_entities),
+        # The ranking is NOT handed over as a list to paraphrase. Code writes
+        # every ranking sentence (see `ranking_sentences`); the model is told
+        # the ranking is off-limits. A fixed template cannot misstate a rank.
+        "anomaly_ranking_meaning": anomalies.get("meaning"),
+        "ranking_sentences_already_written_do_not_restate": _ranking_sentences(
+            verdict_entities, anomalies.get("scorer")
+        ),
     }
+
+
+#: Entity key -> the plain word the model should use. A user account is never
+#: "executed"; v3 wrote "vboxuser ... was executed" because it had no kind.
+_KIND = {
+    "entity.exe_name": "program",
+    "entity.user": "user account",
+    "entity.host": "host",
+}
+
+
+def _verdict_findings(
+    findings: list[dict[str, Any]], verdict_entities: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """What each corpus-validated rule FOUND, for the entities being narrated.
+
+    Without this the model had rule ids and nothing else: it either listed codes
+    or guessed what they meant. With it, every sentence can say what happened and
+    stay checkable -- the title, time and entities all come from run.json.
+
+    Times: `time_utc` is given only when the finding's time claim is an observed
+    one. A presence-only time is a registry key's last-write time, shared with
+    its sibling values; it is NOT when the value was written, so it is withheld
+    rather than handed to a model that would narrate it as an event time.
+
+    Ordered by rule id, not by time, deliberately: a time-ordered list invites
+    a story ("downloaded, then deleted"), and in this corpus the recorded order
+    is not the obvious one.
+    """
+    names = {v.get("entity") for v in verdict_entities if v.get("entity")}
+    out: list[dict[str, Any]] = []
+    for f in findings:
+        if f.get("rule_class") != "corpus-validated":
+            continue
+        ents = [k.get("value") for k in f.get("entity_keys", []) if k.get("value")]
+        if not names.intersection(ents):
+            continue
+        ts = str(f.get("first_timestamp_utc") or "")
+        observed = bool(ts) and f.get("time_claim") not in (None, "none")
+        out.append(
+            {
+                "id": f"F:{f.get('finding_id')}",
+                "rule": f.get("rule_id"),
+                "title": f.get("title"),
+                "entities": ents,
+                "date": ts[:10] or None,
+                "time_utc": ts[11:16] if observed else None,
+                "time_claim": f.get("time_claim"),
+                # Where the finding came from. Lets the model name the right
+                # log / file / key instead of inventing one, and lets the
+                # validator check a named log against the record.
+                "evidence": [
+                    f"{m.get('source_file')} :: {m.get('source_locator')}"
+                    for m in f.get("matched", [])
+                    if m.get("source_file")
+                ],
+            }
+        )
+    out.sort(key=lambda x: (str(x["rule"]), str(x["date"]), str(x["time_utc"])))
+    return out
+
+
+def _ranking_sentences(verdict_entities: list[dict[str, Any]], scorer: str | None) -> list[str]:
+    """The anomaly-ranking prose, written by CODE from the record.
+
+    Taken away from the model deliberately. Two of the three errors in the first
+    accepted narration were ranking claims ("ranked first" when the record said
+    rank 14 of 443; "percentile 0.0 ... less suspicious" when 0 means MOST
+    unusual). A template cannot make either mistake, and it keeps the
+    rules-detect / anomalies-rank distinction true by construction.
+    """
+    out: list[str] = []
+    for v in verdict_entities:
+        r = v.get("anomaly_rank")
+        if not r:
+            continue
+        out.append(
+            f"In the {scorer} anomaly ranking, {v['entity']} is rank {r['rank']} "
+            f"of {r['of']} ({r['family']}, percentile {r['percentile_in_family']}; "
+            f"0 = most unusual of its kind). This ranks unusualness; it is not a "
+            f"detection."
+        )
+    return out
 
 
 def narrate(doc: dict[str, Any]) -> dict[str, Any]:
@@ -289,6 +453,7 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         "mentions_scorer": result.mentions_scorer,
         "missing_mentions": result.missing_mentions,
         "describes_ranking_as_detection": result.describes_ranking_as_detection,
+        "relation_errors": result.relation_errors,
     }
     if result.validated:
         block["status"] = "accepted"
