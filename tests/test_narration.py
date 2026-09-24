@@ -697,6 +697,59 @@ class TestNarrateWithMockedClient:
         ]
         assert len(block["facts_sha256"]) == 64
 
+    def _script(self, monkeypatch, outputs):
+        """Mock the model to return `outputs` in order; record every prompt."""
+        monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
+        seen = []
+
+        def gen(self, prompt):
+            seen.append(prompt)
+            return outputs[len(seen) - 1]
+
+        monkeypatch.setattr(narration._OllamaNarrator, "generate", gen)
+        monkeypatch.setattr(narration._OllamaNarrator, "digest", lambda self: None)
+        return seen
+
+    def test_accepted_first_time_makes_no_repair(self, monkeypatch):
+        seen = self._script(monkeypatch, [
+            "invoice_scan.exe was flagged by R-CORR-0001 under the moda_g scorer. "
+                "invoice_scan.exe has triage score 99 (critical). "
+                "invoice_scan.exe was the only critical entity."
+        ])
+        block = narration.narrate(self._doc())
+        assert block["status"] == "accepted"
+        assert block["attempts"] == 1 and "repair" not in block
+        assert len(seen) == 1
+
+    def test_rejected_then_repaired_is_accepted_and_both_recorded(self, monkeypatch):
+        bad = "Rule R-CORR-9999 flagged badguy.exe."
+        seen = self._script(monkeypatch, [
+            bad,
+            "invoice_scan.exe was flagged by R-CORR-0001 under the moda_g scorer. "
+                "invoice_scan.exe has triage score 99 (critical). "
+                "invoice_scan.exe was the only critical entity.",
+        ])
+        block = narration.narrate(self._doc())
+        assert block["status"] == "accepted"
+        assert block["attempts"] == 2
+        first = block["repair"]["rejected_attempts"][0]
+        assert first["text"] == bad and "rule_id:R-CORR-9999" in first["unresolvable"]
+        # the repair prompt names the exact reasons and the rejected text
+        assert "REJECTED by the fact checker" in seen[1]
+        assert "rule_id:R-CORR-9999" in seen[1] and bad in seen[1]
+
+    def test_repair_is_bounded_to_one(self, monkeypatch):
+        seen = self._script(monkeypatch, [
+            "Rule R-CORR-9999 flagged badguy.exe.",
+            "Rule R-CORR-8888 flagged worse.exe.",
+            "never asked for",
+        ])
+        block = narration.narrate(self._doc())
+        assert block["status"] == "rejected"
+        assert len(seen) == 2  # one generation + one repair, never a third
+        assert block["attempts"] == 2
+        assert "text" not in block
+
     def test_unreachable_ollama_records_error_not_raises(self, monkeypatch):
         monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
 

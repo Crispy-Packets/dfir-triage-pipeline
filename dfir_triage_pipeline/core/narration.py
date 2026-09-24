@@ -135,6 +135,22 @@ _PROMPT = (
     "\nFACTS:\n"
 )
 
+#: One repair attempt, no more. When the first narration is rejected, the model
+#: is shown its own text and the validator's exact reasons, and asked to fix
+#: them. Prompt v8 showed that adding general rules changed nothing (the output
+#: was byte-identical to v7); specific, per-error feedback is what a small model
+#: can act on. Bounded at one so a model cannot be ground at until it happens to
+#: pass -- and BOTH attempts are recorded, so the retry is visible, not hidden.
+MAX_REPAIRS = 1
+_REPAIR_PROMPT = (
+    "\n\nYOUR PREVIOUS SUMMARY:\n{text}\n\n"
+    "It was REJECTED by the fact checker. Every reason below is a real error "
+    "in that summary:\n{reasons}\n\n"
+    "Rewrite the summary so that every reason is fixed, following every rule "
+    "above. Output only the new summary.\n"
+)
+
+
 class Narrator(Protocol):
     """A backend that turns the fact slice into prose. One method, so another
     backend (a different local server, a different API) is one class away."""
@@ -456,12 +472,31 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
     }
     try:
         text = narrator.generate(prompt)
+        result = citations.validate(text, facts)
+        attempts: list[dict[str, Any]] = []
+        for _ in range(MAX_REPAIRS):
+            if result.validated:
+                break
+            # Audit only -- rejected prose, like `rejected.text`, is never
+            # rendered. Kept so a reader can see what the repair changed.
+            attempts.append({"text": text, "unresolvable": result.unresolvable})
+            repair = _REPAIR_PROMPT.format(
+                text=text, reasons="\n".join(f"- {u}" for u in result.unresolvable)
+            )
+            text = narrator.generate(prompt + repair)
+            result = citations.validate(text, facts)
     except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
         block["status"] = "error"
         block["error"] = f"{type(exc).__name__}: {exc}"
         return block
 
-    result = citations.validate(text, facts)
+    # How many generations it took, and every rejected attempt before the last.
+    block["attempts"] = len(attempts) + 1
+    if attempts:
+        block["repair"] = {
+            "reason": "first narration rejected; one repair with the checker's reasons",
+            "rejected_attempts": attempts,  # audit only, never render
+        }
     if hasattr(narrator, "digest"):
         block["model_digest"] = narrator.digest()
     block["validation"] = {

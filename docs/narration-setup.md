@@ -48,10 +48,15 @@ shell from a remote run, the pipeline keeps calling the Mint laptop. The helper
 always sets it explicitly; by hand, clear it with
 `Remove-Item Env:DFIR_NARRATION_ENDPOINT`.
 
-**Hardware (GTX 1050, 4 GB VRAM):** `qwen2.5:7b` does not fit in 4 GB and runs
-partly on the CPU — expect minutes per narration. `qwen2.5:3b` fits entirely on
-the GPU and is much faster; it has not been benched against the validator here
-yet. Ollama keeps a model loaded for 5 minutes after use (`OLLAMA_KEEP_ALIVE`),
+**Hardware (measured).** This pipeline host is an AMD Ryzen 5 5500U (6 cores /
+12 threads) with integrated Radeon graphics. Ollama drops integrated GPUs
+(`dropping integrated GPU` in `%LOCALAPPDATA%\Ollama\server.log`), so the model
+runs on the **CPU only**: `qwen2.5:7b` took ~118 s per generation here, against
+137-212 s on the Mint laptop (i7-7700HQ; its GTX 1050 never worked under the
+driver it had). An earlier version of this section said this host had a GTX
+1050 — it does not; that was the Mint laptop. `qwen2.5:3b` (~1.9 GB) should be
+roughly 2-3x faster on CPU; whether it passes the validator is unmeasured.
+Ollama keeps a model loaded for 5 minutes after use (`OLLAMA_KEEP_ALIVE`),
 which only matters if the next pipeline run starts inside that window.
 
 **Removing it:** uninstall Ollama from Settings -> Apps. The pipeline never
@@ -321,6 +326,29 @@ entity must be cited** by rule id; and **at least 3 sentences** (Person A's
 floor — without it the per-finding rule is met by a list of codes, which is
 what v3 was). Regression over every real text: v2, v3a, v3b, v6 and v7 are
 rejected, each for its own fault; Person A's corrected summary is accepted.
+
+### Local run with one bounded repair (2026-09-24)
+
+`MAX_REPAIRS = 1`: when a narration is rejected, the model is shown its own text
+and the validator's exact reasons once, and asked to fix them; both attempts are
+recorded (`attempts`, `repair.rejected_attempts`, audit only). Run on **this
+machine** (Ollama on localhost, same `qwen2.5:7b` digest `845dbda0ea48`):
+
+| | attempt 1 | attempt 2 (repair) |
+|---|---|---|
+| R-CORR-0006 Recycle Bin deletion | missing | **cited** |
+| R-CORR-0003 execution + persistence | missing | missing |
+| 11:50 cited with R-ATOMIC-0006 | wrong rule | wrong rule |
+| errors | 3 | 2 — **rejected** |
+
+Specific feedback fixed what a general rule (prompt v8) did not, but not all of
+it; the narration stays withheld. No second repair: grinding until a text
+happens to pass would empty the check of meaning.
+
+**Reproducibility, measured:** attempt 1 on the Windows host was byte-identical
+to the Mint laptop's v8 output — same model digest, temperature 0, fixed seed.
+The earlier caution "not bit-identical across machines" held no counter-example
+here.
 
 **Method note:** iterate on prompts with a narration-only call against an
 existing run.json (~3 min on CPU), not the full pipeline (~6 min+). And test
