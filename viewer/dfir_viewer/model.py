@@ -29,6 +29,17 @@ ATTACK_NAMES = {
     "T1105": "Ingress Tool Transfer",
     "T1036": "Masquerading",
     "T1041": "Exfiltration Over C2 Channel",
+    # Added 2026-09-24 (data only -- no rendering change). The first five were
+    # already emitted by existing rules and rendered as a bare ID; the last
+    # three belong to the rules added for the Windows Server 2022 test.
+    "T1021.001": "Remote Services: Remote Desktop Protocol",
+    "T1546.003": "Event Triggered Execution: Windows Management Instrumentation Event Subscription",
+    "T1052.001": "Exfiltration Over Physical Medium: Exfiltration over USB",
+    "T1110": "Brute Force",
+    "T1098": "Account Manipulation",
+    "T1490": "Inhibit System Recovery",
+    "T1505.003": "Server Software Component: Web Shell",
+    "T1053.005": "Scheduled Task/Job: Scheduled Task",
 }
 
 FILTER_KEYS = ("severity", "phase", "family", "technique", "kinds")
