@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1017 passed, 21 skipped
+    python -m pytest -q               ->  1021 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -232,14 +232,19 @@ from s1_v3 and was copied whole; v5's invented example leaked "System event
 log", v6's leaked the host "host-7". A 7B model copies any concrete detail it
 is shown. Findings carry `evidence` paths; the validator checks the named event
 log (by `.evtx` file name) and the host in "log on X", and rejects an
-unfilled `<blank>`. Iterate on prompts with a narration-only call on an
+unfilled `<blank>`. **v7 was first reported correct in every clause; it was
+not** — it cited R-ATOMIC-0006 for R-CORR-0003's 11:50 execution time and
+omitted R-CORR-0006. Prompt v8 + three fatal checks: a time must sit with its
+own rule, every finding on the critical entity must be cited, minimum 3
+sentences. Iterate on prompts with a narration-only call on an
 existing run.json, not the full ~6-minute pipeline. Determinism:
 temperature 0 + fixed seed + recorded model digest reproduce on the same
 host/model (not bit-identical across machines). A backend failure records
 `status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the
 model-comparison harness**: run the pipeline with each candidate tag and read
-`narration.validation.unresolvable` / `missing_mentions` / `mentions_scorer` from
-each run.json — zero unresolvable AND the verdict named wins; no separate
+`narration.validation.unresolvable` from each run.json — zero unresolvable
+wins (it now includes every missing finding, the 3-sentence floor, and a time
+cited with the wrong rule; `mentions_scorer` is informational only); no separate
 benchmark script. **Removal**: delete
 `core/narration.py`, `core/citations.py`, the `__main__` hook, `_narration_panel`
 in report_html, and revert RUN_JSON_VERSION; the default path never imports any

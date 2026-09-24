@@ -92,8 +92,11 @@ def _facts():
 def _verdict_prose(extra: str = "") -> str:
     """Prose that names the critical verdict -- the baseline a test varies from."""
     return (
+        "vboxuser is a user account with triage score 88 (high). "
         "invoice_scan.exe has triage score 99 (critical) from rules R-CORR-0003 "
-        "and R-CORR-0006 under the moda_g scorer. " + extra
+        "and R-CORR-0006 under the moda_g scorer. invoice_scan.exe was executed "
+        "(last run 11:50 UTC) and is registered to run at logon (R-CORR-0003). "
+        + extra
     )
 
 
@@ -173,7 +176,11 @@ class TestValidator:
         assert not any(u.startswith("number:") for u in r.unresolvable)
 
     def test_missing_scorer_mention_is_flagged_not_fatal(self):
-        r = citations.validate("invoice_scan.exe was flagged by R-CORR-0003.", _facts())
+        text = (
+            "invoice_scan.exe was flagged by R-CORR-0003. invoice_scan.exe is "
+            "registered to run at logon (R-CORR-0003). vboxuser is a user account."
+        )
+        r = citations.validate(text, _facts())
         assert r.validated is True  # scorer mention is non-fatal
         assert r.mentions_scorer is False
 
@@ -452,6 +459,58 @@ class TestCompleteness:
         assert r.validated is False
         assert "blank:<host>" in r.unresolvable
 
+    #: Verbatim from the prompt-v7 live run. Accepted at the time, and wrong in
+    #: one clause: 11:50 is R-CORR-0003's prefetch time, cited as R-ATOMIC-0006.
+    V7_TEXT = (
+        "invoice_scan.exe has the highest triage score in this run (99, critical), "
+        "from 3 corpus-validated rules. invoice_scan.exe was executed (last run "
+        "11:50 UTC) and is registered to run at logon (R-ATOMIC-0006). For the user "
+        "account vboxuser (triage score 88, high), the Security event log on the "
+        "host was cleared at 12:15 UTC (R-ATOMIC-0002)."
+    )
+
+    def test_a_time_must_sit_with_its_own_rule(self):
+        r = citations.validate(self.V7_TEXT, _facts())
+        assert r.validated is False
+        assert any(u.startswith("time_rule:11:50") for u in r.unresolvable)
+
+    def test_a_time_with_its_own_rule_is_accepted(self):
+        r = citations.validate(_verdict_prose(), _facts())
+        assert not any(u.startswith("time_rule:") for u in r.unresolvable)
+
+    def test_every_finding_on_the_critical_entity_is_required(self):
+        # v7 left out R-CORR-0006 (the Recycle Bin deletion) entirely.
+        facts = _facts()
+        facts["verdict_findings"].append(
+            {
+                "id": "F:25d92818e538eab4",
+                "rule": "R-CORR-0006",
+                "title": "An autorun-registered executable was deleted to the Recycle Bin",
+                "entities": ["invoice_scan.exe"],
+                "date": "2026-09-12",
+                "time_utc": "10:30",
+                "time_claim": "observed_occurrence",
+            }
+        )
+        text = (
+            "invoice_scan.exe has triage score 99 (critical). invoice_scan.exe was "
+            "executed (last run 11:50 UTC) and is registered to run at logon "
+            "(R-CORR-0003). vboxuser is a user account."
+        )
+        r = citations.validate(text, facts)
+        assert r.validated is False
+        assert "missing_finding:R-CORR-0006 (invoice_scan.exe)" in r.unresolvable
+
+    def test_fewer_than_three_sentences_is_rejected(self):
+        # v3 was two sentences of rule codes; a list of ids must not pass.
+        r = citations.validate(
+            "invoice_scan.exe has triage score 99 (critical) from R-CORR-0003 and "
+            "R-CORR-0006. vboxuser has triage score 88 (high).",
+            _facts(),
+        )
+        assert r.validated is False
+        assert any(u.startswith("too_short:2") for u in r.unresolvable)
+
     def test_a_bare_the_is_not_a_back_reference(self):
         # "The Security event log..." is about the log, not invoice_scan.exe --
         # pinning R-ATOMIC-0002 on the previous subject would be a false reject.
@@ -532,7 +591,11 @@ class TestNarrateWithMockedClient:
         monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
 
         def fake_generate(self, prompt):
-            return "invoice_scan.exe was flagged by R-CORR-0001 under the moda_g scorer."
+            return (
+                "invoice_scan.exe was flagged by R-CORR-0001 under the moda_g scorer. "
+                "invoice_scan.exe has triage score 99 (critical). "
+                "invoice_scan.exe was the only critical entity."
+            )
 
         monkeypatch.setattr(narration._OllamaNarrator, "generate", fake_generate)
         monkeypatch.setattr(narration._OllamaNarrator, "digest", lambda self: "sha256:abc")

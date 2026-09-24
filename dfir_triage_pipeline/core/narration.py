@@ -51,7 +51,10 @@ _TIMEOUT_S = 300
 
 #: Bump this when the prompt changes; the value is recorded in run.json so a
 #: narration can be tied to the exact instruction that produced it.
-PROMPT_VERSION = "7"
+PROMPT_VERSION = "8"
+#: v8: cover every verdict finding on the top entity (v7 omitted the Recycle
+#: Bin deletion, R-CORR-0006), and keep each time in the sentence that cites
+#: its own rule (v7 put R-CORR-0003's 11:50 next to R-ATOMIC-0006).
 #: v7: the example is a TEMPLATE with <blanks>, not a made-up instance. Every
 #: concrete example leaked into the output: v4's real facts were copied whole,
 #: v5 copied "System event log", v6 copied the host "host-7" (the record says
@@ -81,6 +84,11 @@ _PROMPT = (
     "its priority band, its triage score, and the rule ids that fired on it. "
     "The RULES are what detected it, and that is the point of the summary.\n"
     "- Then the other verdict entities, briefly, highest priority first.\n"
+    "- For the highest-priority entity, cover EVERY entry in `verdict_findings` "
+    "that names it -- each with its own rule id. Leaving one out is an "
+    "error.\n"
+    "- A time belongs to one finding: put it in the same sentence as THAT "
+    "finding's rule id, and nowhere else.\n"
     "- Write 3 to 5 sentences. Say WHAT the rules found, using the `title` of "
     "each entry in `verdict_findings` (rephrase plainly, keep the meaning "
     "exactly), with its rule id in brackets.\n"

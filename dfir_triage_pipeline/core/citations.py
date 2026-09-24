@@ -221,6 +221,30 @@ def _allowed_numbers(facts: dict[str, Any]) -> set[str]:
     return allowed
 
 
+#: Person A's floor for the summary. A shorter text can satisfy the per-finding
+#: completeness rule by listing rule ids (v3 was exactly that: two sentences of
+#: codes), so length is enforced too.
+_MIN_SENTENCES = 3
+
+
+def _required_rules(facts: dict[str, Any]) -> dict[str, str]:
+    """Rule id -> entity, for every verdict finding on a required entity.
+
+    Naming the critical entity is not enough: v7 named invoice_scan.exe and left
+    out its Recycle Bin deletion (R-CORR-0006) -- the finding that reads as
+    covering tracks. Every corpus-validated finding on the required entity must
+    be cited by its rule id.
+    """
+    required = _required_mentions(facts)
+    out: dict[str, str] = {}
+    for f in facts.get("verdict_findings", []) or []:
+        ents = {str(e).lower() for e in f.get("entities", []) or []}
+        for e in sorted(required & ents):
+            if f.get("rule"):
+                out.setdefault(f["rule"], e)
+    return out
+
+
 def _required_mentions(facts: dict[str, Any]) -> set[str]:
     """The entities the narration MUST name: every `critical` verdict entity, or
     the single top-scoring one when nothing is critical. This is the recall half
@@ -558,12 +582,43 @@ def validate(text: str, facts: dict[str, Any]) -> ValidationResult:
     missing = sorted(e for e in _required_mentions(facts) if e not in lowered)
     unresolvable.extend(f"missing:{e}" for e in missing)
 
+    # Completeness per finding, and a length floor so the rule cannot be met by
+    # a list of codes.
+    for rid, ent in sorted(_required_rules(facts).items()):
+        if rid not in text:
+            unresolvable.append(f"missing_finding:{rid} ({ent})")
+    n_sent = len([x for x in _SENTENCE_SPLIT_RE.split(text.strip()) if x.strip()])
+    if n_sent < _MIN_SENTENCES:
+        unresolvable.append(f"too_short:{n_sent} sentences (minimum {_MIN_SENTENCES})")
+
+    # A clock time belongs to one finding; the sentence stating it must cite
+    # that finding's rule. v7 wrote "executed (last run 11:50 UTC) ...
+    # (R-ATOMIC-0006)": 11:50 is R-CORR-0003's prefetch time; R-ATOMIC-0006 is
+    # the autorun value and carries no time. In the viewer, that citation opens
+    # a record with no 11:50 in it.
+    times_by_rule: dict[str, set[str]] = {}
+    for f in facts.get("verdict_findings", []) or []:
+        if f.get("rule") and f.get("time_utc"):
+            times_by_rule.setdefault(f["rule"], set()).add(str(f["time_utc"]))
+    if times_by_rule:
+        for sent in _SENTENCE_SPLIT_RE.split(text):
+            cited = set(_RULE_RE.findall(sent))
+            ok = set().union(*(times_by_rule.get(r, set()) for r in cited)) if cited else set()
+            for hh, mm in _TIME_RE.findall(sent):
+                t = f"{int(hh):02d}:{mm}"
+                if t not in ok:
+                    where = ", ".join(sorted(cited)) or "no rule"
+                    unresolvable.append(f"time_rule:{t} is not the time of {where}")
+
     # Relation-level checks. Fatal: a rank claim that contradicts the record is
     # as wrong as a fabricated one, and passing it would put the narration on
     # screen next to the record it contradicts.
     relation_errors = _relation_errors(text, facts)
     unresolvable.extend(relation_errors)
 
+    # Informational only. Since prompt v3 the model is forbidden ranking prose,
+    # so it has no reason to name the scorer; the code-written ranking sentences
+    # name it instead. Not a quality criterion any more.
     scorer = facts.get("scorer")
     mentions_scorer = bool(scorer) and scorer.lower() in lowered
 

@@ -39,5 +39,14 @@
     },
     "status": "accepted",
     "text": "invoice_scan.exe has the highest triage score in this run (99, critical), from 3 corpus-validated rules. invoice_scan.exe was executed (last run 11:50 UTC) and is registered to run at logon (R-ATOMIC-0006). For the user account vboxuser (triage score 88, high), the Security event log on the host was cleared at 12:15 UTC (R-ATOMIC-0002)."
+  },
+  "revalidated_under_v8_checks": {
+    "validated": false,
+    "unresolvable": [
+      "missing_finding:R-CORR-0003 (invoice_scan.exe)",
+      "missing_finding:R-CORR-0006 (invoice_scan.exe)",
+      "time_rule:11:50 is not the time of R-ATOMIC-0006"
+    ],
+    "why": "11:50 is R-CORR-0003's time but was cited as R-ATOMIC-0006; R-CORR-0006 (Recycle Bin deletion) omitted. v7 was not correct in every clause."
   }
 }
