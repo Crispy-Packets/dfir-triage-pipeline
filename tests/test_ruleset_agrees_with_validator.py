@@ -122,11 +122,30 @@ def test_every_rule_records_its_measured_base_rate(every_rule):
     no attack in it. The four rules most likely to be read as detections were
     the four with no measurement recorded beside them.
     """
+    from dfir_triage_pipeline.core.ruleset import EXPECTED_COLLECTIONS
+
     for rule in every_rule:
         names = {name for name, _ in rule.expected}
-        assert names == {"clean_a", "clean_b", "s1_v2"}, (
+        # Was the three host-1 names, the same stale list the loader carried;
+        # the test passed only because the loader dropped host 2 to match it.
+        assert names == set(EXPECTED_COLLECTIONS), (
             f"{rule.rule_id} does not record a base rate for every collection"
         )
+
+
+def test_loader_reads_every_collection_the_validator_requires(validator):
+    """The loader read three collections while the validator required five, so
+    every host-2 `expected:` figure was dropped on load for weeks without a
+    failing test. The two lists are one fact and must not drift again."""
+    from dfir_triage_pipeline.core.ruleset import EXPECTED_COLLECTIONS
+
+    assert tuple(EXPECTED_COLLECTIONS) == tuple(validator.COLLECTIONS)
+
+
+def test_host2_expected_figures_survive_loading(every_rule):
+    rule = next(r for r in every_rule if r.rule_id == "R-ATOMIC-0005")
+    assert dict(rule.expected) == {
+        "clean_a": "0", "clean_b": "0", "s1_v2": "0", "clean_c": "0", "s1_v3": "0"}
 
 
 def test_every_window_justification_cites_a_number(every_rule):

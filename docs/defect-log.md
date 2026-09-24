@@ -2964,3 +2964,67 @@ the correct baseline for any future ML statement. The flag-ON side is not re-run
 `docs/evidence/od-01-phase4-flagged-ablation.md` is labelled pre-D-074 for its
 ML-only figures.
 
+
+## D-075  R-CORR-0004 can never fire: EID 7045 does not record who installed a service
+
+Found 2026-09-24, writing an RDP-to-service-install chain for the Windows
+Server 2022 test.
+
+`R-CORR-0004` joins a service installation (7045) to a log clear (1102) on
+`entity.user`. The 7045 user is `_user_for(7045)` = `AccountName` -- the
+account the service **runs as**, not the account that installed it. Measured on
+clean_c, s1_v3 and clean_b: `entity.user` is None on **52 of 52** service
+installs after SYSTEM_CONTEXTS folding (LocalSystem, NT AUTHORITY accounts),
+and the three that survive are SQL Server's own `NT Service\*` accounts. A
+malicious service runs as LocalSystem too, so the join cannot match on any
+realistic evidence. The rule's own comment reads the exclusion of LocalSystem
+installs as a deliberate filter for VirtualBox's services; it filters every
+service.
+
+`entity.host` is not an available fix: schema 4.5 forbids host joins because a
+host is renamed within a collection (clean_b carries `WIN-BQVKLIBL3LA` and
+`windows10`).
+
+**The real fix is the installer's identity.** The 7045 record's System section
+carries `Security UserID`, the SID that logged the event -- for a service
+installation, the installer. Reading it into `entity.user` for 7045, and
+reading `SubjectUserSid` for 1102 so both sides are SIDs, would give the chain
+a key both records can supply. That is a parser and entity-key change across
+two EIDs, measured on five collections, and is **not** made here: recorded, not
+half-fixed. The rule is left enabled with its zero, which is now understood as
+structural rather than evidential. The planned RDP-to-service chain was not
+written for the same reason.
+
+## D-076  The rule loader dropped every host-2 `expected:` figure
+
+Found 2026-09-24 by `tools/measure_rules.py`, whose first run reported every
+clean_c and s1_v3 cell as "unmeasured" -- including rules that declare 0.
+
+`core/ruleset.py` read `expected` for `("clean_a", "clean_b", "s1_v2")` only,
+with a comment saying "only the three collection counts", written before
+host 2 existed. Every rule declares five figures and `validate_rules.py`
+requires five; the loader silently discarded two for as long as host 2 has
+existed. `test_every_rule_records_its_measured_base_rate` asserted the same
+three names, so it passed **because** the loader dropped host 2 to match it.
+
+Fixed: `EXPECTED_COLLECTIONS` in ruleset.py holds all five, and
+`test_loader_reads_every_collection_the_validator_requires` pins it to the
+validator's `COLLECTIONS` so the two lists are one fact.
+
+## D-077  R-ATOMIC-0010 declared 9 on s1_v2; the LNK rows are 2
+
+Found 2026-09-24 by `tools/measure_rules.py`: declared 9, measured 2.
+
+D-064's `drive_type` survey counted **LNK files and Jump Lists together** (the
+nine removable rows it lists include `E:\collection_clean_a`,
+`E:\collection_clean_b`, `E:\collection_s1` and `E:\handoff`). Re-measured by
+artifact on s1_v2: **2** removable rows come from `.lnk` files (both
+`E:\Camera`, volume JOE) and **7** from Jump Lists. The `.lnk` for
+`collection_clean_a` itself records `Z:\collection_clean_a` on a fixed volume;
+only the Jump List entry records it as removable `E:`.
+
+R-ATOMIC-0010 (source `lnk`) was stamped with the combined 9; R-ATOMIC-0013
+(source `jumplist`) was left `unmeasured` although its 7 was inside that same
+survey. Corrected: 0010 declares 2, 0013 declares 7. D-064's conclusion
+stands -- the removable volume is the operator's collection stick -- only its
+figure was attributed to the wrong rule.

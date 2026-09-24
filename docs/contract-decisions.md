@@ -75,8 +75,15 @@ CD-007  Fixed event vocabulary. Both parsers draw from the same strings so the
         Security.evtx  4625  ->  evtx.security  logon_failed
         Security.evtx  4688  ->  evtx.security  process_exec
         Security.evtx  4720  ->  evtx.security  account_created
+        Security.evtx  4728,4732,4756  ->  evtx.security  group_member_added
         Security.evtx  1102  ->  evtx.security  log_cleared
         System.evtx    7045  ->  evtx.system    service_install
+
+        group_member_added added 2026-09-24 for R-ATOMIC-0019. One string for
+        three EIDs: 4732 (local group, e.g. BUILTIN\Administrators), 4728
+        (global) and 4756 (universal) are the same act in different group
+        scopes; which group is in details.TargetSid, and a rule reads the
+        group from there. Three spellings would fragment the timeline.
 
         Registry hives  Run/RunOnce  ->  registry  persistence_autorun
         Edge History    downloads    ->  browser   file_download

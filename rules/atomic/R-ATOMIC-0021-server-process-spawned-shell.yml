@@ -1,0 +1,76 @@
+# Atomic rule 0021. Added 2026-09-24 for the Windows Server 2022 test. CLASS 2.
+#
+# The classic server-side foothold: a web shell makes IIS's worker process
+# (w3wp.exe) start a shell; SQL injection through xp_cmdshell makes sqlservr.exe
+# start cmd.exe; Exchange exploitation makes UMWorkerProcess.exe do so.
+
+schema_version: "2.1.0"
+id: R-ATOMIC-0021
+type: atomic
+title: A server process started a command shell or reconnaissance tool
+enabled: true
+class: known-behavior
+phase: execute
+
+description: >
+  Fires on a process creation (EID 4688) whose PARENT is a server process --
+  the IIS worker (w3wp.exe), SQL Server (sqlservr.exe), Exchange
+  (UMWorkerProcess.exe), Apache (httpd.exe), PHP (php-cgi.exe) or Tomcat -- and
+  whose new process is a shell or a reconnaissance/download tool (cmd,
+  powershell, pwsh, whoami, net, net1, nltest, certutil, bitsadmin, mshta,
+  rundll32, regsvr32, cscript, wscript). Server processes serve requests; they
+  have no ordinary reason to start these. Claims the parent-child pair and
+  names the record.
+
+severity: high
+weight: 65
+
+attack:
+  technique: T1505.003
+  name: "Server Software Component: Web Shell"
+
+select:
+  event_type: [process_exec]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: process_exec
+    - field: details.ParentProcessName
+      op: matches
+      value: '(?i)(^|\\)(w3wp|sqlservr|umworkerprocess|httpd|php-cgi|tomcat[0-9]*)\.exe$'
+    - field: path
+      op: matches
+      value: '(?i)(^|\\)(cmd|powershell|pwsh|whoami|net|net1|nltest|certutil|bitsadmin|mshta|rundll32|regsvr32|cscript|wscript)\.exe$'
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-24 with tools/measure_rules.py (full ingest, full rule set).
+
+    Host 1 runs SQL Server (MSSQLSERVER, SQLSERVERAGENT) and records parent
+    process names, so its zero is a real negative for the SQL case over
+    thousands of process creations. There is no IIS in this corpus, so
+    the w3wp.exe branch is proven only by its unit test. Host 2 has no
+    usable 4688 and cannot fire.
+
+false_positive_notes: >
+  1. SQL Server Agent jobs and maintenance plans legitimately run cmd.exe or
+     PowerShell steps, which can appear as children of sqlservr.exe on some
+     configurations. Host 1 runs SQL Server (MSSQLSERVER, SQLSERVERAGENT), so
+     its measured figure is the base rate for exactly this case.
+
+  2. Web applications that shell out by design (report generators, legacy CGI)
+     make w3wp.exe start cmd.exe on every request of a given kind.
+
+  3. Needs process-creation auditing with parent process name recorded;
+     without 4688 the rule cannot fire.
+
+references:
+  - "docs/details-schema.md, EVTX section, ParentProcessName"

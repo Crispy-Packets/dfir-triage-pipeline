@@ -53,10 +53,16 @@ conditions:
 expected:
   clean_a: 0
   clean_b: 0
-  s1_v2: 9
+  s1_v2: 2
   clean_c: 0
   s1_v3: 0
   note: >
+    CORRECTED 2026-09-24 (D-077): s1_v2 was declared 9 and measures 2. D-064's
+    survey counted LNK files and Jump Lists together; of its nine removable
+    rows, 2 are .lnk files (both E:\Camera, volume JOE) and 7 are Jump List
+    entries, which R-ATOMIC-0013 reads. Everything below about what the rows
+    MEAN still holds; only the count was attributed to the wrong artifact.
+
     These figures are MEASURED (D-064, 2026-09-18) and they are the reason
     this rule is Class 2 rather than Class 1. The count looks like the best
     base rate in the project -- 9 against 0/0/0/0 -- and it is not a detection.

@@ -1,0 +1,83 @@
+# Atomic rule 0023. Added 2026-09-24 for the Windows Server 2022 test. CLASS 2.
+#
+# Replaces the planned "RDP logon then service install" chain, which cannot be
+# written honestly: EID 7045 does not record who installed a service (its
+# AccountName is the run-as account, None after folding on 52 of 52 measured
+# installs), and entity.host is not a join key (schema 4.5). Scheduled-task
+# persistence had no rule at all: no rule read `task_registered` before this.
+
+schema_version: "2.1.0"
+id: R-ATOMIC-0023
+type: atomic
+title: A scheduled task runs a script host with download or encoded arguments
+enabled: true
+class: known-behavior
+phase: persist
+
+description: >
+  Fires on a scheduled task defined on disk (System32\Tasks) whose action runs
+  a shell or script host -- powershell, pwsh, cmd, wscript, cscript, mshta,
+  rundll32, regsvr32 -- with arguments that download or decode what it runs:
+  an encoded command, a base64 decode, a web download, Invoke-Expression, or
+  an http(s) URL.
+
+  A hidden window alone is deliberately NOT enough. Measured 2026-09-24: the
+  first version also matched "-WindowStyle Hidden" and fired on all five
+  collections, on two tasks every Windows install ships --
+  \Microsoft\Windows\SMB\UninstallSMB1ClientTask and ...ServerTask, which run
+  PowerShell with -WindowStyle Hidden. Claims that the task is DEFINED with
+  that action and names the task file. Claims nothing about whether or when it
+  ran: a task definition attests presence, not execution.
+
+severity: high
+weight: 60
+
+attack:
+  technique: T1053.005
+  name: "Scheduled Task/Job: Scheduled Task"
+
+select:
+  event_type: [task_registered]
+  source_artifact: [scheduled_task]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: task_registered
+    - field: path
+      op: matches
+      value: '(?i)(^|[\\/])(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32)(\.exe)?"?$'
+    - field: details.arguments
+      op: present
+  any:
+    - field: details.arguments
+      op: matches
+      value: '(?i)(-e(nc(odedcommand)?)?\s+[A-Za-z0-9+/=]{16,}|frombase64string|downloadstring|downloadfile|invoke-webrequest|\biwr\b|invoke-expression|\biex\b|https?://)'
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-24 with tools/measure_rules.py (full ingest, full rule set).
+
+    Zero after one correction. The first version also matched a hidden
+    window alone and fired 2/2/2/2/2 -- Microsoft's
+    UninstallSMB1ClientTask and UninstallSMB1ServerTask, present on every
+    collection. Removed from the rule; those tasks are pinned as a negative
+    in tests/test_server_rules.py.
+
+false_positive_notes: >
+  1. Management and monitoring agents register PowerShell tasks that run an
+     encoded command or fetch a script; the pattern is common in legitimate
+     tooling. (A hidden window alone -- also common, including in Microsoft's
+     own SMB1 tasks -- was removed from the rule for that reason.)
+
+  2. Update and inventory tasks that fetch a script from an internal https URL
+     match the URL clause.
+
+  3. A task can be deleted after it runs, and then there is no definition on
+     disk to find; the Security log's 4698 (task created) is not parsed.

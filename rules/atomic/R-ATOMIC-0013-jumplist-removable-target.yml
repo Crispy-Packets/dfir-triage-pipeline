@@ -46,12 +46,19 @@ conditions:
       value: [removable, remote]
 
 expected:
-  clean_a: unmeasured
-  clean_b: unmeasured
-  s1_v2: unmeasured
-  clean_c: unmeasured
-  s1_v3: unmeasured
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 7
+  clean_c: 0
+  s1_v3: 0
   note: >
+    MEASURED 2026-09-24 (D-077) with tools/measure_rules.py. The 7 on s1_v2
+    are the Jump List half of D-064's nine removable rows -- the operator's
+    collection stick (E:\collection_clean_a, E:\collection_clean_b,
+    E:\collection_s1, E:\handoff) and personal E:\Camera media. A true
+    positive for the rule and a false positive for the investigation,
+    exactly as D-064 reads them.
+
     CLASS 2 -- unmeasured on all five.
 
     The `jumplist` family carries 149 rows across the two collections

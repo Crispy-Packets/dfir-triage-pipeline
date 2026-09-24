@@ -310,6 +310,11 @@ def _select(node: Any, where: str) -> Select:
     return Select(tuple(str(v) for v in event_types), tuple(str(v) for v in artifacts))
 
 
+#: The collections an `expected:` block declares, in schema order. Must equal
+#: rules/validate_rules.py COLLECTIONS (pinned by a test).
+EXPECTED_COLLECTIONS = ("clean_a", "clean_b", "s1_v2", "clean_c", "s1_v3")
+
+
 def load_rule(path: Path) -> Rule:
     text = path.read_text(encoding="utf-8")
     documents = list(yaml.load_all(text, Loader=StrictLoader))
@@ -438,15 +443,21 @@ def load_rule(path: Path) -> Rule:
         if order not in ("strict", "any"):
             raise RuleError(f"{path.name}: order must be 'strict' or 'any'")
 
-    # Only the three collection counts. An `expected` block may also carry
-    # `note` and other prose keys -- R-ATOMIC-0003 carries
-    # `note_on_excluded_patterns` -- and pulling those in would put a paragraph
-    # where a count belongs.
+    # Only the collection counts. An `expected` block may also carry `note` and
+    # other prose keys -- R-ATOMIC-0003 carries `note_on_excluded_patterns` --
+    # and pulling those in would put a paragraph where a count belongs.
+    #
+    # All FIVE collections. This read three (clean_a, clean_b, s1_v2) and
+    # silently dropped clean_c and s1_v3 for as long as host 2 existed: every
+    # rule declared host-2 figures and no consumer of Rule.expected ever saw
+    # them. Found 2026-09-24 when tools/measure_rules.py reported every host-2
+    # cell as "unmeasured". Pinned to rules/validate_rules.py's COLLECTIONS by
+    # test_ruleset_agrees_with_validator.
     expected_raw = data.get("expected") or {}
     expected = (
         tuple(
             (name, str(expected_raw[name]))
-            for name in ("clean_a", "clean_b", "s1_v2")
+            for name in EXPECTED_COLLECTIONS
             if name in expected_raw
         )
         if isinstance(expected_raw, dict)

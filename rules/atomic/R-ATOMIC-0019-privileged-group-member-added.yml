@@ -1,0 +1,86 @@
+# Atomic rule 0019. Added 2026-09-24 for the Windows Server 2022 test. CLASS 2
+# (known-behavior): no collection in this corpus contains the behaviour, so it
+# carries a false-positive profile, not a detection rate.
+#
+# Needs EID 4728/4732/4756, which the parser did not read before this rule --
+# added in the same change (evtx_windows.py, group_member_added). Proven on a
+# real public sample: evtx-attack-samples Persistence/
+# Network_Service_Guest_added_to_admins_4732.evtx fires it twice.
+
+schema_version: "2.1.0"
+id: R-ATOMIC-0019
+type: atomic
+title: An account was added to a privileged group
+enabled: true
+class: known-behavior
+phase: persist
+
+description: >
+  Fires on a group-membership addition (EID 4728, 4732 or 4756) whose target
+  group is a privileged built-in or domain group, recognised by the RID at the
+  end of its SID: -544 BUILTIN\Administrators, -512 Domain Admins, -518 Schema
+  Admins, -519 Enterprise Admins. Claims that the named account was added to
+  that group and names who did it (SubjectUserName). Claims nothing about why.
+
+  The group is matched by SID, never by name: group names are localised
+  ("Administratoren", "Administrateurs"), and TargetUserName would silently
+  miss them. The added account is often recorded only by SID (MemberName is the
+  literal "-" for local accounts), so entity.user may be a SID.
+
+severity: high
+weight: 60
+
+attack:
+  technique: T1098
+  name: Account Manipulation
+
+select:
+  event_type: [group_member_added]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: group_member_added
+    - field: details.TargetSid
+      op: matches
+      value: '-(544|512|518|519)$'
+
+expected:
+  clean_a: 2
+  clean_b: 2
+  s1_v2: 0
+  clean_c: 1
+  s1_v3: 0
+  note: >
+    Measured 2026-09-24 with tools/measure_rules.py (full ingest, full rule set).
+
+    Every hit is ordinary machine setup, read row by row. On host 1: the
+    first user account (RID 1000) added to Administrators by the machine
+    account WINDOWS10$ at install (2026-06-20), and a second account
+    (RID 1003) added by the lab administrator (2026-08-12). On host 2: the
+    first account added by WINVM$ at install (2026-09-09). None is an
+    attack, which is exactly why this rule is known-behavior.
+
+    Additions made by a machine account are NOT excluded: an attacker
+    running as SYSTEM is also recorded as the machine account, so that
+    exclusion would remove the case the rule exists for.
+
+false_positive_notes: >
+  1. Planned administration: a new administrator is added to Administrators,
+     or an IT account to Domain Admins. The record is identical to an attack;
+     only the account and the change ticket tell them apart.
+
+  2. Software installers and management agents that add a service account to
+     the local Administrators group during setup.
+
+  3. Domain join and Group Policy "Restricted Groups" can re-add members on
+     every refresh, producing repeated additions of the same account.
+
+  Account Management auditing ("Audit Security Group Management") must be
+  enabled for these events to exist at all; it is on by default on domain
+  controllers and off by default on member servers and workstations.
+
+references:
+  - "docs/details-schema.md, EVTX section, MemberName / MemberSid / TargetSid"

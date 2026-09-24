@@ -1,0 +1,78 @@
+# Atomic rule 0020. Added 2026-09-24 for the Windows Server 2022 test. CLASS 2.
+#
+# Reads the 4688 command line. That field exists only when "Include command
+# line in process creation events" is enabled -- measured: host 1 (clean_a,
+# clean_b, s1_v2) records it on ~98% of 4688s; host 2 (clean_c) on 0 of 111.
+
+schema_version: "2.1.0"
+id: R-ATOMIC-0020
+type: atomic
+title: A command deleted shadow copies or disabled system recovery
+enabled: true
+class: known-behavior
+# execute, not destroy: an atomic rule's phase follows the event-type map
+# (process_exec -> execute, pinned by test_atomic_phases_agree_with_the_event_type_map).
+# The behaviour is pre-impact -- the description says so -- but the record is
+# an execution, and the phase names the record.
+phase: execute
+
+description: >
+  Fires on a process creation (EID 4688) whose recorded command line deletes
+  Volume Shadow Copies, deletes the Windows backup catalog, or disables boot
+  recovery: vssadmin delete shadows, wmic shadowcopy delete, wbadmin delete
+  catalog / systemstatebackup / backup, or bcdedit setting recoveryenabled no
+  or bootstatuspolicy ignoreallfailures. These are the steps ransomware takes
+  before encrypting, so that the victim cannot roll back. Claims that the
+  command was run and names the record.
+
+severity: critical
+weight: 75
+
+attack:
+  technique: T1490
+  name: Inhibit System Recovery
+
+select:
+  event_type: [process_exec]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: process_exec
+    - field: details.CommandLine
+      op: present
+    - field: details.CommandLine
+      op: matches
+      value: '(?i)(vssadmin(\.exe)?"?\s+delete\s+shadows|wmic(\.exe)?"?\s+shadowcopy\s+delete|wbadmin(\.exe)?"?\s+delete\s+(catalog|systemstatebackup|backup)|bcdedit(\.exe)?"?\s.*(recoveryenabled\s+no|bootstatuspolicy\s+ignoreallfailures))'
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-24 with tools/measure_rules.py (full ingest, full rule set).
+
+    The two hosts' zeros mean different things. Host 1 records a
+    CommandLine on 9,353 of 9,502 process creations in clean_b, so its zero
+    is a real negative over thousands of commands. Host 2 records a
+    CommandLine on 0 of 111 in clean_c, so there its zero is "could not
+    fire", not "did not fire".
+
+false_positive_notes: >
+  1. Backup software and storage administrators prune old shadow copies with
+     vssadmin delete shadows as routine housekeeping, usually from a scheduled
+     task under a service account.
+
+  2. Imaging and deployment tooling may disable boot recovery on purpose.
+
+  3. A silent negative is more likely than a false positive: on a host without
+     command-line auditing the rule cannot fire at all, and shadow deletion
+     through PowerShell (Win32_ShadowCopy .Delete()) or the VSS API leaves no
+     command line to match.
+
+references:
+  - "docs/details-schema.md, EVTX section, CommandLine"

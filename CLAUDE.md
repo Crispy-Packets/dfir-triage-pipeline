@@ -3,8 +3,8 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1025 passed, 21 skipped
-    python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
+    python -m pytest -q               ->  1065 passed, 21 skipped
+    python rules\validate_rules.py    ->  schema 2.1.0  rules 29  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
@@ -45,6 +45,24 @@ protect the repo from the evidence, not the evidence from the repo.
     rows and could not be modelled, so the download was never scored
     collection_clean_c   736 files   training baseline; 62 downloads, 470 4104 rows
     collection_s1_v3     799 files   scenario, same four steps
+
+**Rules for the Windows Server 2022 test (2026-09-24), all `known-behavior`.**
+R-ATOMIC-0019 privileged-group member added (EID 4728/4732/4756, parsed from
+this change on as `group_member_added`; group matched by SID RID -544/-512/
+-518/-519, never by name), 0020 recovery sabotage by command line (T1490), 0021
+server process spawning a shell (T1505.003), 0022 failed-logon burst (the first
+use of `aggregate`), 0023 scheduled task running a script host with download/
+encoded arguments. Known-behavior means their findings are Context, never
+Verdict, and never move `entity_score`; promotion needs a measured true positive
+on a scenario and zero on a same-host clean collection. 0020/0021 need 4688
+with command line and parent recorded -- host 1 has it, host 2 does not.
+**`tools/measure_rules.py`** runs the full ingest and full rule set per
+collection and flags any rule whose count differs from its `expected:` (DRIFT);
+every figure added from 2026-09-24 comes from it. Not writable, measured: an
+RDP-then-service chain (7045 records no installer; host joins are forbidden,
+schema 4.5 -- same cause as D-075, R-CORR-0004 cannot fire), a rename burst
+(3,475-16,375 renames per 10 min on clean hosts), archives in a share (USN
+carries bare filenames). Defects found in the same pass: D-075..D-077.
 
 **`viewer/` is Person A's read-only Streamlit UI** over one `run.json`. It is a
 separate component: its own venv (`viewer/.venv`, from `viewer/requirements.txt`,

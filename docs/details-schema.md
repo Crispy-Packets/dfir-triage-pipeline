@@ -50,6 +50,9 @@ here before emission, same rule.
 | `SubjectLogonId` | str | `evtx.security` | Logon id linking a process-creation record to its session. |
 | `TargetUserName` | str | `evtx.security` | Account **created** by a 4720, as recorded. Distinct from `SubjectUserName`, which is the account that performed the creation. Without this an account-creation base rate can be counted but its members cannot be told apart, which is what A-4 requires (D-029). |
 | `TargetDomainName` | str | `evtx.security` | Domain or machine scope of the created account from 4720. Local accounts carry the machine name. |
+| `MemberName` | str | `evtx.security` | Account **added to a group** by 4728/4732/4756, as recorded. Often the literal `-` for a local account, which the log names only by SID. |
+| `MemberSid` | str | `evtx.security` | SID of the account added to the group. Present when `MemberName` is `-`; `entity.user` falls back to it. |
+| `TargetSid` | str | `evtx.security` | On 4728/4732/4756, the SID of the **group** (not an account). Privileged groups are recognised by RID suffix: `-544` Administrators, `-512` Domain Admins, `-518` Schema Admins, `-519` Enterprise Admins. On these EIDs `TargetUserName` is the group's name. |
 | `SubjectUserName` | str | `evtx.security` | Account that performed the recorded action, from 4688, 4720 and 1102. For 4720 this is the creator, never the created account. |
 | `ServiceName` | str | `evtx.system` | Service name from 7045. |
 | `ImagePath` | str | `evtx.system` | Service binary path from 7045, as recorded, including any arguments and quoting. |

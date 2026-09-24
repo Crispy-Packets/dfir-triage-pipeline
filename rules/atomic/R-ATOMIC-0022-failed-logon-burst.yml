@@ -1,0 +1,68 @@
+# Atomic rule 0022. Added 2026-09-24 for the Windows Server 2022 test. CLASS 2.
+#
+# The first rule to use `aggregate` (schema 2.0.0, section 6A), which was added
+# for exactly this burst and never used: R-CORR-0002 still says "one failure
+# then a success".
+
+schema_version: "2.1.0"
+id: R-ATOMIC-0022
+type: atomic
+title: Burst of failed logons against one account
+enabled: true
+class: known-behavior
+phase: delivery
+
+description: >
+  Fires once when ten or more failed logons (EID 4625) against the SAME account
+  fall inside any five-minute window. Password guessing and brute force against
+  an exposed service (RDP above all on a Windows server) produce exactly this.
+  Claims the count and the interval it was observed over, and names the
+  account. Claims nothing about success -- R-CORR-0002 covers failure followed
+  by success.
+
+severity: high
+weight: 55
+
+attack:
+  technique: T1110
+  name: Brute Force
+
+select:
+  event_type: [logon_failed]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: logon_failed
+
+aggregate:
+  count: 10
+  within: PT5M
+  group_by: entity.user
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-24 with tools/measure_rules.py (full ingest, full rule set).
+
+    The corpus holds 13 failed logons on clean_b and 2 on clean_c, never ten
+    against one account inside five minutes. The threshold is therefore
+    not tuned to this corpus; it is set where a human mistyping a password
+    never lands and an automated guesser always does.
+
+false_positive_notes: >
+  1. A service or scheduled task still configured with an old password retries
+     on a timer and bursts against one account, every day, from the same host.
+
+  2. A user who changed their password while a phone, mapped drive or RDP
+     client keeps retrying the old one.
+
+  3. Grouped by account, deliberately: a spray (one attempt per account across
+     many accounts) does NOT fire this rule. That is a separate behaviour and
+     would need grouping by source address, which is not an entity key.

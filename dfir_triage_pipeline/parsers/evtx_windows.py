@@ -19,6 +19,15 @@ SECURITY_EIDS: dict[int, tuple[str, str]] = {
     4625: ("logon_failed", "failed logon"),
     4688: ("process_exec", "process created"),
     4720: ("account_created", "user account created"),
+    # Group membership changes. 4732 is a member added to a security-enabled
+    # LOCAL group (on a member server or workstation, BUILTIN\Administrators
+    # is one); 4728 and 4756 are the global and universal equivalents a domain
+    # controller writes (Domain Admins, Enterprise Admins). Added for the
+    # privileged-group rule: which group it was is in TargetSid, which is how
+    # the rule recognises Administrators by RID rather than by a localised name.
+    4728: ("group_member_added", "member added to a global security group"),
+    4732: ("group_member_added", "member added to a local security group"),
+    4756: ("group_member_added", "member added to a universal security group"),
     1102: ("log_cleared", "security event log cleared"),
 }
 SYSTEM_EIDS: dict[int, tuple[str, str]] = {
@@ -276,6 +285,15 @@ def _user_data(root: ET.Element) -> dict[str, str]:
 def _user_for(eid: int, data: dict[str, str]) -> str | None:
     if eid in (4624, 4625, 4720):
         return data.get("TargetUserName") or None
+    if eid in (4728, 4732, 4756):
+        # The account ADDED to the group -- the one whose rights changed, as
+        # 4720 records the account created. MemberName is frequently the
+        # literal "-" for a local account (the log names it only by SID), so
+        # the SID is recorded then rather than no principal at all.
+        name = data.get("MemberName") or ""
+        if name and name != "-":
+            return name
+        return data.get("MemberSid") or None
     if eid == 4688:
         return data.get("SubjectUserName") or None
     if eid == 1102:
@@ -398,6 +416,14 @@ def _details_for(eid: int, data: dict[str, str]) -> dict[str, str]:
         # told apart. Distinguishing four standing lab accounts from one staged
         # testuser is exactly what A-4 needs. See D-029.
         keep = ("TargetUserName", "TargetDomainName", "SubjectUserName", "SubjectDomainName")
+    elif eid in (4728, 4732, 4756):
+        # TargetUserName/TargetSid are the GROUP (on these EIDs the log uses
+        # "Target" for the group, not an account); MemberName/MemberSid are
+        # the account added; Subject* is who added it.
+        keep = (
+            "MemberName", "MemberSid", "TargetUserName", "TargetDomainName",
+            "TargetSid", "SubjectUserName", "SubjectDomainName",
+        )
     elif eid == 1102:
         keep = ("SubjectUserName", "SubjectDomainName", "SubjectLogonId")
     elif eid == 7045:
