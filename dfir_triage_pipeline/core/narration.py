@@ -429,8 +429,8 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
 
     facts = _facts(doc)
     # NOT sort_keys: the fact slice is ordered verdict-first ON PURPOSE, and
-    # alphabetising would put `prioritisation_ranking_not_detections` ahead of
-    # `verdict_entities` -- reinstating the exact bug prompt v2 exists to fix.
+    # alphabetising would put the ranking sentences ahead of
+    # `verdict_entities` -- the ordering bug prompt v2 was written to fix.
     # `_facts()` builds a fixed key order, so the prompt stays deterministic.
     prompt = _PROMPT + json.dumps(facts, indent=2)
     block: dict[str, Any] = {
@@ -442,6 +442,16 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         "seed": _SEED,
         "prompt_version": PROMPT_VERSION,
         "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        # The exact facts the model saw, so a narration can be tied to its input
+        # without re-deriving the slice.
+        "facts_sha256": hashlib.sha256(
+            json.dumps(facts, sort_keys=True).encode("utf-8")
+        ).hexdigest(),
+        # Written by CODE from the record, not by the model -- the viewer renders
+        # them under the AI summary with their own label. Present in every state
+        # (they do not depend on the model), so a withheld summary still leaves
+        # the ranking context on screen.
+        "ranking_sentences": facts["ranking_sentences_already_written_do_not_restate"],
         "generated_at": datetime.now(UTC).isoformat(),
     }
     try:

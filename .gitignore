@@ -21,6 +21,7 @@ outputs/
 # outputs are on the record, so the instrument that produced them has to be too.
 tools/*
 !tools/*.py
+!tools/*.ps1
 
 # Analysis-tool output: regenerable, machine-written, not part of the deliverable
 graphify-out/
@@ -33,3 +34,4 @@ repomix.config.json
 /run*.json
 /report.html
 /manifest.sha256
+/narration_*.json

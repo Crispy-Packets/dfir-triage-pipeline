@@ -679,6 +679,24 @@ class TestNarrateWithMockedClient:
         order = [v["entity"] for v in narration._facts(doc)["verdict_entities"]]
         assert order == ["invoice_scan.exe", "vboxuser", "npp.exe"]
 
+    def test_block_carries_code_written_ranking_sentences(self, monkeypatch):
+        # The viewer renders these under the summary; they come from the record,
+        # so they are present whatever the model does -- even on an error.
+        monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
+
+        def boom(self, prompt):
+            raise OSError("connection refused")
+
+        monkeypatch.setattr(narration._OllamaNarrator, "generate", boom)
+        block = narration.narrate(self._doc())
+        assert block["status"] == "error"
+        assert block["ranking_sentences"] == [
+            "In the moda_g anomaly ranking, invoice_scan.exe is rank 1 of 1 "
+            "(amcache, percentile 1.0; 0 = most unusual of its kind). This ranks "
+            "unusualness; it is not a detection."
+        ]
+        assert len(block["facts_sha256"]) == 64
+
     def test_unreachable_ollama_records_error_not_raises(self, monkeypatch):
         monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
 

@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1021 passed, 21 skipped
+    python -m pytest -q               ->  1022 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 24  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -173,9 +173,12 @@ detachable prose summary of a run, in `core/narration.py`. **Unset the flag and
 nothing changes** — no `narration` key in run.json, no Ollama dependency, the
 gate stays fast and model-free. Enable with a spec string
 `DFIR_NARRATION=backend:model`; only `ollama` is registered (`null` is the
-default no-op), and an unknown backend raises. Ollama runs on ANOTHER machine —
-point `DFIR_NARRATION_ENDPOINT` at it (default `http://localhost:11434`); the
-code only makes an HTTP call, it never installs or runs Ollama here. Example:
+default no-op), and an unknown backend raises. Ollama may run on this machine
+(the default endpoint, `http://localhost:11434`) or on another one — point
+`DFIR_NARRATION_ENDPOINT` at it; the code only makes an HTTP call and never
+installs or starts Ollama. `toolsun_with_narration.ps1` checks the endpoint and
+model before a run (both setups in `docs/narration-setup.md`); the viewer
+contract is `docs/handoff-narration-ui.md`. Example:
 `DFIR_NARRATION=ollama:qwen2.5:7b DFIR_NARRATION_ENDPOINT=http://192.168.1.50:11434`.
 The narration is **non-authoritative** (`is_verdict` false), written into
 run.json BEFORE the manifest hash (so it is covered), and rendered in report.html

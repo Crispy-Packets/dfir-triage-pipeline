@@ -3,15 +3,63 @@
 Narration is **off by default**. Everything below is opt-in; with `DFIR_NARRATION`
 unset the pipeline behaves exactly as before and needs no LLM.
 
-## Topology
+## Topology — two supported setups
 
-Ollama runs on a **separate Linux Mint laptop**, not on the pipeline machine. The
-pipeline only makes an HTTP call to it. Nothing about Ollama is installed on the
-Windows/pipeline host.
+The pipeline only ever makes an HTTP call to an Ollama endpoint. **Where Ollama
+runs is one setting**, `DFIR_NARRATION_ENDPOINT`; nothing in the code changes.
 
-    [ pipeline host ]  --HTTP-->  [ Mint laptop running Ollama :11434 ]
+    A. remote (default setup):  [ pipeline host ] --LAN--> [ Mint laptop, Ollama :11434 ]
+    B. local:                   [ pipeline host running Ollama on localhost:11434 ]
 
-## On the Mint laptop (one time)
+| | A. Remote (Mint laptop) | B. Local (this machine) |
+|---|---|---|
+| Endpoint | `http://<mint-ip>:11434` | `http://localhost:11434` (the default) |
+| Ollama config | `OLLAMA_HOST=0.0.0.0` so the LAN can reach it | none — localhost is Ollama's default |
+| RAM | model and pipeline on separate machines | MODA fit and model share 16 GB; narration runs after the fit, so they do not overlap |
+| Demo risk | depends on the LAN and the second laptop being up | one machine |
+
+`tools\run_with_narration.ps1` covers both: it checks the endpoint and that the
+model is pulled **before** the ~6-minute pipeline starts, then runs it with
+narration on for that run only.
+
+## Option B — Ollama on this (Windows) machine
+
+One time:
+
+    winget install Ollama.Ollama        # or the installer from ollama.com/download
+    ollama pull qwen2.5:7b              # ~4.7 GB
+    ollama pull qwen2.5:3b              # optional, ~1.9 GB -- fits a 4 GB GPU entirely
+
+Ollama then runs as a tray app on `localhost:11434` and starts with Windows.
+Nothing else to configure: `OLLAMA_HOST` is only needed to expose it to the LAN.
+
+Check, then run:
+
+    .\tools\run_with_narration.ps1 -Check
+    .\tools\run_with_narration.ps1 `
+        -Collection %USERPROFILE%\dfir-evidence\collection_s1_v3 `
+        -Baseline   %USERPROFILE%\dfir-evidence\collection_clean_c
+
+Output lands in `outputs\narrated\` (git-ignored): `run.json` with the
+`narration` block, `report.html`, `manifest.sha256`.
+
+**Gotcha: a stale endpoint.** If `DFIR_NARRATION_ENDPOINT` is still set in the
+shell from a remote run, the pipeline keeps calling the Mint laptop. The helper
+always sets it explicitly; by hand, clear it with
+`Remove-Item Env:DFIR_NARRATION_ENDPOINT`.
+
+**Hardware (GTX 1050, 4 GB VRAM):** `qwen2.5:7b` does not fit in 4 GB and runs
+partly on the CPU — expect minutes per narration. `qwen2.5:3b` fits entirely on
+the GPU and is much faster; it has not been benched against the validator here
+yet. Ollama keeps a model loaded for 5 minutes after use (`OLLAMA_KEEP_ALIVE`),
+which only matters if the next pipeline run starts inside that window.
+
+**Removing it:** uninstall Ollama from Settings -> Apps. The pipeline never
+depended on it; with `DFIR_NARRATION` unset nothing calls it.
+
+## Option A — Ollama on the Mint laptop
+
+On the Mint laptop (one time):
 
     # install Ollama (see ollama.com/download/linux)
     curl -fsSL https://ollama.com/install.sh | sh
@@ -58,7 +106,8 @@ A top-level `narration` block (run_json v1.5.0), e.g.:
       "backend": "ollama", "model": "qwen2.5:7b",
       "model_digest": "sha256:...", "endpoint": "192.168.1.50:11434",
       "temperature": 0.0, "seed": 20260830,
-      "prompt_version": "1", "prompt_sha256": "...",
+      "prompt_version": "8", "prompt_sha256": "...", "facts_sha256": "...",
+      "ranking_sentences": ["In the moda_g anomaly ranking, ... (code-written)"],
       "generated_at": "2026-09-22T...Z",
       "status": "accepted",              // or "rejected" / "error"
       "validation": {
@@ -67,6 +116,7 @@ A top-level `narration` block (run_json v1.5.0), e.g.:
         "unresolvable": [],
         "mentions_scorer": true,
         "missing_mentions": [],                    // verdict entities not named
+        "relation_errors": [],                     // rank / order / kind / pairing
         "describes_ranking_as_detection": false    // advisory, non-fatal
       },
       "text": "invoice_scan.exe was flagged by R-CORR-0001 ..."
@@ -79,6 +129,8 @@ A top-level `narration` block (run_json v1.5.0), e.g.:
   what failed.
 - `status: error` — Ollama was unreachable or errored; `error` holds the reason.
   The run itself still succeeded; only narration is absent.
+
+How the viewer should render each state: `docs/handoff-narration-ui.md`.
 
 ## Measured: the first live run, and what it changed
 
@@ -241,7 +293,8 @@ template — `<program>`, `<score>`, `<log name>`, `<host>` — so there is noth
 to copy, and an unfilled `<blank>` in the output is rejected. Host names in
 "log on X" are now checked against the findings' entities.
 
-**v7 output** (accepted; every clause checked against run.json):
+**v7 output** (accepted at the time — and **not** correct in every clause, as
+was first written here; see the correction below):
 
 > invoice_scan.exe has the highest triage score in this run (99, critical),
 > from 3 corpus-validated rules. invoice_scan.exe was executed (last run 11:50
@@ -252,6 +305,22 @@ to copy, and an unfilled `<blank>` in the output is rejected. Host names in
 "Security" came from the evidence path this time, not an example. The
 validator's first verdict on this text was a false reject — it read "on the
 host **was**" as a host named "was"; fixed with a stop-list and a test.
+
+**Correction (prompt v8).** v7 was reported as correct in every clause. It
+was not. *"invoice_scan.exe was executed (last run 11:50 UTC) and is
+registered to run at logon (R-ATOMIC-0006)"* — 11:50 is the prefetch time of
+**R-CORR-0003**; R-ATOMIC-0006 is the autorun value and carries no time and
+no execution. The pairing check passed because R-ATOMIC-0006 does belong to
+invoice_scan.exe — it is the wrong rule for what the sentence says. In the
+viewer, that citation opens a record with no 11:50 in it. v7 also left out
+the Recycle Bin deletion (R-CORR-0006) entirely.
+
+v8 adds three fatal checks: **a clock time must sit in the same sentence as
+the rule it belongs to**; **every corpus-validated finding on the critical
+entity must be cited** by rule id; and **at least 3 sentences** (Person A's
+floor — without it the per-finding rule is met by a list of codes, which is
+what v3 was). Regression over every real text: v2, v3a, v3b, v6 and v7 are
+rejected, each for its own fault; Person A's corrected summary is accepted.
 
 **Method note:** iterate on prompts with a narration-only call against an
 existing run.json (~3 min on CPU), not the full pipeline (~6 min+). And test
@@ -272,8 +341,11 @@ validation block from each run.json — no separate script:
     done
 
 **Pick the smallest model with `unresolvable: []` (which now includes
-`missing:` — it must name the verdict), `describes_ranking_as_detection: false`,
-`mentions_scorer: true`, and acceptable latency.** Zero fabrications AND the
+`missing:`, `missing_finding:` and `too_short:` — it must name the verdict and
+every finding on it), `describes_ranking_as_detection: false`, and acceptable
+latency.** `mentions_scorer` is informational only: since prompt v3 the model
+is forbidden ranking prose, and the code-written ranking sentences name the
+scorer. Zero fabrications AND the
 verdict named is the bar. That is the same measure-don't-assert rule the scorer
 choice used — a number, not a model table.
 
