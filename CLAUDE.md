@@ -46,6 +46,14 @@ protect the repo from the evidence, not the evidence from the repo.
     collection_clean_c   736 files   training baseline; 62 downloads, 470 4104 rows
     collection_s1_v3     799 files   scenario, same four steps
 
+**`viewer/` is Person A's read-only Streamlit UI** over one `run.json`. It is a
+separate component: its own venv (`viewer/.venv`, from `viewer/requirements.txt`,
+Streamlit only), its own tests (run from `viewer/`), and it imports nothing from
+`dfir_triage_pipeline`. The pipeline gate does not cover it: `pytest` collects
+only `tests/`, and ruff excludes `viewer/`. Its `samples/` and `tests/fixtures/`
+are manifest-sealed and tracked, CSVs included (a documented `.gitignore`
+exception). Run: `cd viewer; .\.venv\Scripts\python.exe -m streamlit run app.py`.
+
 **Train and score within one host.** A model fitted on host 1 and scored against
 host 2 flags nearly every row, because two machines differ in software, users
 and hostname -- the same failure as the 27.4% artifact-mix result below.
@@ -176,7 +184,8 @@ gate stays fast and model-free. Enable with a spec string
 default no-op), and an unknown backend raises. Ollama may run on this machine
 (the default endpoint, `http://localhost:11434`) or on another one — point
 `DFIR_NARRATION_ENDPOINT` at it; the code only makes an HTTP call and never
-installs or starts Ollama. `toolsun_with_narration.ps1` checks the endpoint and
+installs or starts Ollama. `tools
+un_with_narration.ps1` checks the endpoint and
 model before a run (both setups in `docs/narration-setup.md`); the viewer
 contract is `docs/handoff-narration-ui.md`. Example:
 `DFIR_NARRATION=ollama:qwen2.5:7b DFIR_NARRATION_ENDPOINT=http://192.168.1.50:11434`.

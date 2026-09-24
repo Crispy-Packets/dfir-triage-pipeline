@@ -1,0 +1,4 @@
+family,scored,entity_key,entity_value,percentile_in_family,is_outlier,scorer
+evtx.security,true,entity.user,admin_local,100.0,true,isolation_forest
+evtx.security,true,entity.user,analyst,57.1,false,isolation_forest
+evtx.security,true,entity.user,svc_backup,57.1,false,isolation_forest

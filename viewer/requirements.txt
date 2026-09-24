@@ -1,0 +1,10 @@
+# DFIR Triage Viewer — pinned dependency (A-11 clean-install gate).
+# Streamlit is the only runtime dependency of the viewer. It pulls its own
+# pinned transitive stack (pyarrow, etc.). Verified against this exact version.
+#
+# Justification for docs/reproducibility.md: the viewer is a separate,
+# read-only offline artifact (Person A's "option B"). It imports nothing from
+# dfir_triage_pipeline and shares no code path with detection or scoring, so it
+# cannot affect a pipeline run or its outputs. Keeping it in its own venv keeps
+# this dependency out of the pipeline's pinned set.
+streamlit==1.64.0

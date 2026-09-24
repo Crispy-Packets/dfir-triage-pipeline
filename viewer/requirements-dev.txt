@@ -1,0 +1,4 @@
+# Dev/test dependencies for the viewer's invariant suite (not needed at runtime,
+# kept out of requirements.txt so the A-11 clean-install gate stays minimal).
+# Run:  pip install -r requirements-dev.txt  &&  pytest tests/ -q
+pytest==8.3.3

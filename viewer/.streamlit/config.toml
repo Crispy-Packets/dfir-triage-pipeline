@@ -1,0 +1,27 @@
+[theme]
+base = "dark"
+primaryColor = "#d3895a"
+backgroundColor = "#0d0e10"
+secondaryBackgroundColor = "#17191d"
+textColor = "#ece6db"
+font = "sans serif"
+
+[server]
+# Not headless: `streamlit run app.py` opens the viewer in your browser by
+# itself, and prints only the two links that work — Local URL (this computer)
+# and Network URL (other devices on the same Wi-Fi/LAN). The "External URL"
+# line is not printed: it needs router port-forwarding, which a forensic
+# evidence viewer should not have anyway.
+headless = false
+showEmailPrompt = false
+fileWatcherType = "none"
+
+[global]
+# Clearing filters (X) resets widgets through session state on purpose.
+disableWidgetStateDuplicationWarning = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

@@ -33,6 +33,10 @@ include = ["dfir_triage_pipeline*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# viewer/ is Person A's separate read-only UI with its own venv and its own
+# test suite (viewer/tests, run from viewer/). It imports nothing from the
+# pipeline, so the pipeline's lint gate does not police it.
+extend-exclude = ["viewer"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

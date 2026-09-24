@@ -1,0 +1,4932 @@
+{
+  "_fixture": {
+    "fixture_assigned_fields": [
+      "findings.rule_class (CLASS_MAP)",
+      "findings.phase (CATEGORY_TO_PHASE + PHASE_OVERRIDE)",
+      "anomalies.* (synthesised; real values are B-10/A-6 output)",
+      "narration (model-generated, provisional)"
+    ],
+    "is_fixture": true,
+    "real_fields": [
+      "finding_id",
+      "rule_id",
+      "category",
+      "severity",
+      "weight",
+      "attack_technique",
+      "title",
+      "time_claim",
+      "window_observed_seconds",
+      "entity_keys",
+      "event_ids",
+      "events.*",
+      "entities.score",
+      "entities.breakdown"
+    ],
+    "reason": "Pipeline has no JSON writer (B-8) or ML section dict (B-10/A-6) yet; this conforms to v1.4.0 for UI work."
+  },
+  "anomalies": {
+    "_fixture": true,
+    "contamination": 0.05,
+    "families": {
+      "evtx.execution": {
+        "entities": [
+          {
+            "is_outlier": true,
+            "key": "entity.exe_name",
+            "percentile_in_family": 100.0,
+            "value": "invoice_scan.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 54.7,
+            "value": "onedrive.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 49.1,
+            "value": "msedge.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 45.3,
+            "value": "npp.8.9.6.2.installer.x64.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 45.3,
+            "value": "ssms-setup-enu.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 32.1,
+            "value": "securityhealthsystray.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 32.1,
+            "value": "vboxtray.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "code-tunnel.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "code.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "cursorusersetup-x64-3.15.6.tm"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "dismhost.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "gamebar.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "inno_updater.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "m365copilot_autostarter.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "mmc.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "msdt.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "msedgewebview2.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "npp.8.9.7.installer.x64.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "optionalfeatures.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "pilotshubapp.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "reg.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "sihclient.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "storedesktopextension.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "useraccountcontrolsettings.ex"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vboxwindowsadditions-amd64.ex"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vc_redist.x64.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vc_redist.x86.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vc_redist_x64.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vc_redist_x86.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vs_community__647585806.16176"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vs_setup_bootstrapper.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vscodeusersetup-x64-1.125.1.t"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vsta_setup.exe"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.exe_name",
+            "percentile_in_family": 17.0,
+            "value": "vsta_setup_2019.exe"
+          }
+        ],
+        "n": 34,
+        "outlier_rate": 0.029,
+        "scored": true
+      },
+      "evtx.security": {
+        "entities": [
+          {
+            "is_outlier": true,
+            "key": "entity.user",
+            "percentile_in_family": 100.0,
+            "value": "admin_local"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.user",
+            "percentile_in_family": 26.7,
+            "value": "janed"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.user",
+            "percentile_in_family": 26.7,
+            "value": "youssef"
+          }
+        ],
+        "n": 3,
+        "outlier_rate": 0.333,
+        "scored": true
+      }
+    },
+    "is_verdict": false,
+    "measure": "percentile_in_family",
+    "note": "Prioritisation only. A high percentile means unusual relative to the family baseline, not malicious.",
+    "random_seed": 20260830,
+    "scorer": "isolation_forest",
+    "top_by_percentile": [
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 100.0,
+        "value": "invoice_scan.exe"
+      },
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 100.0,
+        "value": "admin_local"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 54.7,
+        "value": "onedrive.exe"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 49.1,
+        "value": "msedge.exe"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 45.3,
+        "value": "npp.8.9.6.2.installer.x64.exe"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 45.3,
+        "value": "ssms-setup-enu.exe"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 32.1,
+        "value": "securityhealthsystray.exe"
+      },
+      {
+        "family": "evtx.execution",
+        "key": "entity.exe_name",
+        "percentile_in_family": 32.1,
+        "value": "vboxtray.exe"
+      },
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 26.7,
+        "value": "janed"
+      },
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 26.7,
+        "value": "youssef"
+      }
+    ]
+  },
+  "collection": "collection_s1_v2",
+  "counts": {
+    "entities_scored": 37,
+    "entities_total": 37,
+    "findings_by_class": {
+      "corpus-validated": 18,
+      "known-behavior": 35
+    },
+    "findings_by_phase": {
+      "delivery": 3,
+      "destroy": 32,
+      "execute": 9,
+      "persist": 9
+    },
+    "findings_by_severity": {
+      "critical": 5,
+      "high": 16,
+      "medium": 32
+    },
+    "findings_total": 53
+  },
+  "entities": [
+    {
+      "breakdown": "R-ATOMIC-0006=60(persistence,x1); R-CORR-0001=75(execution_context,x1); R-CORR-0003=85(persistence,x1); R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 75,
+        "persistence": 145,
+        "privilege_escalation": 0
+      },
+      "finding_count": 4,
+      "finding_ids": [
+        "7345f47c7a18c81e",
+        "3c4423d76fff90f9",
+        "a2b2369710c19fde",
+        "1d313dcf8e6052eb"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "delivery",
+        "persist",
+        "destroy"
+      ],
+      "rule_count": 4,
+      "rule_ids": [
+        "R-ATOMIC-0006",
+        "R-CORR-0001",
+        "R-CORR-0003",
+        "R-CORR-0005"
+      ],
+      "score": 265,
+      "severity": "critical",
+      "techniques": [
+        "T1070.001",
+        "T1204.002",
+        "T1547.001"
+      ],
+      "value": "invoice_scan.exe"
+    },
+    {
+      "breakdown": "R-CORR-0003=85(persistence,x1); R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 85,
+        "privilege_escalation": 0
+      },
+      "finding_count": 2,
+      "finding_ids": [
+        "46bf49975dd07700",
+        "6a42f90dd2bd854f"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "persist",
+        "destroy"
+      ],
+      "rule_count": 2,
+      "rule_ids": [
+        "R-CORR-0003",
+        "R-CORR-0005"
+      ],
+      "score": 130,
+      "severity": "critical",
+      "techniques": [
+        "T1070.001",
+        "T1547.001"
+      ],
+      "value": "msedge.exe"
+    },
+    {
+      "breakdown": "R-ATOMIC-0006=60(persistence,x3); R-CORR-0003=85(persistence,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 145,
+        "privilege_escalation": 0
+      },
+      "finding_count": 4,
+      "finding_ids": [
+        "25d6eb353e4ba92b",
+        "4d7a98fc8097b126",
+        "7928f9e845b1259a",
+        "0819bf727486559d"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 2,
+      "rule_ids": [
+        "R-ATOMIC-0006",
+        "R-CORR-0003"
+      ],
+      "score": 145,
+      "severity": "critical",
+      "techniques": [
+        "T1547.001"
+      ],
+      "value": "onedrive.exe"
+    },
+    {
+      "breakdown": "R-CORR-0003=85(persistence,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 85,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "fe23014ffef8de92"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0003"
+      ],
+      "score": 85,
+      "severity": "critical",
+      "techniques": [
+        "T1547.001"
+      ],
+      "value": "securityhealthsystray.exe"
+    },
+    {
+      "breakdown": "R-CORR-0003=85(persistence,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 85,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "3ae566c6c25baaa8"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0003"
+      ],
+      "score": 85,
+      "severity": "critical",
+      "techniques": [
+        "T1547.001"
+      ],
+      "value": "vboxtray.exe"
+    },
+    {
+      "breakdown": "R-ATOMIC-0001=45(execution_context,x1); R-ATOMIC-0002=70(anti_forensics,x1); R-ATOMIC-0006=60(persistence,x2); R-CORR-0006=50(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 120,
+        "execution_context": 45,
+        "persistence": 60,
+        "privilege_escalation": 0
+      },
+      "finding_count": 5,
+      "finding_ids": [
+        "dbe5539d42c1c474",
+        "3d631807d9959914",
+        "7345f47c7a18c81e",
+        "7928f9e845b1259a",
+        "3880ee857bfa17da"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "execute",
+        "persist",
+        "destroy"
+      ],
+      "rule_count": 4,
+      "rule_ids": [
+        "R-ATOMIC-0001",
+        "R-ATOMIC-0002",
+        "R-ATOMIC-0006",
+        "R-CORR-0006"
+      ],
+      "score": 225,
+      "severity": "high",
+      "techniques": [
+        "T1070.001",
+        "T1204.002",
+        "T1547.001"
+      ],
+      "value": "admin_local"
+    },
+    {
+      "breakdown": "R-CORR-0001=75(execution_context,x1); R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 75,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 2,
+      "finding_ids": [
+        "0433860f143fe743",
+        "db898488dee650c5"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "delivery",
+        "destroy"
+      ],
+      "rule_count": 2,
+      "rule_ids": [
+        "R-CORR-0001",
+        "R-CORR-0005"
+      ],
+      "score": 120,
+      "severity": "high",
+      "techniques": [
+        "T1070.001",
+        "T1204.002"
+      ],
+      "value": "npp.8.9.6.2.installer.x64.exe"
+    },
+    {
+      "breakdown": "R-CORR-0001=75(execution_context,x1); R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 75,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 2,
+      "finding_ids": [
+        "625b7aea1246bd04",
+        "fc80241d9a8bce4d"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "delivery",
+        "destroy"
+      ],
+      "rule_count": 2,
+      "rule_ids": [
+        "R-CORR-0001",
+        "R-CORR-0005"
+      ],
+      "score": 120,
+      "severity": "high",
+      "techniques": [
+        "T1070.001",
+        "T1204.002"
+      ],
+      "value": "ssms-setup-enu.exe"
+    },
+    {
+      "breakdown": "R-ATOMIC-0006=60(persistence,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 60,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "4d7a98fc8097b126"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-ATOMIC-0006"
+      ],
+      "score": 60,
+      "severity": "high",
+      "techniques": [
+        "T1547.001"
+      ],
+      "value": "janed"
+    },
+    {
+      "breakdown": "R-ATOMIC-0006=60(persistence,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 60,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "25d6eb353e4ba92b"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-ATOMIC-0006"
+      ],
+      "score": 60,
+      "severity": "high",
+      "techniques": [
+        "T1547.001"
+      ],
+      "value": "youssef"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "327881c6c89ce1ab"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "code-tunnel.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "a41c97e145fff780"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "code.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "3a1ead68c3d8197a"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "cursorusersetup-x64-3.15.6.tm"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "adada4f46db8b718"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "gamebar.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "bbb654199a6bb8e1"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "inno_updater.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "a8e13d9ee22d577b"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "m365copilot_autostarter.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "ba6d34c95d24037d"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "mmc.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "e82ff72ec9d3ffa2"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "msdt.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "4fd4ff9979ecf802"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "msedgewebview2.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "09729a107fc0c26c"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "npp.8.9.7.installer.x64.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "153ac0db41a2e046"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "optionalfeatures.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "3c56d7100a5c14fa"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "pilotshubapp.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "fd0e984fb26fc423"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "reg.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "c7b28917a24f5652"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "sihclient.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "a915ff465eaa62eb"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "storedesktopextension.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "93a725abd0f0bad9"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "useraccountcontrolsettings.ex"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "3c8455c18b144015"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vboxwindowsadditions-amd64.ex"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "a7bb43ba2a7153ae"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vc_redist.x64.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "224c93918faa68c1"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vc_redist.x86.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "8a82f95d7d38fc48"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vc_redist_x64.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "c29d11f3cb4a3e15"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vc_redist_x86.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "a2ea9921035807f3"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vs_community__647585806.16176"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "5abfdba17a3c7af5"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vs_setup_bootstrapper.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "9ad8390245dbf52a"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vscodeusersetup-x64-1.125.1.t"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "5711523476a2318a"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vsta_setup.exe"
+    },
+    {
+      "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+      "category_scores": {
+        "anti_forensics": 45,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "b4273745cff8293d"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0005"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "vsta_setup_2019.exe"
+    },
+    {
+      "breakdown": "R-ATOMIC-0001=45(execution_context,x1)",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 45,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "dbe5539d42c1c474"
+      ],
+      "key": "entity.exe_name",
+      "kind": "binary",
+      "phase_span": [
+        "execute"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-ATOMIC-0001"
+      ],
+      "score": 45,
+      "severity": "medium",
+      "techniques": [
+        "T1204.002"
+      ],
+      "value": "dismhost.exe"
+    }
+  ],
+  "entities_by_kind": {
+    "binary": [
+      {
+        "breakdown": "R-ATOMIC-0006=60(persistence,x1); R-CORR-0001=75(execution_context,x1); R-CORR-0003=85(persistence,x1); R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 75,
+          "persistence": 145,
+          "privilege_escalation": 0
+        },
+        "finding_count": 4,
+        "finding_ids": [
+          "7345f47c7a18c81e",
+          "3c4423d76fff90f9",
+          "a2b2369710c19fde",
+          "1d313dcf8e6052eb"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "delivery",
+          "persist",
+          "destroy"
+        ],
+        "rule_count": 4,
+        "rule_ids": [
+          "R-ATOMIC-0006",
+          "R-CORR-0001",
+          "R-CORR-0003",
+          "R-CORR-0005"
+        ],
+        "score": 265,
+        "severity": "critical",
+        "techniques": [
+          "T1070.001",
+          "T1204.002",
+          "T1547.001"
+        ],
+        "value": "invoice_scan.exe"
+      },
+      {
+        "breakdown": "R-CORR-0003=85(persistence,x1); R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 85,
+          "privilege_escalation": 0
+        },
+        "finding_count": 2,
+        "finding_ids": [
+          "46bf49975dd07700",
+          "6a42f90dd2bd854f"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "persist",
+          "destroy"
+        ],
+        "rule_count": 2,
+        "rule_ids": [
+          "R-CORR-0003",
+          "R-CORR-0005"
+        ],
+        "score": 130,
+        "severity": "critical",
+        "techniques": [
+          "T1070.001",
+          "T1547.001"
+        ],
+        "value": "msedge.exe"
+      },
+      {
+        "breakdown": "R-ATOMIC-0006=60(persistence,x3); R-CORR-0003=85(persistence,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 145,
+          "privilege_escalation": 0
+        },
+        "finding_count": 4,
+        "finding_ids": [
+          "25d6eb353e4ba92b",
+          "4d7a98fc8097b126",
+          "7928f9e845b1259a",
+          "0819bf727486559d"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 2,
+        "rule_ids": [
+          "R-ATOMIC-0006",
+          "R-CORR-0003"
+        ],
+        "score": 145,
+        "severity": "critical",
+        "techniques": [
+          "T1547.001"
+        ],
+        "value": "onedrive.exe"
+      },
+      {
+        "breakdown": "R-CORR-0003=85(persistence,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 85,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "fe23014ffef8de92"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0003"
+        ],
+        "score": 85,
+        "severity": "critical",
+        "techniques": [
+          "T1547.001"
+        ],
+        "value": "securityhealthsystray.exe"
+      },
+      {
+        "breakdown": "R-CORR-0003=85(persistence,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 85,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "3ae566c6c25baaa8"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0003"
+        ],
+        "score": 85,
+        "severity": "critical",
+        "techniques": [
+          "T1547.001"
+        ],
+        "value": "vboxtray.exe"
+      },
+      {
+        "breakdown": "R-CORR-0001=75(execution_context,x1); R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 75,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 2,
+        "finding_ids": [
+          "0433860f143fe743",
+          "db898488dee650c5"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "delivery",
+          "destroy"
+        ],
+        "rule_count": 2,
+        "rule_ids": [
+          "R-CORR-0001",
+          "R-CORR-0005"
+        ],
+        "score": 120,
+        "severity": "high",
+        "techniques": [
+          "T1070.001",
+          "T1204.002"
+        ],
+        "value": "npp.8.9.6.2.installer.x64.exe"
+      },
+      {
+        "breakdown": "R-CORR-0001=75(execution_context,x1); R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 75,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 2,
+        "finding_ids": [
+          "625b7aea1246bd04",
+          "fc80241d9a8bce4d"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "delivery",
+          "destroy"
+        ],
+        "rule_count": 2,
+        "rule_ids": [
+          "R-CORR-0001",
+          "R-CORR-0005"
+        ],
+        "score": 120,
+        "severity": "high",
+        "techniques": [
+          "T1070.001",
+          "T1204.002"
+        ],
+        "value": "ssms-setup-enu.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "327881c6c89ce1ab"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "code-tunnel.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "a41c97e145fff780"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "code.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "3a1ead68c3d8197a"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "cursorusersetup-x64-3.15.6.tm"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "adada4f46db8b718"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "gamebar.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "bbb654199a6bb8e1"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "inno_updater.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "a8e13d9ee22d577b"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "m365copilot_autostarter.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "ba6d34c95d24037d"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "mmc.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "e82ff72ec9d3ffa2"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "msdt.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "4fd4ff9979ecf802"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "msedgewebview2.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "09729a107fc0c26c"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "npp.8.9.7.installer.x64.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "153ac0db41a2e046"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "optionalfeatures.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "3c56d7100a5c14fa"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "pilotshubapp.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "fd0e984fb26fc423"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "reg.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "c7b28917a24f5652"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "sihclient.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "a915ff465eaa62eb"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "storedesktopextension.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "93a725abd0f0bad9"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "useraccountcontrolsettings.ex"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "3c8455c18b144015"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vboxwindowsadditions-amd64.ex"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "a7bb43ba2a7153ae"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vc_redist.x64.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "224c93918faa68c1"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vc_redist.x86.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "8a82f95d7d38fc48"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vc_redist_x64.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "c29d11f3cb4a3e15"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vc_redist_x86.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "a2ea9921035807f3"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vs_community__647585806.16176"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "5abfdba17a3c7af5"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vs_setup_bootstrapper.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "9ad8390245dbf52a"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vscodeusersetup-x64-1.125.1.t"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "5711523476a2318a"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vsta_setup.exe"
+      },
+      {
+        "breakdown": "R-CORR-0005=45(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 45,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "b4273745cff8293d"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0005"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "vsta_setup_2019.exe"
+      },
+      {
+        "breakdown": "R-ATOMIC-0001=45(execution_context,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 45,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "dbe5539d42c1c474"
+        ],
+        "key": "entity.exe_name",
+        "kind": "binary",
+        "phase_span": [
+          "execute"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-ATOMIC-0001"
+        ],
+        "score": 45,
+        "severity": "medium",
+        "techniques": [
+          "T1204.002"
+        ],
+        "value": "dismhost.exe"
+      }
+    ],
+    "user": [
+      {
+        "breakdown": "R-ATOMIC-0001=45(execution_context,x1); R-ATOMIC-0002=70(anti_forensics,x1); R-ATOMIC-0006=60(persistence,x2); R-CORR-0006=50(anti_forensics,x1)",
+        "category_scores": {
+          "anti_forensics": 120,
+          "execution_context": 45,
+          "persistence": 60,
+          "privilege_escalation": 0
+        },
+        "finding_count": 5,
+        "finding_ids": [
+          "dbe5539d42c1c474",
+          "3d631807d9959914",
+          "7345f47c7a18c81e",
+          "7928f9e845b1259a",
+          "3880ee857bfa17da"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "execute",
+          "persist",
+          "destroy"
+        ],
+        "rule_count": 4,
+        "rule_ids": [
+          "R-ATOMIC-0001",
+          "R-ATOMIC-0002",
+          "R-ATOMIC-0006",
+          "R-CORR-0006"
+        ],
+        "score": 225,
+        "severity": "high",
+        "techniques": [
+          "T1070.001",
+          "T1204.002",
+          "T1547.001"
+        ],
+        "value": "admin_local"
+      },
+      {
+        "breakdown": "R-ATOMIC-0006=60(persistence,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 60,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "4d7a98fc8097b126"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-ATOMIC-0006"
+        ],
+        "score": 60,
+        "severity": "high",
+        "techniques": [
+          "T1547.001"
+        ],
+        "value": "janed"
+      },
+      {
+        "breakdown": "R-ATOMIC-0006=60(persistence,x1)",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 60,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "25d6eb353e4ba92b"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-ATOMIC-0006"
+        ],
+        "score": 60,
+        "severity": "high",
+        "techniques": [
+          "T1547.001"
+        ],
+        "value": "youssef"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "optionalfeatures.exe"
+        }
+      ],
+      "event_ids": [
+        "807219d7a928f8c2"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "807219d7a928f8c2",
+          "event_type": "process_exec",
+          "path": "OPTIONALFEATURES.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/OPTIONALFEATURES.EXE-5A453A3C.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:15:30.256094Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "153ac0db41a2e046",
+      "first_timestamp_utc": "2026-06-20T14:15:30.256094Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/OPTIONALFEATURES.EXE-5A453A3C.pf :: run_slot=0 @ 2026-06-20T14:15:30.256094+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [optionalfeatures.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vc_redist_x86.exe"
+        }
+      ],
+      "event_ids": [
+        "08a772f246246450"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "08a772f246246450",
+          "event_type": "process_exec",
+          "path": "VC_REDIST_X86.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VC_REDIST_X86.EXE-B4E3BDA5.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:43:14.176122Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "c29d11f3cb4a3e15",
+      "first_timestamp_utc": "2026-06-20T14:43:14.176122Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VC_REDIST_X86.EXE-B4E3BDA5.pf :: run_slot=0 @ 2026-06-20T14:43:14.176122+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vc_redist_x86.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vc_redist.x86.exe"
+        }
+      ],
+      "event_ids": [
+        "393be24668b2fd5e"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "393be24668b2fd5e",
+          "event_type": "process_exec",
+          "path": "VC_REDIST.X86.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VC_REDIST.X86.EXE-A4D47D91.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:43:15.076062Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "224c93918faa68c1",
+      "first_timestamp_utc": "2026-06-20T14:43:15.076062Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VC_REDIST.X86.EXE-A4D47D91.pf :: run_slot=0 @ 2026-06-20T14:43:15.076062+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vc_redist.x86.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vc_redist_x64.exe"
+        }
+      ],
+      "event_ids": [
+        "0e583ad250f4e39f"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "0e583ad250f4e39f",
+          "event_type": "process_exec",
+          "path": "VC_REDIST_X64.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VC_REDIST_X64.EXE-6151470F.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:43:18.068916Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "8a82f95d7d38fc48",
+      "first_timestamp_utc": "2026-06-20T14:43:18.068916Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VC_REDIST_X64.EXE-6151470F.pf :: run_slot=0 @ 2026-06-20T14:43:18.068916+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vc_redist_x64.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vc_redist.x64.exe"
+        }
+      ],
+      "event_ids": [
+        "34b5d6eb69332362"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "34b5d6eb69332362",
+          "event_type": "process_exec",
+          "path": "VC_REDIST.X64.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VC_REDIST.X64.EXE-641F0B05.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:43:18.566076Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a7bb43ba2a7153ae",
+      "first_timestamp_utc": "2026-06-20T14:43:18.566076Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VC_REDIST.X64.EXE-641F0B05.pf :: run_slot=0 @ 2026-06-20T14:43:18.566076+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vc_redist.x64.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1204.002",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "ssms-setup-enu.exe"
+        }
+      ],
+      "event_ids": [
+        "0ec3447d9494e394",
+        "7b429a0674d4bc8f"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "0ec3447d9494e394",
+          "event_type": "process_exec",
+          "path": "SSMS-SETUP-ENU.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/SSMS-SETUP-ENU.EXE-FC4DCD11.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:58:24.781270Z",
+          "user": ""
+        },
+        {
+          "action": "file downloaded",
+          "confidence": "high",
+          "event_id": "7b429a0674d4bc8f",
+          "event_type": "file_download",
+          "path": "C:\\Users\\Youssef\\Downloads\\SSMS-Setup-ENU.exe",
+          "resolved": true,
+          "source_artifact": "browser",
+          "source_file": "C/Users/Youssef/AppData/Local/Microsoft/Edge/User Data/Default/History",
+          "source_locator": "downloads.id=2",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-06-20T14:51:27.589862Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "625b7aea1246bd04",
+      "first_timestamp_utc": "2026-06-20T14:51:27.589862Z",
+      "phase": "delivery",
+      "provenance": "download: C/Users/Youssef/AppData/Local/Microsoft/Edge/User Data/Default/History :: downloads.id=2 @ 2026-06-20T14:51:27.589862+00:00 (recorded) | execution: C/Windows/prefetch/SSMS-SETUP-ENU.EXE-FC4DCD11.pf :: run_slot=0 @ 2026-06-20T14:58:24.781270+00:00 (last_run)",
+      "reason": "A downloaded file was executed: download=file downloaded -> execution=program executed [ssms-setup-enu.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0001",
+      "severity": "high",
+      "technique_family": "T1204",
+      "time_claim": "observed_interval",
+      "title": "A downloaded file was executed",
+      "weight": 75,
+      "window_observed_seconds": 417.191408
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "ssms-setup-enu.exe"
+        }
+      ],
+      "event_ids": [
+        "0ec3447d9494e394"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "0ec3447d9494e394",
+          "event_type": "process_exec",
+          "path": "SSMS-SETUP-ENU.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/SSMS-SETUP-ENU.EXE-FC4DCD11.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:58:24.781270Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "fc80241d9a8bce4d",
+      "first_timestamp_utc": "2026-06-20T14:58:24.781270Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/SSMS-SETUP-ENU.EXE-FC4DCD11.pf :: run_slot=0 @ 2026-06-20T14:58:24.781270+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [ssms-setup-enu.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vsta_setup_2019.exe"
+        }
+      ],
+      "event_ids": [
+        "b5c53cfc530b77ea"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "b5c53cfc530b77ea",
+          "event_type": "process_exec",
+          "path": "VSTA_SETUP_2019.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VSTA_SETUP_2019.EXE-3D38F251.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:59:48.680774Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "b4273745cff8293d",
+      "first_timestamp_utc": "2026-06-20T14:59:48.680774Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VSTA_SETUP_2019.EXE-3D38F251.pf :: run_slot=0 @ 2026-06-20T14:59:48.680774+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vsta_setup_2019.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vsta_setup.exe"
+        }
+      ],
+      "event_ids": [
+        "57319d27747a32bd"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "57319d27747a32bd",
+          "event_type": "process_exec",
+          "path": "VSTA_SETUP.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VSTA_SETUP.EXE-995A012C.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T14:59:51.714732Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "5711523476a2318a",
+      "first_timestamp_utc": "2026-06-20T14:59:51.714732Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VSTA_SETUP.EXE-995A012C.pf :: run_slot=0 @ 2026-06-20T14:59:51.714732+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vsta_setup.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vscodeusersetup-x64-1.125.1.t"
+        }
+      ],
+      "event_ids": [
+        "961a2546e99326b9"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "961a2546e99326b9",
+          "event_type": "process_exec",
+          "path": "VSCODEUSERSETUP-X64-1.125.1.T",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VSCODEUSERSETUP-X64-1.125.1.T-ECEAC492.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T15:22:11.802296Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "9ad8390245dbf52a",
+      "first_timestamp_utc": "2026-06-20T15:22:11.802296Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VSCODEUSERSETUP-X64-1.125.1.T-ECEAC492.pf :: run_slot=0 @ 2026-06-20T15:22:11.802296+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vscodeusersetup-x64-1.125.1.t]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vs_community__647585806.16176"
+        }
+      ],
+      "event_ids": [
+        "96a5c5e34ce6745c"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "96a5c5e34ce6745c",
+          "event_type": "process_exec",
+          "path": "VS_COMMUNITY__647585806.16176",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VS_COMMUNITY__647585806.16176-98A06438.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T15:38:27.583564Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a2ea9921035807f3",
+      "first_timestamp_utc": "2026-06-20T15:38:27.583564Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VS_COMMUNITY__647585806.16176-98A06438.pf :: run_slot=0 @ 2026-06-20T15:38:27.583564+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vs_community__647585806.16176]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vs_setup_bootstrapper.exe"
+        }
+      ],
+      "event_ids": [
+        "58af0b193999647f"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "58af0b193999647f",
+          "event_type": "process_exec",
+          "path": "VS_SETUP_BOOTSTRAPPER.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VS_SETUP_BOOTSTRAPPER.EXE-A34873AC.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T15:38:32.268160Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "5abfdba17a3c7af5",
+      "first_timestamp_utc": "2026-06-20T15:38:32.268160Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VS_SETUP_BOOTSTRAPPER.EXE-A34873AC.pf :: run_slot=0 @ 2026-06-20T15:38:32.268160+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vs_setup_bootstrapper.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "gamebar.exe"
+        }
+      ],
+      "event_ids": [
+        "d5d4faf07c5a5bce"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "d5d4faf07c5a5bce",
+          "event_type": "process_exec",
+          "path": "GAMEBAR.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/GAMEBAR.EXE-1F5E16BC.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-06-20T16:37:38.451134Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "adada4f46db8b718",
+      "first_timestamp_utc": "2026-06-20T16:37:38.451134Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/GAMEBAR.EXE-1F5E16BC.pf :: run_slot=0 @ 2026-06-20T16:37:38.451134+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [gamebar.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "cursorusersetup-x64-3.15.6.tm"
+        }
+      ],
+      "event_ids": [
+        "5735cb62e2168230"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "5735cb62e2168230",
+          "event_type": "process_exec",
+          "path": "CURSORUSERSETUP-X64-3.15.6.TM",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/CURSORUSERSETUP-X64-3.15.6.TM-CC7A9C8B.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-12T14:02:21.888628Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "3a1ead68c3d8197a",
+      "first_timestamp_utc": "2026-08-12T14:02:21.888628Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/CURSORUSERSETUP-X64-3.15.6.TM-CC7A9C8B.pf :: run_slot=0 @ 2026-08-12T14:02:21.888628+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [cursorusersetup-x64-3.15.6.tm]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "0f461bf6f8b530fd"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "0f461bf6f8b530fd",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=299",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-12T14:11:29.922920Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a140ee2f85f5b1bf",
+      "first_timestamp_utc": "2026-08-12T14:11:29.922920Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=299 @ 2026-08-12T14:11:29.922920+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=299)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "cd179863e6d634e4"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "cd179863e6d634e4",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=365",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-12T14:14:38.902420Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "f7bc58f65e0caca8",
+      "first_timestamp_utc": "2026-08-12T14:14:38.902420Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=365 @ 2026-08-12T14:14:38.902420+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=365)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "6104df6170e93586"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "6104df6170e93586",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=432",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-12T14:30:34.956754Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "970c2e6a382f5cfa",
+      "first_timestamp_utc": "2026-08-12T14:30:34.956754Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=432 @ 2026-08-12T14:30:34.956754+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=432)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1204.002",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "npp.8.9.6.2.installer.x64.exe"
+        }
+      ],
+      "event_ids": [
+        "2143416c55114e3c",
+        "fefaf676739465e7"
+      ],
+      "events": [
+        {
+          "action": "file downloaded",
+          "confidence": "high",
+          "event_id": "2143416c55114e3c",
+          "event_type": "file_download",
+          "path": "C:\\Users\\janed\\Downloads\\npp.8.9.6.2.Installer.x64.exe",
+          "resolved": true,
+          "source_artifact": "browser",
+          "source_file": "C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/History",
+          "source_locator": "downloads.id=1",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-17T16:57:28.827713Z",
+          "user": ""
+        },
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "fefaf676739465e7",
+          "event_type": "process_exec",
+          "path": "NPP.8.9.6.2.INSTALLER.X64.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/NPP.8.9.6.2.INSTALLER.X64.EXE-A0AB9C68.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-17T16:58:31.479004Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "0433860f143fe743",
+      "first_timestamp_utc": "2026-08-17T16:57:28.827713Z",
+      "phase": "delivery",
+      "provenance": "download: C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/History :: downloads.id=1 @ 2026-08-17T16:57:28.827713+00:00 (recorded) | execution: C/Windows/prefetch/NPP.8.9.6.2.INSTALLER.X64.EXE-A0AB9C68.pf :: run_slot=0 @ 2026-08-17T16:58:31.479004+00:00 (last_run)",
+      "reason": "A downloaded file was executed: download=file downloaded -> execution=program executed [npp.8.9.6.2.installer.x64.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0001",
+      "severity": "high",
+      "technique_family": "T1204",
+      "time_claim": "observed_interval",
+      "title": "A downloaded file was executed",
+      "weight": 75,
+      "window_observed_seconds": 62.651291
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "npp.8.9.6.2.installer.x64.exe"
+        }
+      ],
+      "event_ids": [
+        "fefaf676739465e7"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "fefaf676739465e7",
+          "event_type": "process_exec",
+          "path": "NPP.8.9.6.2.INSTALLER.X64.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/NPP.8.9.6.2.INSTALLER.X64.EXE-A0AB9C68.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-17T16:58:31.479004Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "db898488dee650c5",
+      "first_timestamp_utc": "2026-08-17T16:58:31.479004Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/NPP.8.9.6.2.INSTALLER.X64.EXE-A0AB9C68.pf :: run_slot=0 @ 2026-08-17T16:58:31.479004+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [npp.8.9.6.2.installer.x64.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "npp.8.9.7.installer.x64.exe"
+        }
+      ],
+      "event_ids": [
+        "3e008d1d267a427b"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "3e008d1d267a427b",
+          "event_type": "process_exec",
+          "path": "NPP.8.9.7.INSTALLER.X64.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/NPP.8.9.7.INSTALLER.X64.EXE-03DD8612.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-17T17:00:21.460006Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "09729a107fc0c26c",
+      "first_timestamp_utc": "2026-08-17T17:00:21.460006Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/NPP.8.9.7.INSTALLER.X64.EXE-03DD8612.pf :: run_slot=0 @ 2026-08-17T17:00:21.460006+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [npp.8.9.7.installer.x64.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "onedrive.exe"
+        }
+      ],
+      "event_ids": [
+        "261827e18175d8d0",
+        "690cc77c976123db"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "261827e18175d8d0",
+          "event_type": "persistence_autorun",
+          "path": "\"C:\\Users\\admin_local\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/admin_local/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-21T01:34:07.976260Z",
+          "user": "admin_local"
+        },
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "690cc77c976123db",
+          "event_type": "process_exec",
+          "path": "ONEDRIVE.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/ONEDRIVE.EXE-9BA0849E.pf",
+          "source_locator": "run_slot=7",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-17T18:30:27.058118Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "0819bf727486559d",
+      "first_timestamp_utc": "2026-08-17T18:30:27.058118Z",
+      "phase": "persist",
+      "provenance": "execution: C/Windows/prefetch/ONEDRIVE.EXE-9BA0849E.pf :: run_slot=7 @ 2026-08-17T18:30:27.058118+00:00 (last_run) | persistence: C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive @ 2026-08-21T01:34:07.976260+00:00 (presence)",
+      "reason": "An executed binary is also registered to run at logon: execution=program executed -> persistence=autorun entry present [onedrive.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0003",
+      "severity": "critical",
+      "technique_family": "T1547",
+      "time_claim": "observed_occurrence",
+      "title": "An executed binary is also registered to run at logon",
+      "weight": 85,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "mmc.exe"
+        }
+      ],
+      "event_ids": [
+        "26a1b9bad8e76630"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "26a1b9bad8e76630",
+          "event_type": "process_exec",
+          "path": "MMC.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/MMC.EXE-348AF965.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-18T19:52:51.511332Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "ba6d34c95d24037d",
+      "first_timestamp_utc": "2026-08-18T19:52:51.511332Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/MMC.EXE-348AF965.pf :: run_slot=0 @ 2026-08-18T19:52:51.511332+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [mmc.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "useraccountcontrolsettings.ex"
+        }
+      ],
+      "event_ids": [
+        "bb53fee1901a91b5"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "bb53fee1901a91b5",
+          "event_type": "process_exec",
+          "path": "USERACCOUNTCONTROLSETTINGS.EX",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/USERACCOUNTCONTROLSETTINGS.EX-FE400219.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-19T18:56:33.627836Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "93a725abd0f0bad9",
+      "first_timestamp_utc": "2026-08-19T18:56:33.627836Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/USERACCOUNTCONTROLSETTINGS.EX-FE400219.pf :: run_slot=0 @ 2026-08-19T18:56:33.627836+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [useraccountcontrolsettings.ex]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "msedge.exe"
+        }
+      ],
+      "event_ids": [
+        "773e4b1835b6e20e",
+        "8b7359ea0d364a40"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "773e4b1835b6e20e",
+          "event_type": "process_exec",
+          "path": "MSEDGE.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/MSEDGE.EXE-BA103772.pf",
+          "source_locator": "run_slot=7",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-20T15:37:52.343710Z",
+          "user": ""
+        },
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "8b7359ea0d364a40",
+          "event_type": "persistence_autorun",
+          "path": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --no-startup-window --win-session-start",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/Youssef/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\MicrosoftEdgeAutoLaunch_22C52845EC6D7E0256E6D8CB277BBC13",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-23T21:26:12.542570Z",
+          "user": "Youssef"
+        }
+      ],
+      "finding_id": "46bf49975dd07700",
+      "first_timestamp_utc": "2026-08-20T15:37:52.343710Z",
+      "phase": "persist",
+      "provenance": "execution: C/Windows/prefetch/MSEDGE.EXE-BA103772.pf :: run_slot=7 @ 2026-08-20T15:37:52.343710+00:00 (last_run) | persistence: C/Users/Youssef/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\MicrosoftEdgeAutoLaunch_22C52845EC6D7E0256E6D8CB277BBC13 @ 2026-08-23T21:26:12.542570+00:00 (presence)",
+      "reason": "An executed binary is also registered to run at logon: execution=program executed -> persistence=autorun entry present [msedge.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0003",
+      "severity": "critical",
+      "technique_family": "T1547",
+      "time_claim": "observed_occurrence",
+      "title": "An executed binary is also registered to run at logon",
+      "weight": 85,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "msdt.exe"
+        }
+      ],
+      "event_ids": [
+        "69d60be019d774dd"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "69d60be019d774dd",
+          "event_type": "process_exec",
+          "path": "MSDT.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/MSDT.EXE-3D8E9353.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-20T15:52:53.005990Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "e82ff72ec9d3ffa2",
+      "first_timestamp_utc": "2026-08-20T15:52:53.005990Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/MSDT.EXE-3D8E9353.pf :: run_slot=0 @ 2026-08-20T15:52:53.005990+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [msdt.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "pilotshubapp.exe"
+        }
+      ],
+      "event_ids": [
+        "f76f28ec92eed103"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "f76f28ec92eed103",
+          "event_type": "process_exec",
+          "path": "PILOTSHUBAPP.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/PILOTSHUBAPP.EXE-6CA243DC.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-20T17:13:13.495492Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "3c56d7100a5c14fa",
+      "first_timestamp_utc": "2026-08-20T17:13:13.495492Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/PILOTSHUBAPP.EXE-6CA243DC.pf :: run_slot=0 @ 2026-08-20T17:13:13.495492+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [pilotshubapp.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "onedrive.exe"
+        },
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "261827e18175d8d0"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "261827e18175d8d0",
+          "event_type": "persistence_autorun",
+          "path": "\"C:\\Users\\admin_local\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/admin_local/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-21T01:34:07.976260Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "7928f9e845b1259a",
+      "first_timestamp_utc": "2026-08-21T01:34:07.976260Z",
+      "phase": "persist",
+      "provenance": "persistence_autorun: C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive @ 2026-08-21T01:34:07.976260+00:00 (presence)",
+      "reason": "Autorun value pointing at a user-writable path or an interpreter: autorun entry present (C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive)",
+      "rule_class": "known-behavior",
+      "rule_id": "R-ATOMIC-0006",
+      "severity": "high",
+      "technique_family": "T1547",
+      "time_claim": "none",
+      "title": "Autorun value pointing at a user-writable path or an interpreter",
+      "weight": 60,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "invoice_scan.exe"
+        },
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "c1bb6d9de5ff273f"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "c1bb6d9de5ff273f",
+          "event_type": "persistence_autorun",
+          "path": "C:\\Users\\janed\\Downloads\\invoice_scan.exe",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/admin_local/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityUpdate",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-21T01:34:07.976260Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "7345f47c7a18c81e",
+      "first_timestamp_utc": "2026-08-21T01:34:07.976260Z",
+      "phase": "persist",
+      "provenance": "persistence_autorun: C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityUpdate @ 2026-08-21T01:34:07.976260+00:00 (presence)",
+      "reason": "Autorun value pointing at a user-writable path or an interpreter: autorun entry present (C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityUpdate)",
+      "rule_class": "known-behavior",
+      "rule_id": "R-ATOMIC-0006",
+      "severity": "high",
+      "technique_family": "T1547",
+      "time_claim": "none",
+      "title": "Autorun value pointing at a user-writable path or an interpreter",
+      "weight": 60,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "invoice_scan.exe"
+        }
+      ],
+      "event_ids": [
+        "58c5d22e63b89ca7",
+        "c1bb6d9de5ff273f"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "58c5d22e63b89ca7",
+          "event_type": "process_exec",
+          "path": "INVOICE_SCAN.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T22:57:15.832788Z",
+          "user": ""
+        },
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "c1bb6d9de5ff273f",
+          "event_type": "persistence_autorun",
+          "path": "C:\\Users\\janed\\Downloads\\invoice_scan.exe",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/admin_local/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityUpdate",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-21T01:34:07.976260Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "a2b2369710c19fde",
+      "first_timestamp_utc": "2026-08-21T01:34:07.976260Z",
+      "phase": "persist",
+      "provenance": "execution: C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf :: run_slot=0 @ 2026-08-23T22:57:15.832788+00:00 (last_run) | persistence: C/Users/admin_local/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityUpdate @ 2026-08-21T01:34:07.976260+00:00 (presence)",
+      "reason": "An executed binary is also registered to run at logon: execution=program executed -> persistence=autorun entry present [invoice_scan.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0003",
+      "severity": "critical",
+      "technique_family": "T1547",
+      "time_claim": "observed_occurrence",
+      "title": "An executed binary is also registered to run at logon",
+      "weight": 85,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "securityhealthsystray.exe"
+        }
+      ],
+      "event_ids": [
+        "f2f1811fd28a8796",
+        "fc8c54ee93ec7866"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "f2f1811fd28a8796",
+          "event_type": "persistence_autorun",
+          "path": "%windir%\\system32\\SecurityHealthSystray.exe",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Windows/System32/config/SOFTWARE",
+          "source_locator": "\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityHealth",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-23T23:13:49.701914Z",
+          "user": ""
+        },
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "fc8c54ee93ec7866",
+          "event_type": "process_exec",
+          "path": "SECURITYHEALTHSYSTRAY.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/SECURITYHEALTHSYSTRAY.EXE-9E333714.pf",
+          "source_locator": "run_slot=7",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-21T01:37:21.558404Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "fe23014ffef8de92",
+      "first_timestamp_utc": "2026-08-21T01:37:21.558404Z",
+      "phase": "persist",
+      "provenance": "execution: C/Windows/prefetch/SECURITYHEALTHSYSTRAY.EXE-9E333714.pf :: run_slot=7 @ 2026-08-21T01:37:21.558404+00:00 (last_run) | persistence: C/Windows/System32/config/SOFTWARE :: \\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityHealth @ 2026-08-23T23:13:49.701914+00:00 (presence)",
+      "reason": "An executed binary is also registered to run at logon: execution=program executed -> persistence=autorun entry present [securityhealthsystray.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0003",
+      "severity": "critical",
+      "technique_family": "T1547",
+      "time_claim": "observed_occurrence",
+      "title": "An executed binary is also registered to run at logon",
+      "weight": 85,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "code.exe"
+        }
+      ],
+      "event_ids": [
+        "72faa76672af1a31"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "72faa76672af1a31",
+          "event_type": "process_exec",
+          "path": "CODE.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/CODE.EXE-808FAFDC.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-21T18:28:32.845620Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a41c97e145fff780",
+      "first_timestamp_utc": "2026-08-21T18:28:32.845620Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/CODE.EXE-808FAFDC.pf :: run_slot=0 @ 2026-08-21T18:28:32.845620+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [code.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "inno_updater.exe"
+        }
+      ],
+      "event_ids": [
+        "d2d1cc1091056cf9"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "d2d1cc1091056cf9",
+          "event_type": "process_exec",
+          "path": "INNO_UPDATER.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/INNO_UPDATER.EXE-83CDDDA7.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-21T18:28:34.421388Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "bbb654199a6bb8e1",
+      "first_timestamp_utc": "2026-08-21T18:28:34.421388Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/INNO_UPDATER.EXE-83CDDDA7.pf :: run_slot=0 @ 2026-08-21T18:28:34.421388+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [inno_updater.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "code-tunnel.exe"
+        }
+      ],
+      "event_ids": [
+        "4b5a7cfba897c032"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "4b5a7cfba897c032",
+          "event_type": "process_exec",
+          "path": "CODE-TUNNEL.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/CODE-TUNNEL.EXE-BA8041E0.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-21T18:28:50.557104Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "327881c6c89ce1ab",
+      "first_timestamp_utc": "2026-08-21T18:28:50.557104Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/CODE-TUNNEL.EXE-BA8041E0.pf :: run_slot=0 @ 2026-08-21T18:28:50.557104+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [code-tunnel.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "storedesktopextension.exe"
+        }
+      ],
+      "event_ids": [
+        "b8c8e2dfa5148aba"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "b8c8e2dfa5148aba",
+          "event_type": "process_exec",
+          "path": "STOREDESKTOPEXTENSION.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/STOREDESKTOPEXTENSION.EXE-469F62C8.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-21T18:40:54.837460Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a915ff465eaa62eb",
+      "first_timestamp_utc": "2026-08-21T18:40:54.837460Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/STOREDESKTOPEXTENSION.EXE-469F62C8.pf :: run_slot=0 @ 2026-08-21T18:40:54.837460+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [storedesktopextension.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "onedrive.exe"
+        },
+        {
+          "key": "entity.user",
+          "value": "youssef"
+        }
+      ],
+      "event_ids": [
+        "bad5efed9f1e37c2"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "bad5efed9f1e37c2",
+          "event_type": "persistence_autorun",
+          "path": "\"C:\\Users\\Youssef\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/Youssef/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-23T21:26:12.542570Z",
+          "user": "Youssef"
+        }
+      ],
+      "finding_id": "25d6eb353e4ba92b",
+      "first_timestamp_utc": "2026-08-23T21:26:12.542570Z",
+      "phase": "persist",
+      "provenance": "persistence_autorun: C/Users/Youssef/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive @ 2026-08-23T21:26:12.542570+00:00 (presence)",
+      "reason": "Autorun value pointing at a user-writable path or an interpreter: autorun entry present (C/Users/Youssef/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive)",
+      "rule_class": "known-behavior",
+      "rule_id": "R-ATOMIC-0006",
+      "severity": "high",
+      "technique_family": "T1547",
+      "time_claim": "none",
+      "title": "Autorun value pointing at a user-writable path or an interpreter",
+      "weight": 60,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "m365copilot_autostarter.exe"
+        }
+      ],
+      "event_ids": [
+        "9c4e6cee7897d060"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "9c4e6cee7897d060",
+          "event_type": "process_exec",
+          "path": "M365COPILOT_AUTOSTARTER.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/M365COPILOT_AUTOSTARTER.EXE-B4567169.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T21:26:14.178614Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "a8e13d9ee22d577b",
+      "first_timestamp_utc": "2026-08-23T21:26:14.178614Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/M365COPILOT_AUTOSTARTER.EXE-B4567169.pf :: run_slot=0 @ 2026-08-23T21:26:14.178614+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [m365copilot_autostarter.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "msedgewebview2.exe"
+        }
+      ],
+      "event_ids": [
+        "d7658bfe035f82c3"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "d7658bfe035f82c3",
+          "event_type": "process_exec",
+          "path": "MSEDGEWEBVIEW2.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/MSEDGEWEBVIEW2.EXE-BBF75EA1.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T21:26:17.696864Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "4fd4ff9979ecf802",
+      "first_timestamp_utc": "2026-08-23T21:26:17.696864Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/MSEDGEWEBVIEW2.EXE-BBF75EA1.pf :: run_slot=0 @ 2026-08-23T21:26:17.696864+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [msedgewebview2.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "sihclient.exe"
+        }
+      ],
+      "event_ids": [
+        "e138f93ca2757e8a"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "e138f93ca2757e8a",
+          "event_type": "process_exec",
+          "path": "SIHCLIENT.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/SIHCLIENT.EXE-B820D212.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T21:30:20.397846Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "c7b28917a24f5652",
+      "first_timestamp_utc": "2026-08-23T21:30:20.397846Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/SIHCLIENT.EXE-B820D212.pf :: run_slot=0 @ 2026-08-23T21:30:20.397846+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [sihclient.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "msedge.exe"
+        }
+      ],
+      "event_ids": [
+        "dd966928131358f3"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "dd966928131358f3",
+          "event_type": "process_exec",
+          "path": "MSEDGE.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/MSEDGE.EXE-BA103773.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T21:31:59.074506Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "6a42f90dd2bd854f",
+      "first_timestamp_utc": "2026-08-23T21:31:59.074506Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/MSEDGE.EXE-BA103773.pf :: run_slot=0 @ 2026-08-23T21:31:59.074506+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [msedge.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "d4f879be56edc682"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "d4f879be56edc682",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=1538",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T21:53:19.074342Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "e0ae74b7304a785a",
+      "first_timestamp_utc": "2026-08-23T21:53:19.074342Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1538 @ 2026-08-23T21:53:19.074342+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1538)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "onedrive.exe"
+        },
+        {
+          "key": "entity.user",
+          "value": "janed"
+        }
+      ],
+      "event_ids": [
+        "17f297b6a6bf79ff"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "17f297b6a6bf79ff",
+          "event_type": "persistence_autorun",
+          "path": "\"C:\\Users\\janed\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Users/janed/NTUSER.DAT",
+          "source_locator": "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-23T22:07:34.651690Z",
+          "user": "janed"
+        }
+      ],
+      "finding_id": "4d7a98fc8097b126",
+      "first_timestamp_utc": "2026-08-23T22:07:34.651690Z",
+      "phase": "persist",
+      "provenance": "persistence_autorun: C/Users/janed/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive @ 2026-08-23T22:07:34.651690+00:00 (presence)",
+      "reason": "Autorun value pointing at a user-writable path or an interpreter: autorun entry present (C/Users/janed/NTUSER.DAT :: \\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive)",
+      "rule_class": "known-behavior",
+      "rule_id": "R-ATOMIC-0006",
+      "severity": "high",
+      "technique_family": "T1547",
+      "time_claim": "none",
+      "title": "Autorun value pointing at a user-writable path or an interpreter",
+      "weight": 60,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "e8985e7539468bd1"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "e8985e7539468bd1",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=1551",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T22:09:37.179499Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "e99976986b3459aa",
+      "first_timestamp_utc": "2026-08-23T22:09:37.179499Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1551 @ 2026-08-23T22:09:37.179499+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1551)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "3620027fc2e13d50"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "3620027fc2e13d50",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=1557",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T22:10:02.204264Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "900bb6acd29bf31c",
+      "first_timestamp_utc": "2026-08-23T22:10:02.204264Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1557 @ 2026-08-23T22:10:02.204264+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1557)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "e627a8a9b1d689cf"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "e627a8a9b1d689cf",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=1559",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T22:10:19.761106Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "49392dc6b816e1c5",
+      "first_timestamp_utc": "2026-08-23T22:10:19.761106Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1559 @ 2026-08-23T22:10:19.761106+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1559)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1059.001",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        }
+      ],
+      "event_ids": [
+        "644c71dfc8ce7776"
+      ],
+      "events": [
+        {
+          "action": "powershell script block logged",
+          "confidence": "high",
+          "event_id": "644c71dfc8ce7776",
+          "event_type": "script_block",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.powershell",
+          "source_file": "C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx",
+          "source_locator": "EventRecordID=1582",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T22:16:21.431813Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "2ffb3de1acb13652",
+      "first_timestamp_utc": "2026-08-23T22:16:21.431813Z",
+      "phase": "execute",
+      "provenance": "script_block: C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1582 @ 2026-08-23T22:16:21.431813+00:00 (recorded)",
+      "reason": "PowerShell script block with an in-memory download or encoded command: powershell script block logged (C/Windows/System32/winevt/logs/Microsoft-Windows-PowerShell%4Operational.evtx :: EventRecordID=1582)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0003",
+      "severity": "high",
+      "technique_family": "T1059",
+      "time_claim": "observed_occurrence",
+      "title": "PowerShell script block with an in-memory download or encoded command",
+      "weight": 65,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1204.002",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "invoice_scan.exe"
+        }
+      ],
+      "event_ids": [
+        "4c58a24247dc3d22",
+        "58c5d22e63b89ca7"
+      ],
+      "events": [
+        {
+          "action": "file downloaded",
+          "confidence": "high",
+          "event_id": "4c58a24247dc3d22",
+          "event_type": "file_download",
+          "path": "C:\\Users\\janed\\Downloads\\invoice_scan.exe",
+          "resolved": true,
+          "source_artifact": "browser",
+          "source_file": "C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/History",
+          "source_locator": "downloads.id=13",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T22:20:06.710763Z",
+          "user": ""
+        },
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "58c5d22e63b89ca7",
+          "event_type": "process_exec",
+          "path": "INVOICE_SCAN.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T22:57:15.832788Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "3c4423d76fff90f9",
+      "first_timestamp_utc": "2026-08-23T22:20:06.710763Z",
+      "phase": "delivery",
+      "provenance": "download: C/Users/janed/AppData/Local/Microsoft/Edge/User Data/Default/History :: downloads.id=13 @ 2026-08-23T22:20:06.710763+00:00 (recorded) | execution: C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf :: run_slot=0 @ 2026-08-23T22:57:15.832788+00:00 (last_run)",
+      "reason": "A downloaded file was executed: download=file downloaded -> execution=program executed [invoice_scan.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0001",
+      "severity": "high",
+      "technique_family": "T1204",
+      "time_claim": "observed_interval",
+      "title": "A downloaded file was executed",
+      "weight": 75,
+      "window_observed_seconds": 2229.122025
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "invoice_scan.exe"
+        }
+      ],
+      "event_ids": [
+        "58c5d22e63b89ca7"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "58c5d22e63b89ca7",
+          "event_type": "process_exec",
+          "path": "INVOICE_SCAN.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T22:57:15.832788Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "1d313dcf8e6052eb",
+      "first_timestamp_utc": "2026-08-23T22:57:15.832788Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/INVOICE_SCAN.EXE-A345C2FE.pf :: run_slot=0 @ 2026-08-23T22:57:15.832788+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [invoice_scan.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "reg.exe"
+        }
+      ],
+      "event_ids": [
+        "480f6825cafd9745"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "480f6825cafd9745",
+          "event_type": "process_exec",
+          "path": "REG.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/REG.EXE-26976709.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T22:59:48.329558Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "fd0e984fb26fc423",
+      "first_timestamp_utc": "2026-08-23T22:59:48.329558Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/REG.EXE-26976709.pf :: run_slot=0 @ 2026-08-23T22:59:48.329558+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [reg.exe]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        },
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "5573ac8d6a6363d2"
+      ],
+      "events": [
+        {
+          "action": "security event log cleared",
+          "confidence": "high",
+          "event_id": "5573ac8d6a6363d2",
+          "event_type": "log_cleared",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.security",
+          "source_file": "C/Windows/System32/winevt/logs/Security.evtx",
+          "source_locator": "EventRecordID=28201",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T23:05:06.682356Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "3d631807d9959914",
+      "first_timestamp_utc": "2026-08-23T23:05:06.682356Z",
+      "phase": "destroy",
+      "provenance": "log_cleared: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28201 @ 2026-08-23T23:05:06.682356+00:00 (recorded)",
+      "reason": "Windows event log cleared: security event log cleared (C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28201)",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0002",
+      "severity": "high",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "Windows event log cleared",
+      "weight": 70,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "361f7b782b8610a4",
+        "5573ac8d6a6363d2"
+      ],
+      "events": [
+        {
+          "action": "process created",
+          "confidence": "high",
+          "event_id": "361f7b782b8610a4",
+          "event_type": "process_exec",
+          "path": "C:\\Users\\ADMIN_~1\\AppData\\Local\\Temp\\51FCB711-F808-4642-A6D9-87B8F6898BE3\\DismHost.exe",
+          "resolved": true,
+          "source_artifact": "evtx.security",
+          "source_file": "C/Windows/System32/winevt/logs/Security.evtx",
+          "source_locator": "EventRecordID=28212",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T23:12:52.187293Z",
+          "user": "admin_local"
+        },
+        {
+          "action": "security event log cleared",
+          "confidence": "high",
+          "event_id": "5573ac8d6a6363d2",
+          "event_type": "log_cleared",
+          "path": "",
+          "resolved": true,
+          "source_artifact": "evtx.security",
+          "source_file": "C/Windows/System32/winevt/logs/Security.evtx",
+          "source_locator": "EventRecordID=28201",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T23:05:06.682356Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "3880ee857bfa17da",
+      "first_timestamp_utc": "2026-08-23T23:05:06.682356Z",
+      "phase": "destroy",
+      "provenance": "clear: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28201 @ 2026-08-23T23:05:06.682356+00:00 (recorded) | continued_activity: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28212 @ 2026-08-23T23:12:52.187293+00:00 (recorded)",
+      "reason": "The account that cleared the security log went on using the host: clear=security event log cleared -> continued_activity=process created [admin_local]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0006",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_interval",
+      "title": "The account that cleared the security log went on using the host",
+      "weight": 50,
+      "window_observed_seconds": 465.504937
+    },
+    {
+      "attack_technique": "T1204.002",
+      "category": "execution_context",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "dismhost.exe"
+        },
+        {
+          "key": "entity.host",
+          "value": "windows10"
+        },
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "361f7b782b8610a4"
+      ],
+      "events": [
+        {
+          "action": "process created",
+          "confidence": "high",
+          "event_id": "361f7b782b8610a4",
+          "event_type": "process_exec",
+          "path": "C:\\Users\\ADMIN_~1\\AppData\\Local\\Temp\\51FCB711-F808-4642-A6D9-87B8F6898BE3\\DismHost.exe",
+          "resolved": true,
+          "source_artifact": "evtx.security",
+          "source_file": "C/Windows/System32/winevt/logs/Security.evtx",
+          "source_locator": "EventRecordID=28212",
+          "timestamp_type": "recorded",
+          "timestamp_utc": "2026-08-23T23:12:52.187293Z",
+          "user": "admin_local"
+        }
+      ],
+      "finding_id": "dbe5539d42c1c474",
+      "first_timestamp_utc": "2026-08-23T23:12:52.187293Z",
+      "phase": "execute",
+      "provenance": "process_exec: C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28212 @ 2026-08-23T23:12:52.187293+00:00 (recorded)",
+      "reason": "Process executed from a user-writable location: process created (C/Windows/System32/winevt/logs/Security.evtx :: EventRecordID=28212)",
+      "rule_class": "known-behavior",
+      "rule_id": "R-ATOMIC-0001",
+      "severity": "medium",
+      "technique_family": "T1204",
+      "time_claim": "observed_occurrence",
+      "title": "Process executed from a user-writable location",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vboxwindowsadditions-amd64.ex"
+        }
+      ],
+      "event_ids": [
+        "7d7f62d3df423d32"
+      ],
+      "events": [
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "7d7f62d3df423d32",
+          "event_type": "process_exec",
+          "path": "VBOXWINDOWSADDITIONS-AMD64.EX",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VBOXWINDOWSADDITIONS-AMD64.EX-85C5A15E.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T23:13:39.040452Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "3c8455c18b144015",
+      "first_timestamp_utc": "2026-08-23T23:13:39.040452Z",
+      "phase": "destroy",
+      "provenance": "execution: C/Windows/prefetch/VBOXWINDOWSADDITIONS-AMD64.EX-85C5A15E.pf :: run_slot=0 @ 2026-08-23T23:13:39.040452+00:00 (last_run)",
+      "reason": "A binary executed once and no surviving audit record accounts for it: execution=program executed -> no audit_record [vboxwindowsadditions-amd64.ex]",
+      "rule_class": "known-behavior",
+      "rule_id": "R-CORR-0005",
+      "severity": "medium",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "A binary executed once and no surviving audit record accounts for it",
+      "weight": 45,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1547.001",
+      "category": "persistence",
+      "entity_keys": [
+        {
+          "key": "entity.exe_name",
+          "value": "vboxtray.exe"
+        }
+      ],
+      "event_ids": [
+        "8b4d633c760316c5",
+        "f9565dfc9e617079"
+      ],
+      "events": [
+        {
+          "action": "autorun entry present",
+          "confidence": "high",
+          "event_id": "8b4d633c760316c5",
+          "event_type": "persistence_autorun",
+          "path": "%SystemRoot%\\system32\\VBoxTray.exe",
+          "resolved": true,
+          "source_artifact": "registry",
+          "source_file": "C/Windows/System32/config/SOFTWARE",
+          "source_locator": "\\Microsoft\\Windows\\CurrentVersion\\Run\\VBoxTray",
+          "timestamp_type": "presence",
+          "timestamp_utc": "2026-08-23T23:13:49.701914Z",
+          "user": ""
+        },
+        {
+          "action": "program executed",
+          "confidence": "high",
+          "event_id": "f9565dfc9e617079",
+          "event_type": "process_exec",
+          "path": "VBOXTRAY.EXE",
+          "resolved": true,
+          "source_artifact": "prefetch",
+          "source_file": "C/Windows/prefetch/VBOXTRAY.EXE-EE6B7F0E.pf",
+          "source_locator": "run_slot=0",
+          "timestamp_type": "last_run",
+          "timestamp_utc": "2026-08-23T23:16:33.204808Z",
+          "user": ""
+        }
+      ],
+      "finding_id": "3ae566c6c25baaa8",
+      "first_timestamp_utc": "2026-08-23T23:13:49.701914Z",
+      "phase": "persist",
+      "provenance": "execution: C/Windows/prefetch/VBOXTRAY.EXE-EE6B7F0E.pf :: run_slot=0 @ 2026-08-23T23:16:33.204808+00:00 (last_run) | persistence: C/Windows/System32/config/SOFTWARE :: \\Microsoft\\Windows\\CurrentVersion\\Run\\VBoxTray @ 2026-08-23T23:13:49.701914+00:00 (presence)",
+      "reason": "An executed binary is also registered to run at logon: execution=program executed -> persistence=autorun entry present [vboxtray.exe]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0003",
+      "severity": "critical",
+      "technique_family": "T1547",
+      "time_claim": "observed_occurrence",
+      "title": "An executed binary is also registered to run at logon",
+      "weight": 85,
+      "window_observed_seconds": null
+    }
+  ],
+  "generated_by": "viewer/build_fixtures.py",
+  "manifest": {
+    "collection": "collection_s1_v2",
+    "events_total": 382,
+    "schema": "rules 1.5.0",
+    "sources": {
+      "evtx.security": 359,
+      "evtx.system": 23
+    },
+    "time_range": [
+      "2026-06-20T13:44:00.512871+00:00",
+      "2026-08-23T23:31:48.536586+00:00"
+    ],
+    "tool": "dfir-triage-pipeline"
+  },
+  "narration": {
+    "citations": [
+      "625b7aea1246bd04",
+      "0819bf727486559d",
+      "3d631807d9959914",
+      "3880ee857bfa17da"
+    ],
+    "generated_utc": "2026-09-22T00:00:00Z",
+    "model": "local-llm (offline)",
+    "status": "provisional",
+    "text": "A downloaded binary was executed on the host [[625b7aea1246bd04]], and a binary was found registered to run at logon [[0819bf727486559d]] — the pairing the verdict layer treats as corpus-validated persistence. Separately, the Windows Security log was cleared [[3d631807d9959914]] and the same account continued to act afterwards [[3880ee857bfa17da]]. This description is generated from the frozen run and adds no findings of its own."
+  },
+  "run_id": "s1_v2-fixture",
+  "run_json_version": "1.4.0"
+}

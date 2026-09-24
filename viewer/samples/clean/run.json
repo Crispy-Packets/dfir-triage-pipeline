@@ -1,0 +1,391 @@
+{
+  "_fixture": {
+    "fixture_assigned_fields": [
+      "findings.rule_class (CLASS_MAP)",
+      "findings.phase (CATEGORY_TO_PHASE + PHASE_OVERRIDE)",
+      "anomalies.* (synthesised; real values are B-10/A-6 output)",
+      "narration (model-generated, provisional)"
+    ],
+    "is_fixture": true,
+    "real_fields": [
+      "finding_id",
+      "rule_id",
+      "category",
+      "severity",
+      "weight",
+      "attack_technique",
+      "title",
+      "time_claim",
+      "window_observed_seconds",
+      "entity_keys",
+      "event_ids",
+      "events.*",
+      "entities.score",
+      "entities.breakdown"
+    ],
+    "reason": "Pipeline has no JSON writer (B-8) or ML section dict (B-10/A-6) yet; this conforms to v1.4.0 for UI work."
+  },
+  "anomalies": {
+    "_fixture": true,
+    "contamination": 0.05,
+    "families": {
+      "evtx.security": {
+        "entities": [
+          {
+            "is_outlier": true,
+            "key": "entity.user",
+            "percentile_in_family": 100.0,
+            "value": "admin_local"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.user",
+            "percentile_in_family": 57.1,
+            "value": "analyst"
+          },
+          {
+            "is_outlier": false,
+            "key": "entity.user",
+            "percentile_in_family": 57.1,
+            "value": "svc_backup"
+          }
+        ],
+        "n": 3,
+        "outlier_rate": 0.333,
+        "scored": true
+      }
+    },
+    "is_verdict": false,
+    "measure": "percentile_in_family",
+    "note": "Prioritisation only. A high percentile means unusual relative to the family baseline, not malicious.",
+    "random_seed": 20260830,
+    "scorer": "isolation_forest",
+    "top_by_percentile": [
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 100.0,
+        "value": "admin_local"
+      },
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 57.1,
+        "value": "analyst"
+      },
+      {
+        "family": "evtx.security",
+        "key": "entity.user",
+        "percentile_in_family": 57.1,
+        "value": "svc_backup"
+      }
+    ]
+  },
+  "collection": "collection_clean_baseline",
+  "counts": {
+    "entities_scored": 3,
+    "entities_total": 3,
+    "findings_by_class": {
+      "corpus-validated": 3
+    },
+    "findings_by_phase": {
+      "destroy": 1,
+      "persist": 2
+    },
+    "findings_by_severity": {
+      "high": 3
+    },
+    "findings_total": 3
+  },
+  "entities": [
+    {
+      "breakdown": "",
+      "category_scores": {
+        "anti_forensics": 70,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 0
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "b8ddba4b99d4fd35"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "destroy"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-ATOMIC-0002"
+      ],
+      "score": 70,
+      "severity": "high",
+      "techniques": [
+        "T1070.001"
+      ],
+      "value": "admin_local"
+    },
+    {
+      "breakdown": "",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 40
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "f367ef65fffbb70d"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-CORR-0002"
+      ],
+      "score": 40,
+      "severity": "high",
+      "techniques": [
+        "T1078"
+      ],
+      "value": "analyst"
+    },
+    {
+      "breakdown": "",
+      "category_scores": {
+        "anti_forensics": 0,
+        "execution_context": 0,
+        "persistence": 0,
+        "privilege_escalation": 40
+      },
+      "finding_count": 1,
+      "finding_ids": [
+        "7a91712c370b24be"
+      ],
+      "key": "entity.user",
+      "kind": "user",
+      "phase_span": [
+        "persist"
+      ],
+      "rule_count": 1,
+      "rule_ids": [
+        "R-ATOMIC-0007"
+      ],
+      "score": 40,
+      "severity": "high",
+      "techniques": [
+        "T1136.001"
+      ],
+      "value": "svc_backup"
+    }
+  ],
+  "entities_by_kind": {
+    "binary": [],
+    "user": [
+      {
+        "breakdown": "",
+        "category_scores": {
+          "anti_forensics": 70,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 0
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "b8ddba4b99d4fd35"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "destroy"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-ATOMIC-0002"
+        ],
+        "score": 70,
+        "severity": "high",
+        "techniques": [
+          "T1070.001"
+        ],
+        "value": "admin_local"
+      },
+      {
+        "breakdown": "",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 40
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "f367ef65fffbb70d"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-CORR-0002"
+        ],
+        "score": 40,
+        "severity": "high",
+        "techniques": [
+          "T1078"
+        ],
+        "value": "analyst"
+      },
+      {
+        "breakdown": "",
+        "category_scores": {
+          "anti_forensics": 0,
+          "execution_context": 0,
+          "persistence": 0,
+          "privilege_escalation": 40
+        },
+        "finding_count": 1,
+        "finding_ids": [
+          "7a91712c370b24be"
+        ],
+        "key": "entity.user",
+        "kind": "user",
+        "phase_span": [
+          "persist"
+        ],
+        "rule_count": 1,
+        "rule_ids": [
+          "R-ATOMIC-0007"
+        ],
+        "score": 40,
+        "severity": "high",
+        "techniques": [
+          "T1136.001"
+        ],
+        "value": "svc_backup"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "attack_technique": "T1078",
+      "category": "privilege_escalation",
+      "entity_keys": [
+        {
+          "key": "entity.user",
+          "value": "analyst"
+        }
+      ],
+      "event_ids": [
+        "b1f0aa11c2d33e44"
+      ],
+      "events": [
+        {
+          "event_id": "b1f0aa11c2d33e44",
+          "resolved": false
+        }
+      ],
+      "finding_id": "f367ef65fffbb70d",
+      "first_timestamp_utc": "2026-08-24T09:00:00.000000Z",
+      "phase": "persist",
+      "provenance": "synthetic clean-baseline fixture event",
+      "reason": "A failed logon was followed by a success for the same account [analyst]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-CORR-0002",
+      "severity": "high",
+      "technique_family": "T1078",
+      "time_claim": "observed_occurrence",
+      "title": "A failed logon was followed by a success for the same account",
+      "weight": 40,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1136.001",
+      "category": "privilege_escalation",
+      "entity_keys": [
+        {
+          "key": "entity.user",
+          "value": "svc_backup"
+        }
+      ],
+      "event_ids": [
+        "c2e1bb22d3e44f55"
+      ],
+      "events": [
+        {
+          "event_id": "c2e1bb22d3e44f55",
+          "resolved": false
+        }
+      ],
+      "finding_id": "7a91712c370b24be",
+      "first_timestamp_utc": "2026-08-24T09:00:00.000000Z",
+      "phase": "persist",
+      "provenance": "synthetic clean-baseline fixture event",
+      "reason": "A local account was created [svc_backup]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0007",
+      "severity": "high",
+      "technique_family": "T1136",
+      "time_claim": "observed_occurrence",
+      "title": "A local account was created",
+      "weight": 40,
+      "window_observed_seconds": null
+    },
+    {
+      "attack_technique": "T1070.001",
+      "category": "anti_forensics",
+      "entity_keys": [
+        {
+          "key": "entity.user",
+          "value": "admin_local"
+        }
+      ],
+      "event_ids": [
+        "a3d2cc33e4f55006"
+      ],
+      "events": [
+        {
+          "event_id": "a3d2cc33e4f55006",
+          "resolved": false
+        }
+      ],
+      "finding_id": "b8ddba4b99d4fd35",
+      "first_timestamp_utc": "2026-08-24T09:00:00.000000Z",
+      "phase": "destroy",
+      "provenance": "synthetic clean-baseline fixture event",
+      "reason": "Windows event log cleared (scheduled maintenance) [admin_local]",
+      "rule_class": "corpus-validated",
+      "rule_id": "R-ATOMIC-0002",
+      "severity": "high",
+      "technique_family": "T1070",
+      "time_claim": "observed_occurrence",
+      "title": "Windows event log cleared (scheduled maintenance)",
+      "weight": 70,
+      "window_observed_seconds": null
+    }
+  ],
+  "generated_by": "viewer/build_fixtures.py",
+  "manifest": {
+    "collection": "collection_clean_baseline",
+    "events_total": 10158,
+    "note": "Synthetic clean baseline fixture (no attack scenario).",
+    "schema": "rules 1.5.0",
+    "sources": {
+      "evtx.security": 10142,
+      "evtx.system": 16
+    },
+    "time_range": [
+      "2026-06-20T13:43:25.264433+00:00",
+      "2026-08-24T17:21:37.952731+00:00"
+    ],
+    "tool": "dfir-triage-pipeline"
+  },
+  "run_id": "clean-baseline-fixture",
+  "run_json_version": "1.4.0"
+}

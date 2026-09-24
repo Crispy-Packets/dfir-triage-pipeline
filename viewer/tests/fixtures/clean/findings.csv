@@ -1,0 +1,4 @@
+finding_id,rule_id,rule_class,phase,category,severity,weight,attack_technique,technique_family,title,first_timestamp_utc,time_claim,window_observed_seconds,entity_keys,event_ids
+f367ef65fffbb70d,R-CORR-0002,corpus-validated,persist,privilege_escalation,high,40,T1078,T1078,A failed logon was followed by a success for the same account,2026-08-24T09:00:00.000000Z,observed_occurrence,,entity.user=analyst,b1f0aa11c2d33e44
+7a91712c370b24be,R-ATOMIC-0007,corpus-validated,persist,privilege_escalation,high,40,T1136.001,T1136,A local account was created,2026-08-24T09:00:00.000000Z,observed_occurrence,,entity.user=svc_backup,c2e1bb22d3e44f55
+b8ddba4b99d4fd35,R-ATOMIC-0002,corpus-validated,destroy,anti_forensics,high,70,T1070.001,T1070,Windows event log cleared (scheduled maintenance),2026-08-24T09:00:00.000000Z,observed_occurrence,,entity.user=admin_local,a3d2cc33e4f55006

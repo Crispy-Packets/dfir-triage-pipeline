@@ -15,6 +15,13 @@ outputs/
 *.csv
 !tests/fixtures/**/*.csv
 !groundtruth/*.csv
+# viewer/ (Person A's read-only Streamlit viewer). Its sample runs and test
+# fixtures are sealed by manifest.sha256, which covers the CSVs -- untracked
+# CSVs would make every sample fail verification after a clone. A deliberate
+# exception to "derived output never enters git": the viewer cannot run or
+# test without them. Lab-VM data only; the repository is private.
+!viewer/samples/**/*.csv
+!viewer/tests/fixtures/**/*.csv
 
 # tools/ holds collection binaries (KAPE) which never enter git, but the
 # analysis scripts cited by docs/ and groundtruth/ must be tracked: their
