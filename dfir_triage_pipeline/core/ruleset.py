@@ -263,7 +263,7 @@ def _conditions(node: Any, where: str) -> Conditions:
 #: Entity keys an aggregate may group on. Same set section 4.3 permits for a
 #: correlation join, and for the same reason: `path` and `source_file` group
 #: events that share only a filename.
-_GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
+_GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host", "entity.src_ip"})
 
 
 def _aggregate(node: Any, where: str) -> Aggregate | None:

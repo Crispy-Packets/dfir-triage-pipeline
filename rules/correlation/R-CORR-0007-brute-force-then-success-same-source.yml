@@ -1,0 +1,129 @@
+# Correlation chain 7. Added 2026-09-26 from the collection_srv22 analysis.
+# CLASS 2 (known-behavior).
+#
+# The chain R-CORR-0002 cannot draw on real brute force. On collection_srv22
+# (100,023 failed logons) R-CORR-0002 reports SEARCH TRUNCATED and emits
+# nothing; and joined on the account alone, its first valid chain would pair
+# the attacker's failures with the LEGITIMATE administrator's success from
+# another address (195.21.1.97, working from home). This rule joins on the
+# account AND the source address, so a success counts only when it came from
+# the address that was guessing.
+
+schema_version: "2.1.0"
+id: R-CORR-0007
+type: correlation
+title: A password was guessed -- failed logons, then a success, from one address
+enabled: true
+class: known-behavior
+phase: delivery
+
+description: >
+  Joins at least ten failed logons (EID 4625) against one account from one
+  network address to a successful logon (EID 4624) for the same account from
+  the SAME address, within ten minutes of a failure. Claims that the address
+  that was failing is the address that then got in, and names both records.
+  A success from a different address -- the account's real owner logging in
+  while someone else guesses -- does not join, by construction.
+
+severity: critical
+weight: 85
+
+attack:
+  technique: T1110
+  name: Brute Force
+
+select:
+  event_type: [logon]
+  source_artifact: [evtx.security]
+
+conditions:
+  all:
+    - field: event_type
+      op: equals
+      value: logon
+
+# Steps are declared success-first, with order: any, so the search ANCHORS on
+# the success. Measured on srv22: 52,426 failures precede the first success
+# from 36.133.110.87. Anchored on the failures (R-CORR-0002's shape), every
+# anchor costs two search units and ~105k exceeds SEARCH_BUDGET (100,000);
+# anchored on the success, the failures are walked once at one unit each --
+# ~52k, inside the budget at about half of it. The window below is still
+# failure -> success, so a failure AFTER the success reads as a negative
+# interval and fails min: PT0S.
+steps:
+  - name: success
+    select:
+      event_type: [logon]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: logon
+    in_window: true
+    optional: false
+
+  - name: failure
+    select:
+      event_type: [logon_failed]
+      source_artifact: [evtx.security]
+    conditions:
+      all:
+        - field: event_type
+          op: equals
+          value: logon_failed
+    in_window: true
+    optional: false
+    min_count: 10
+
+join:
+  on: [entity.user, entity.src_ip]
+
+window:
+  from: failure
+  to: success
+  min: PT0S
+  max: PT10M
+  justification: >
+    Measured on collection_srv22: the first success from 36.133.110.87 came
+    0.603 s after the last of 52,426 failures from that address, and the first
+    success from 185.229.66.183 came 45.8 s after the last of 12. A guessing
+    tool logs in within seconds of the attempt that works. PT10M is R-CORR-0002's
+    bound, kept for comparability; both measured gaps sit far inside it.
+
+expected:
+  clean_a: 0
+  clean_b: 0
+  s1_v2: 0
+  clean_c: 0
+  s1_v3: 0
+  note: >
+    Measured 2026-09-26 with tools/measure_rules.py. Zero on all five: the lab
+    corpus holds at most 13 failed logons per collection and none are ten from
+    one address against one account. On collection_srv22 (a real compromise,
+    outside the corpus) it fires twice: [administrator, 36.133.110.87], success
+    EventRecordID 2379067 at 2024-02-05T10:55:56Z after 52,426 failures, and
+    [administrator, 185.229.66.183] after 12. Search not truncated.
+
+order: any
+
+false_positive_notes: >
+  1. A service or scheduled task with a stale password fails repeatedly from
+     one host, then succeeds once someone updates it. Ten failures from a
+     single internal address followed by a success is that, as often as it is
+     an attack; the address (internal vs external) tells them apart.
+
+  2. min_count 10 counts failures from that address against that account over
+     the whole run, not inside the window; only ONE failure must fall within
+     ten minutes before the success. A slow guess spread over days still
+     joins, which is intended.
+
+  3. Behind NAT or a VPN concentrator, many users share one source address;
+     the account half of the join keeps them apart.
+
+notes: >
+  Search cost equals the number of failures from the address that precede the
+  first success, at one unit each, against a budget of 100,000 per group. On
+  srv22 that is ~52k: inside, but at half. An engine-side fix (bisect the
+  failures to the window before each success) is the follow-up if a larger
+  flood is ever collected.

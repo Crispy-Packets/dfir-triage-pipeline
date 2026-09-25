@@ -213,3 +213,85 @@ class TestScheduledTaskScriptHost:
     ])
     def test_ordinary_task_does_not_fire(self, command, arguments):
         assert _fires(self.rule, [self._task(command, arguments)]) == 0
+
+
+# --------------------------------------------------------------------------- #
+# entity.src_ip and R-CORR-0007 (2026-09-26, from the collection_srv22 analysis)
+# --------------------------------------------------------------------------- #
+
+from dfir_triage_pipeline.core import entity  # noqa: E402
+
+
+class TestSrcIpKey:
+    @pytest.mark.parametrize("raw,expected", [
+        ("36.133.110.87", "36.133.110.87"),
+        (" 185.229.66.183 ", "185.229.66.183"),
+        ("-", None), ("::1", None), ("127.0.0.1", None), ("0.0.0.0", None),
+        ("LOCAL", None), ("", None),
+    ])
+    def test_security_ipaddress(self, raw, expected):
+        ev = _sec("logon", details={"IpAddress": raw})
+        assert entity.resolve(ev, "entity.src_ip") == expected
+
+    def test_rdp_address(self):
+        ev = _sec("rdp_session", details={"Address": "31.220.85.162"})
+        assert entity.resolve(ev, "entity.src_ip") == "31.220.85.162"
+
+    def test_join_only_never_in_keys_for(self):
+        """Join-only: an atomic finding's entity keys, and so the entity
+        ranking, never see it."""
+        ev = _sec("logon", details={"IpAddress": "36.133.110.87"})
+        assert "entity.src_ip" not in entity.keys_for(ev)
+
+    def test_joinable_and_groupable(self):
+        from dfir_triage_pipeline.core import ruleset
+        assert "entity.src_ip" in entity.JOINABLE
+        assert "entity.src_ip" in ruleset._GROUPABLE
+
+
+class TestBruteForceThenSuccessSameSource:
+    rule = next(
+        load_rule(p) for p in (RULES / "correlation").glob("R-CORR-0007-*.yml")
+    )
+
+    def _f(self, dt, ip="36.133.110.87", user="Administrator"):
+        return _sec("logon_failed", user=user, dt=dt, details={"IpAddress": ip, "LogonType": "3"})
+
+    def _ok(self, dt, ip="36.133.110.87", user="Administrator"):
+        return _sec("logon", user=user, dt=dt, details={"IpAddress": ip, "LogonType": "3"})
+
+    def _run(self, events):
+        stats = engine.EngineStats()
+        found = engine.evaluate_correlation(self.rule, events, stats)
+        return found, stats
+
+    def test_guessing_then_success_from_same_address_fires(self):
+        events = [self._f(i) for i in range(12)] + [self._ok(12)]
+        found, stats = self._run(events)
+        assert len(found) == 1
+        assert dict(found[0].entity_keys)["entity.src_ip"] == "36.133.110.87"
+        assert not stats.search_truncated
+
+    def test_owner_success_from_another_address_does_not_join(self):
+        """collection_srv22: the attacker guesses from 36.133.110.87 while the
+        real administrator logs in from 195.21.1.97. Joined on the account alone
+        these pair up -- the misread this key exists to prevent."""
+        events = [self._f(i) for i in range(50)] + [self._ok(30, ip="195.21.1.97")]
+        found, _ = self._run(events)
+        assert found == []
+
+    def test_fewer_than_ten_failures_does_not_fire(self):
+        events = [self._f(i) for i in range(9)] + [self._ok(10)]
+        assert self._run(events)[0] == []
+
+    def test_success_long_after_the_failures_does_not_fire(self):
+        events = [self._f(i) for i in range(12)] + [self._ok(3600)]
+        assert self._run(events)[0] == []
+
+    def test_a_large_flood_stays_inside_the_search_budget(self):
+        """Anchored on the success, failures are walked once. 60,000 failures
+        before the success (srv22 had 52,426) must not truncate."""
+        events = [self._f(i * 0.01) for i in range(60_000)] + [self._ok(700)]
+        found, stats = self._run(events)
+        assert len(found) == 1
+        assert not stats.search_truncated

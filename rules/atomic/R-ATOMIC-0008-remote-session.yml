@@ -9,15 +9,16 @@
 schema_version: "2.1.0"
 id: R-ATOMIC-0008
 type: atomic
-title: Terminal Services session opened from a remote address
+title: Terminal Services sessions opened from a remote address
 enabled: true
 phase: delivery
 
 description: >
-  Fires on a TerminalServices-LocalSessionManager 21 or 25 record whose
-  `Address` field is not the literal LOCAL - that is, a Remote Desktop session
-  rather than a console logon. Claims the session was opened and names the
-  record, the user and the address it came from. Does not claim the session was
+  Fires once per source ADDRESS that opened two or more
+  TerminalServices-LocalSessionManager 21 or 25 sessions within 30 days, where
+  `Address` is not the literal LOCAL - that is, Remote Desktop sessions rather
+  than console logons. Claims the sessions were opened and names the first two
+  records and the address they came from. Does not claim they were
   unauthorised.
 
 severity: medium
@@ -50,6 +51,20 @@ conditions:
       op: not_equals
       value: LOCAL
       ci: true
+
+aggregate:
+  count: 2
+  within: P30D
+  group_by: entity.src_ip
+
+# Grouped by source address (2026-09-26). On collection_srv22 this rule fired
+# 262 times -- once per logon -- and 257 of those were the legitimate
+# administrator working from home from one address. Grouping by entity.src_ip
+# (join-only key, added the same day) makes it one finding per ADDRESS: three
+# on srv22, one of them the attacker's Kali machine. count: 2 is the smallest
+# the aggregate grammar allows (a count of 1 is the rule without the
+# aggregate). The cost: an address with a SINGLE logon no longer fires here --
+# see false_positive_notes.
 
 expected:
   clean_a: 0

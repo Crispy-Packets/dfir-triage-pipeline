@@ -3,8 +3,8 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1065 passed, 21 skipped
-    python rules\validate_rules.py    ->  schema 2.1.0  rules 29  errors 0  warnings 0
+    python -m pytest -q               ->  1081 passed, 21 skipped
+    python rules\validate_rules.py    ->  schema 2.1.0  rules 30  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
@@ -63,6 +63,18 @@ RDP-then-service chain (7045 records no installer; host joins are forbidden,
 schema 4.5 -- same cause as D-075, R-CORR-0004 cannot fire), a rename burst
 (3,475-16,375 renames per 10 min on clean hosts), archives in a share (USN
 carries bare filenames). Defects found in the same pass: D-075..D-077.
+
+**`entity.src_ip` and the srv22 fixes (2026-09-26).** A join-only key (schema
+4.5a): resolvable for `join.on` / `aggregate.group_by`, never emitted by
+`keys_for()`, never scored. R-CORR-0007 (known-behavior) joins failures ->
+success on `[entity.user, entity.src_ip]`, steps declared success-first so the
+search anchors on the success (srv22: 52,426 failures walked, budget 100,000,
+not truncated); it finds the real entry (5 Feb 10:55:56 from 36.133.110.87) and
+measures 0 on all five corpus collections. R-ATOMIC-0005/0008 now aggregate by
+`entity.src_ip` (807 -> 3, 262 -> 2 on srv22; 0 on the corpus either way).
+**R-CORR-0002 is deliberately untouched**: forcing its search to finish would
+pair the attacker's failures with the real administrator's success. Full case:
+`docs/evidence/srv22-analysis.md`; demo: `docs/demo-runbook.md`.
 
 **`viewer/` is Person A's read-only Streamlit UI** over one `run.json`. It is a
 separate component: its own venv (`viewer/.venv`, from `viewer/requirements.txt`,

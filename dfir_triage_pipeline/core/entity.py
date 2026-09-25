@@ -193,21 +193,57 @@ def host_key(event: Any) -> str | None:
     return raw.strip().lower()
 
 
+#: Addresses that name no remote source: the log's own "not recorded" marker,
+#: loopback, the unspecified address, and the RDP channel's console marker. A
+#: console logon has no source address, and an absent key never joins.
+_NO_SOURCE = frozenset({"", "-", "::1", "127.0.0.1", "0.0.0.0", "local", "::"})
+
+
+def src_ip_key(event: Any) -> str | None:
+    """`entity.src_ip`: the network address a logon came FROM.
+
+    Read from `details.IpAddress` on Security 4624/4625 and `details.Address` on
+    the RDP session channel (EID 21/25). None for a local or console logon.
+
+    **Join-only.** It is resolvable by name for `join.on` and `aggregate.group_by`
+    but is deliberately absent from `_RESOLVERS`, so `keys_for()` never adds it
+    to an atomic finding's entity keys and it never becomes a ranked entity
+    (entity_score scores only SCORED_ENTITY_KINDS). It exists because a
+    brute-force chain joined on the account alone pairs the attacker's failures
+    with the legitimate owner's success from elsewhere -- measured on
+    collection_srv22, where 100,003 failures from 36.133.110.87 overlap the real
+    administrator's logons from 195.21.1.97.
+    """
+    details = getattr(event, "details", None) or {}
+    raw = details.get("IpAddress") or details.get("Address")
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip().lower()
+    if value in _NO_SOURCE:
+        return None
+    return value
+
+
 _RESOLVERS = {
     "entity.exe_name": exe_name,
     "entity.user": user_key,
     "entity.host": host_key,
 }
 
-JOINABLE = frozenset({"entity.exe_name", "entity.user"})
+#: Resolvable by name for joins and grouping, never emitted by keys_for().
+_JOIN_ONLY_RESOLVERS = {
+    "entity.src_ip": src_ip_key,
+}
+
+JOINABLE = frozenset({"entity.exe_name", "entity.user", "entity.src_ip"})
 
 
 def resolve(event: Any, key: str) -> str | None:
     """One entity key by name. Unknown names raise rather than return None."""
-    try:
-        resolver = _RESOLVERS[key]
-    except KeyError:
-        raise KeyError(f"unknown entity key {key!r}; defined: {sorted(_RESOLVERS)}") from None
+    resolver = _RESOLVERS.get(key) or _JOIN_ONLY_RESOLVERS.get(key)
+    if resolver is None:
+        defined = sorted(_RESOLVERS) + sorted(_JOIN_ONLY_RESOLVERS)
+        raise KeyError(f"unknown entity key {key!r}; defined: {defined}")
     return resolver(event)
 
 

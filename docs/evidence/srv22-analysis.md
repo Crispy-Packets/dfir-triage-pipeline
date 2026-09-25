@@ -113,10 +113,21 @@ privileged-group additions including **Domain Admins** (R-ATOMIC-0019, new),
 the tool downloads (0016), both Recycle Bin deletions including `share.zip`
 (0015), and the unsigned `rename.exe` / `dir.exe` (0018).
 
-**Missed:**
+**Caught since 2026-09-26 — how they got in.** R-CORR-0007 (new): failures
+then a success **from the same source address**, joined on the account and
+the new join-only key `entity.src_ip`. It fires twice on srv22 and 0 on all
+five corpus collections: `[administrator, 36.133.110.87]` — success
+EventRecordID 2379067 at **5 Feb 10:55:56**, 0.603 s after the last of 52,426
+failures — and `[administrator, 185.229.66.183]`. Search not truncated.
+
+**Missed (as first run):**
 - **The successful brute force.** R-CORR-0002 (failed → success) reported
   `SEARCH TRUNCATED` on 100,023 failures and emitted nothing — the step that
-  answers "how did they get in" is absent from the findings.
+  answers "how did they get in" is absent from the findings. **Now caught
+  by R-CORR-0007 (above).** R-CORR-0002 is deliberately unchanged: made to
+  finish its search, and joined on the account alone, its first valid chain
+  would pair the attacker's failures with the real administrator's logon from
+  195.21.1.97 — the same misread section 7 records.
 - **PsExec** — no rule covers it.
 - **The ransomware itself** — no rule could: it acts at boot, outside Windows.
 - **nmap's three-day run** — no rule on sustained execution of scanning tools.
@@ -124,7 +135,13 @@ the tool downloads (0016), both Recycle Bin deletions including `share.zip`
 **Noise:**
 - **R-ATOMIC-0005 fired 807 times** — every external RDP logon, including 778
   by the legitimate administrator from 195.21.1.97. It is corpus-validated, so
-  it also inflates `administrator`'s triage score.
+  it also inflated `administrator`'s triage score. **Fixed 2026-09-26:**
+  grouped by `entity.src_ip`, one finding per address — **807 → 3**
+  (185.229.66.183, 195.21.1.97, 31.220.85.162), and R-ATOMIC-0008 **262 → 2**.
+  The findings key on the address, not the account, so they no longer inflate
+  `administrator`. Trade-off, stated in the rule: an address with a single RDP
+  logon no longer fires; R-CORR-0007 and R-ATOMIC-0022 cover a lone logon that
+  followed guessing.
 - R-ATOMIC-0011 on Windows Defender's own `MsMpEng.exe` — a known false
   positive of that known-behavior rule.
 - 1,142 firewall events are Windows' own font-driver rule churn.
@@ -149,3 +166,61 @@ matters.
 - The failed console logons as `admin` on 9 Feb (21:46, 22:54) from `::1`.
 - Morning `Administrator` network logons from each desktop on 6 Feb
   (09:29–10:00): consistent with legitimate administration; unresolved.
+
+## 9. Correlations across artifacts
+
+What connects, what the engine can join, and why it cannot join the rest.
+
+| Chain (fact) | Joinable today? |
+|---|---|
+| Source address → 100,003 failures → success from that address | **Yes** — R-CORR-0007, on `[entity.user, entity.src_ip]` |
+| Source address → RDP sessions (Security 4624 type 10, RDP LSM 21/25) | **Yes** — grouped per address by R-ATOMIC-0005/0008 |
+| `admin` created (4720) → added to Administrators (4732) → Domain Admins (4728) | **No** — identity fragmentation, below |
+| `admin` ran PsExec (BAM) → `share.zip` deleted 30 s later (Recycle Bin) | Joinable on the SID (both record S-1-5-21-…-2611); no rule written — one instance is not a base rate |
+| `rename.exe` inventoried (Amcache) → running (SRUM) | Joinable on `entity.exe_name`; the atomic R-ATOMIC-0018 already surfaces it |
+
+**Identity fragmentation — the largest correlation gap.** The attacker's one
+account reaches the engine as three different `entity.user` values:
+
+| Artifact | Recorded as |
+|---|---|
+| Account creation, 4720 | `admin` |
+| Group membership, 4728 / 4732 | `cn=a admin,dc=branchoffice,dc=example,dc=com` (MemberName, a directory DN) |
+| BAM, Recycle Bin, SRUM | `s-1-5-21-1057484085-1795310446-2370380301-2611` |
+
+So no rule can join "created" → "made Domain Admin" → "ran PsExec" →
+"deleted share.zip", though an analyst reads them as one actor. The fix is a
+name ↔ SID ↔ DN map for the run: 4720 carries `TargetSid` (not yet kept in
+`details`), 4728/4732 carry `MemberSid`, and the SOFTWARE hive's ProfileList
+maps SID → profile path (`C:\Users\admin`). With `entity.user` resolved to the
+SID wherever one exists, all four steps share a key. Not made before the
+presentation: it changes `entity.user` for every Security-log family and needs
+the five-collection measurement behind it. Recorded here as the next
+correlation change.
+
+## 10. One ML experiment — cross-host scoring, indicative only
+
+The anomaly layer needs a baseline, and srv22 has no clean collection of the
+same machine. As the one experiment possible with existing code, srv22 was
+scored against `collection_clean_c` — **a different machine**, which
+CLAUDE.md's "train and score within one host" rule says cannot be trusted.
+MODA*-G; only `amcache` passed the family gates; **106 entities ranked**:
+
+| Rank | Entity | |
+|---|---|---|
+| 1–3 | microsoftedgeupdate.exe, vboxtray.exe, msmpeng.exe | benign |
+| **4** | **psexec64.exe** | attacker tool |
+| **5** | **dir.exe** | Petya 2 / GoldenEye |
+| **6** | **rename.exe** | **Petya.A — the payload** |
+| 8, 11 | ncat.exe, zenmap.exe | from nmap |
+
+Both Petya samples and PsExec64 rank in the top six of 106. **Indicative, not
+validated:** against another machine, part of the signal is "software the
+baseline never had" — which is also why Edge Update and VirtualBox's tray tool
+lead. The mismatch guard (`baseline_warning`) was computed against the
+baseline's own threshold and did not fire, which means at most 15 % of these
+180 rows fell below it (it warns above three times the 5 % contamination
+setting; the exact rate was not recorded). So the ranking is not
+rejected, but it rests on one family and a cross-host comparison. The honest
+claim: the anomaly layer, pointed even at the wrong baseline, placed the
+payload in the top 6 % — and the rules had already put it on screen.

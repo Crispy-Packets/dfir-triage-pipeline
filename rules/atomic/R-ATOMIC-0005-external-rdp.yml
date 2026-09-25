@@ -5,16 +5,17 @@
 schema_version: "2.1.0"
 id: R-ATOMIC-0005
 type: atomic
-title: Remote interactive logon from a network address
+title: Remote interactive logons from a network address
 enabled: true
 phase: delivery
 
 description: >
-  Fires on an EID 4624 logon of type 10 (RemoteInteractive, the RDP type) whose
-  source address is a real network address rather than loopback or the log's
-  own "not recorded" marker. Claims that a remote interactive session was
-  established from that address and names the record. Claims nothing about who
-  was at the other end.
+  Fires once per source ADDRESS that made two or more EID 4624 logons of type
+  10 (RemoteInteractive, the RDP type) within 30 days, where the address is a
+  real network address rather than loopback or the log's own "not recorded"
+  marker. Claims that remote interactive sessions were established from that
+  address, names the first two records and the address. Claims nothing about
+  who was at the other end.
 
 severity: high
 weight: 50
@@ -41,6 +42,20 @@ conditions:
     - field: details.IpAddress
       op: in
       value: ["-", "::1", "127.0.0.1", "0.0.0.0"]
+
+aggregate:
+  count: 2
+  within: P30D
+  group_by: entity.src_ip
+
+# Grouped by source address (2026-09-26). On collection_srv22 this rule fired
+# 807 times -- once per logon -- and 778 of those were the legitimate
+# administrator working from home from one address. Grouping by entity.src_ip
+# (join-only key, added the same day) makes it one finding per ADDRESS: three
+# on srv22, one of them the attacker's Kali machine. count: 2 is the smallest
+# the aggregate grammar allows (a count of 1 is the rule without the
+# aggregate). The cost: an address with a SINGLE logon no longer fires here --
+# see false_positive_notes.
 
 expected:
   clean_a: 0
@@ -81,6 +96,12 @@ notes: >
   excluded explicitly by value rather than left to op: absent.
 
 false_positive_notes: >
+  Since 2026-09-26 an address with exactly ONE remote interactive logon does
+  not fire this rule. A lone attacker logon that followed password guessing is
+  covered by R-CORR-0007 (failures then success from the same address) and
+  R-ATOMIC-0022 (failure burst); a lone logon with valid stolen credentials
+  and no guessing is the gap this trades for readability.
+
   Legitimate remote administration produces an identical record. On an estate
   where RDP is a normal management path this rule would be pure noise and
   should be scoped by source address or by account. On this corpus it has no

@@ -561,6 +561,29 @@ constant within a collection: `clean_b` carries both `WIN-BQVKLIBL3LA` and
 `windows10` for one machine, before and after a rename. Any join on host would
 split that collection in two. Recorded in `docs/lab-setup.md`.
 
+### 4.5a `entity.src_ip` — a join-only key, added 2026-09-26
+
+The network address a logon came FROM: `details.IpAddress` on Security
+4624/4625, `details.Address` on the RDP session channel (21/25). Absent -- so it
+never joins -- for the log's `-`, loopback, `0.0.0.0`, `::` and the RDP
+console marker `LOCAL`.
+
+**Join-only.** It may appear in `join.on` and `aggregate.group_by`, but
+`keys_for()` never emits it: an atomic finding does not carry it, and it is not
+a SCORED kind, so it never becomes a ranked entity. A correlation or burst
+finding keyed on it does name the address, which is the point.
+
+**Why it exists.** On collection_srv22 a chain joined on the account alone
+pairs 100,003 failures from the attacker's address with the legitimate owner's
+success from another (`R-CORR-0002`'s shape). Joined on account AND address,
+only the success from the guessing address counts (`R-CORR-0007`). Grouping on
+it also turns per-logon RDP findings into one per source address
+(`R-ATOMIC-0005`, `R-ATOMIC-0008`).
+
+Unlike `entity.host` (4.5), an address is not renamed inside a collection. It
+can be shared -- NAT, VPN -- which is why `R-CORR-0007` joins it WITH the
+account rather than alone.
+
 ### 4.6 Volume serial is not a join field and not a classifier
 
 A volume serial is per-record provenance. It is not a tool-noise classifier:

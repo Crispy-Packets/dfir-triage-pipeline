@@ -108,7 +108,7 @@ OPERATORS = (
 # Entity keys an aggregate may group on, and a step may override its join with.
 # Same set section 4.3 permits for a join: grouping on `path` or `source_file`
 # would correlate events that share only a filename.
-GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host"})
+GROUPABLE = frozenset({"entity.exe_name", "entity.user", "entity.host", "entity.src_ip"})
 
 SEVERITIES = frozenset({"informational", "low", "medium", "high", "critical"})
 
@@ -131,7 +131,7 @@ PHASES = frozenset({"delivery", "execute", "persist", "destroy", "exfiltrate"})
 # new collection.
 COLLECTIONS = ("clean_a", "clean_b", "s1_v2", "clean_c", "s1_v3")
 
-JOINABLE = frozenset({"entity.exe_name", "entity.user"})
+JOINABLE = frozenset({"entity.exe_name", "entity.user", "entity.src_ip"})
 FORBIDDEN_JOIN = frozenset({"path", "source_file", "source_locator", "action", "entity.host"})
 
 # schema.md section 5.3. Static map for load-time checking only; at run time the
