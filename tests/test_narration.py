@@ -138,7 +138,8 @@ class TestRegistry:
 class TestValidator:
     def test_clean_prose_validates(self):
         text = _verdict_prose(
-            "invoice_scan.exe was executed and is registered to run at logon."
+            "invoice_scan.exe was executed and is registered to run at logon "
+            "(R-CORR-0003)."
         )
         r = citations.validate(text, _facts())
         assert r.validated is True
@@ -623,7 +624,11 @@ class TestNarrateWithMockedClient:
         # The bug this shape fixes: the model narrated the ranking because the
         # ranking was what the fact slice put in front of it.
         facts = narration._facts(self._doc())
-        assert list(facts)[:3] == ["collection", "scorer", "verdict_entities"]
+        # v10: `must_cite` (what the validator will require) comes first, then
+        # the verdict -- never the ranking.
+        assert list(facts)[:4] == ["must_cite", "collection", "scorer", "verdict_entities"]
+        # Computed by the validator's own function: prompt and check can't drift.
+        assert facts["must_cite"] == sorted(citations._required_rules(facts))
         top = facts["verdict_entities"][0]
         assert top["entity"] == "invoice_scan.exe"
         assert top["priority_band"] == "critical"
@@ -660,14 +665,19 @@ class TestNarrateWithMockedClient:
         model reproduced it nearly verbatim: a correct narration that proved
         nothing, because the answer was in the prompt. The example must teach
         style only, so it may name nothing from the real corpus."""
-        example = narration._PROMPT.split("TEMPLATE")[1].split("FACTS:")[0].lower()
+        example = narration._PROMPT.split("SHAPE")[1].split("FACTS:")[0].lower()
         for real in ("invoice_scan", "vboxuser", "winvm", "onedrive", "npp.", "11:50", "12:15"):
             assert real not in example, real
         # And no invented instance either: v5 leaked "System", v6 leaked
         # "host-7". Only blanks, so there is no concrete detail to copy.
         for fake in ("updater_x", "alice", "host-7", "07:42", "08:05", "system event"):
             assert fake not in example, fake
-        assert "<host>" in example and "<program>" in example
+        assert "<that same entry's rule>" in example and "<when>" in example
+        # v9: the shape carries NO action word -- v8's template carried
+        # "executed", "registered to run at logon" and "event log ... cleared",
+        # and the model copied them onto facts they did not fit.
+        for action in ("executed", "registered", "cleared", "run at logon", "created"):
+            assert action not in example, action
 
     def test_facts_order_verdicts_worst_first(self):
         doc = self._doc()
@@ -761,3 +771,221 @@ class TestNarrateWithMockedClient:
         assert block["status"] == "error"
         assert "connection refused" in block["error"]
         assert "text" not in block
+
+
+
+# --------------------------------------------------------------------------- #
+# Prompt v9 -- the briefing (2026-09-26, collection_srv22)
+# --------------------------------------------------------------------------- #
+
+
+def _srv22_facts():
+    """The shape of collection_srv22's fact slice, trimmed to what the checks read."""
+    return {
+        "collection": "collection_srv22",
+        "scorer": "moda_g",
+        "rule_ids": ["R-ATOMIC-0009", "R-CORR-0005", "R-CORR-0007", "R-ATOMIC-0019"],
+        "verdict_entities": [
+            {"entity": "admin", "kind": "user account", "priority_band": "high",
+             "triage_score": 79, "rule_ids": ["R-ATOMIC-0009", "R-CORR-0005"]},
+        ],
+        "verdict_findings": [
+            {"id": "F:a", "rule": "R-ATOMIC-0009", "title": "Local user account created",
+             "entities": ["win-ni9fbk23slo.branchoffice.example.com", "admin"],
+             "date": "2024-02-05", "time_utc": "23:02", "time_claim": "observed_occurrence"},
+            {"id": "F:b", "rule": "R-CORR-0005",
+             "title": "An account was created and then authenticated within the hour",
+             "entities": ["admin"], "date": "2024-02-05", "time_utc": "23:02",
+             "time_claim": "observed_occurrence"},
+        ],
+        "briefing_findings": [
+            {"id": "F:c", "rule": "R-CORR-0007",
+             "title": "A password was guessed -- failed logons, then a success, from one address",
+             "severity": "critical", "class": "not yet validated",
+             "entities": ["administrator", "36.133.110.87"],
+             "date": "2024-02-05", "time_utc": "10:55", "first_time_utc": "10:45"},
+            {"id": "F:d", "rule": "R-ATOMIC-0019",
+             "title": "An account was added to a privileged group", "severity": "high",
+             "class": "not yet validated",
+             "entities": ["win-ni9fbk23slo.branchoffice.example.com",
+                          "cn=a admin,dc=branchoffice,dc=example,dc=com"],
+             "date": "2024-02-05", "time_utc": "23:24"},
+        ],
+        "ranking_sentences_already_written_do_not_restate": [],
+    }
+
+
+class TestBriefing:
+    #: Verbatim from the prompt-v8 live run on collection_srv22 (qwen2.5:7b).
+    #: Real names, real rules, real times -- and two fabricated actions copied
+    #: from the template: no log was cleared, and an account is not "registered
+    #: to run at logon".
+    V8_SRV22 = (
+        "admin has the highest triage score in this run (79, high), from 2 "
+        "corpus-validated rules. admin was created (last run 23:02 UTC) and is "
+        "registered to run at logon (R-ATOMIC-0009). For the user account admin "
+        "(triage score 79, high), the Security event log on "
+        "win-ni9fbk23slo.branchoffice.example.com was cleared at 23:02 UTC (R-CORR-0005)."
+    )
+
+    GOOD = (
+        "At 10:55 UTC on 2024-02-05 a password was guessed for administrator from "
+        "one network address (R-CORR-0007). At 23:02 UTC on 2024-02-05 the local user "
+        "account admin was created (R-ATOMIC-0009). At 23:02 UTC on 2024-02-05 "
+        "admin was created and then authenticated within the hour (R-CORR-0005). "
+        "At 23:24 UTC on 2024-02-05 "
+        "that account was added to a privileged group (R-ATOMIC-0019)."
+    )
+
+    def test_the_fabricated_actions_are_rejected_by_the_claim_check(self):
+        r = citations.validate(self.V8_SRV22, _srv22_facts())
+        assert r.validated is False
+        assert any(u.startswith("claim:cleared") for u in r.unresolvable)
+        assert any(u.startswith("claim:registered") for u in r.unresolvable)
+
+    def test_the_fqdn_is_no_longer_a_false_host_rejection(self):
+        """Before the fix the host pattern stopped at the first dot and rejected
+        a correct FQDN -- by luck the only thing that stopped V8_SRV22."""
+        r = citations.validate(self.V8_SRV22, _srv22_facts())
+        assert not any(u.startswith("host:") for u in r.unresolvable)
+
+    def test_a_correct_briefing_is_accepted(self):
+        r = citations.validate(self.GOOD, _srv22_facts())
+        assert r.unresolvable == [], r.unresolvable
+        assert r.validated is True
+
+    def test_every_critical_finding_is_required(self):
+        # Drop the guessed-password sentence: the entry is critical, so omitted -> rejected.
+        text = self.GOOD.split(". ", 1)[1]
+        r = citations.validate(text, _srv22_facts())
+        assert "missing_finding:R-CORR-0007 (critical finding)" in r.unresolvable
+
+    def test_a_claim_needs_a_rule_in_its_own_sentence(self):
+        r = citations.validate(
+            self.GOOD + " The administrator account was deleted.", _srv22_facts()
+        )
+        assert any(u.startswith("claim:deleted -- no rule cited") for u in r.unresolvable)
+
+    def test_a_claim_must_match_the_cited_rules_title(self):
+        # R-ATOMIC-0019 is an ADDITION to a group, not a creation.
+        text = self.GOOD.replace(
+            "that account was added to a privileged group",
+            "that account was created in a privileged group",
+        )
+        r = citations.validate(text, _srv22_facts())
+        assert any(u.startswith("claim:created -- not in the title of R-ATOMIC-0019")
+                   for u in r.unresolvable)
+
+    def test_then_from_one_chain_title_is_allowed_between_findings_is_not(self):
+        ok = citations.validate(self.GOOD, _srv22_facts())
+        assert not any(u.startswith("order_claim") for u in ok.unresolvable)
+        bad = citations.validate(
+            self.GOOD + " admin was created (R-ATOMIC-0009) and then added to a "
+            "privileged group (R-ATOMIC-0019).",
+            _srv22_facts(),
+        )
+        assert any(u.startswith("order_claim:'then'") for u in bad.unresolvable)
+
+    def test_a_number_inside_a_name_is_rejected_as_the_viewer_would(self):
+        """The viewer withheld accepted prose over "36.133.110.87" (measured on
+        srv22); the pipeline must not accept what the viewer will hide."""
+        text = self.GOOD.replace("one network address", "36.133.110.87")
+        r = citations.validate(text, _srv22_facts())
+        assert "bare_number:36.133" in r.unresolvable
+
+    def test_a_worded_date_is_rejected(self):
+        text = self.GOOD.replace("At 23:24 UTC on 2024-02-05", "On February 5, 2024 at 23:24 UTC")
+        r = citations.validate(text, _srv22_facts())
+        assert "bare_number:5" in r.unresolvable
+
+    def test_simultaneity_between_findings_is_rejected(self):
+        """Live run 1 of v9: 'At the same time' bridged 10:55 and 22:55."""
+        r = citations.validate(
+            self.GOOD + " At the same time, a password was guessed for administrator "
+            "from another address (R-CORR-0007).",
+            _srv22_facts(),
+        )
+        assert any(u.lower().startswith("order_claim:'at the same time'")
+                   for u in r.unresolvable)
+
+    def test_a_paraphrased_chain_order_is_allowed(self):
+        text = self.GOOD.replace(
+            "a password was guessed for administrator from one network address",
+            "a password was guessed for administrator: failed logons followed by a "
+            "success from one network address",
+        )
+        r = citations.validate(text, _srv22_facts())
+        assert not any(u.startswith("order_claim") for u in r.unresolvable)
+
+    def test_a_merged_time_is_citable_with_its_rule(self):
+        facts = _srv22_facts()
+        facts["briefing_findings"][1]["time_utc"] = "23:02"
+        facts["briefing_findings"][1]["also_at_utc"] = ["23:24 on 2024-02-05"]
+        r = citations.validate(self.GOOD, facts)
+        assert r.unresolvable == [], r.unresolvable
+
+    def test_a_host_short_name_is_accepted(self):
+        r = citations.validate(
+            self.GOOD + " The Security event log on win-ni9fbk23slo was cleared "
+            "(R-ATOMIC-0002).",
+            _srv22_facts(),
+        )
+        assert not any(u.startswith("host:") for u in r.unresolvable)
+
+
+class TestBriefingFindings:
+    def _doc(self):
+        def f(fid, rule, sev, cls, ents, matched, title="t"):
+            return {"finding_id": fid, "rule_id": rule, "severity": sev, "rule_class": cls,
+                    "title": title, "entity_keys": [{"key": "k", "value": v} for v in ents],
+                    "matched": matched}
+        m = lambda t, typ="recorded": {"timestamp_utc": t, "timestamp_type": typ}  # noqa: E731
+        return {"findings": [
+            f("1", "R-CORR-0007", "critical", "known-behavior", ["administrator", "1.2.3.4"],
+              [m("2024-02-05T10:45:56Z"), m("2024-02-05T10:55:56Z")]),
+            f("2", "R-ATOMIC-0011", "high", "known-behavior", ["msmpeng.exe"],
+              [m("2024-02-06T21:31:53Z", "presence")]),
+            f("3", "R-ATOMIC-0011", "high", "known-behavior", ["msmpeng.exe"],
+              [m("2024-02-06T21:31:53Z", "presence")]),
+            f("4", "R-ATOMIC-0014", "low", "known-behavior", ["x.exe"], []),
+        ]}
+
+    def test_a_finding_is_timed_at_its_first_record(self):
+        """The viewer verifies `first_timestamp_utc` only; a chain's completion
+        time (10:55) was withheld by it on srv22, so the facts carry 10:45."""
+        out = narration._briefing_findings(self._doc()["findings"], exclude=set())
+        chain = next(e for e in out if e["rule"] == "R-CORR-0007")
+        assert chain["time_utc"] == "10:45"
+        assert "first_time_utc" not in chain and "also_at_utc" not in chain
+        assert chain["class"] == "not yet validated"
+
+    def test_names_containing_numbers_are_withheld(self):
+        out = narration._briefing_findings(self._doc()["findings"], exclude=set())
+        chain = next(e for e in out if e["rule"] == "R-CORR-0007")
+        assert chain["entities"] == ["administrator"]      # 1.2.3.4 withheld
+
+    def test_presence_only_carries_no_time_and_duplicates_collapse(self):
+        out = narration._briefing_findings(self._doc()["findings"], exclude=set())
+        svc = [e for e in out if e["rule"] == "R-ATOMIC-0011"]
+        assert len(svc) == 1                          # hive + RegBack copy -> one
+        assert svc[0]["time_utc"] is None
+
+    def test_duplicates_merge_their_times(self):
+        """srv22: Administrators at 23:02 and Domain Admins at 23:24 carry the
+        same entity keys; dropping the second lost the 23:24 addition."""
+        m = lambda t: {"timestamp_utc": t, "timestamp_type": "recorded"}  # noqa: E731
+        f = lambda fid, t: {"finding_id": fid, "rule_id": "R-ATOMIC-0019",  # noqa: E731
+                            "severity": "high", "title": "added",
+                            "entity_keys": [{"key": "k", "value": "cn=a admin"}],
+                            "matched": [m(t)]}
+        out = narration._briefing_findings(
+            [f("1", "2024-02-05T23:02:22Z"), f("2", "2024-02-05T23:24:35Z")], exclude=set()
+        )
+        assert len(out) == 1
+        assert out[0]["time_utc"] == "23:02"
+        assert out[0]["also_at_utc"] == ["23:24 on 2024-02-05"]
+
+    def test_low_severity_is_left_out_and_critical_comes_first(self):
+        out = narration._briefing_findings(self._doc()["findings"], exclude=set())
+        assert all(e["rule"] != "R-ATOMIC-0014" for e in out)
+        assert out[0]["severity"] == "critical"

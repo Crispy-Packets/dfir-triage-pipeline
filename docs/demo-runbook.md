@@ -83,7 +83,11 @@ viewer.
 
 The AI summary runs on this laptop (Ollama, `qwen2.5:7b`, localhost). It adds
 minutes per run and has not yet produced a summary that passes the validator,
-so the demo runs without it. To switch it on for ONE PowerShell window:
+so the demo runs without it. Both briefing drafts on srv22 (prompts v9, v10)
+were rejected, with the reasons named. They, and the analyst-written brief
+for the slide, are in `docs/evidence/srv22-narration-attempts.md`. That page IS
+the "AI drafts, code checks" demonstration. To switch it on for ONE PowerShell
+window:
 
 ```powershell
 $env:DFIR_NARRATION = "ollama:qwen2.5:7b"

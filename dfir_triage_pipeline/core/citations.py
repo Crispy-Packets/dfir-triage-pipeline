@@ -102,9 +102,10 @@ _BAND_QUALIFIER_RE = re.compile(r"\bamong (?:the )?(\w+)[-\s]band\b", re.IGNOREC
 #: 10:30, BEFORE its download at 10:44 -- a model telling a story reverses it.
 _ORDER_WORD_RE = re.compile(
     r"\b(then|afterwards?|subsequently|followed by|later|after which|prior to|"
-    r"before|after)\b",
+    r"before|after|at the same time|simultaneously|meanwhile|concurrently)\b",
     re.IGNORECASE,
 )
+_SIMULTANEITY = frozenset({"at the same time", "simultaneously", "meanwhile", "concurrently"})
 #: A sentence that opens with a pronoun refers back to the previous subject.
 _PRONOUN_START_RE = re.compile(
     # A bare "The ..." is NOT a back-reference ("The Security event log was
@@ -135,7 +136,7 @@ _LOG_NAME_RE = re.compile(
 #: from the prompt's example; the record says winvm. It must be a host the
 #: findings name.
 _LOG_HOST_RE = re.compile(
-    r"\blog\s+on\s+(?:the\s+)?(?:host\s+|machine\s+)?([A-Za-z][\w\-]*)",
+    r"\blog\s+on\s+(?:the\s+)?(?:host\s+|machine\s+)?([A-Za-z][\w\-]*(?:\.[A-Za-z0-9][\w\-]*)*)",
     re.IGNORECASE,
 )
 #: Words that follow "log on the host" without being a host name. v7 wrote
@@ -145,12 +146,35 @@ _NOT_A_HOST = {
     "was", "were", "is", "has", "had", "and", "at", "which", "that", "where",
     "host", "machine", "system", "computer", "device", "endpoint", "it",
 }
+#: Actions a sentence can claim, each with the words a cited rule's TITLE must
+#: contain for the claim to stand. Closed vocabulary, checked per sentence. The
+#: prompt-v8 briefing on collection_srv22 cited real rules and real times and
+#: still said "the Security event log ... was cleared (R-CORR-0005)" -- no log
+#: was cleared; R-CORR-0005 is "account created, then used" -- and "admin ... is
+#: registered to run at logon (R-ATOMIC-0009)" for an account creation. Both
+#: were shapes copied from the prompt's template. A claimed action now needs a
+#: rule in its own sentence whose title names that action.
+_CLAIMS: tuple[tuple[str, re.Pattern[str], tuple[str, ...]], ...] = (
+    ("cleared", re.compile(r"\bclear(?:ed|ing|s)?\b", re.I), ("clear",)),
+    ("executed", re.compile(r"\b(?:executed|execution|ran|launched)\b", re.I), ("execut",)),
+    ("created", re.compile(r"\bcreat(?:ed|es|ing|ion)\b", re.I), ("creat",)),
+    ("added", re.compile(r"\badded\b", re.I), ("added",)),
+    ("deleted", re.compile(r"\b(?:deleted|deletion|recycle bin)\b", re.I), ("delet", "recycle")),
+    ("downloaded", re.compile(r"\bdownload(?:ed|s|ing)?\b", re.I), ("download",)),
+    ("guessed", re.compile(r"\b(?:guess(?:ed|ing)?|brute)\b", re.I), ("guess", "failed logon")),
+    ("registered", re.compile(r"\b(?:registered|autorun|run at logon|startup)\b", re.I),
+     ("registered", "autorun", "run at logon")),
+    ("installed", re.compile(r"\binstall(?:ed|s|ing|ation)?\b", re.I), ("install",)),
+)
 #: A template blank left unfilled, e.g. `<host>`. The prompt's example is a
 #: template; a blank surviving into the prose means a fact was not supplied.
 _BLANK_RE = re.compile(r"<[a-z][a-z :_\-]{0,20}>", re.IGNORECASE)
 #: Clock times and dates stated in prose. Each must be one the record holds.
 _TIME_RE = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
 _DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+#: The viewer's `contract.NUM_RE`, copied verbatim so both gates see the same
+#: numbers (viewer/dfir_viewer/contract.py; the viewer imports nothing from here).
+_VIEWER_NUM_RE = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w])")
 #: Sentence split, for subject carry-over: "invoice_scan.exe ... It is ranked
 #: first" -- the second sentence names nothing, so it inherits the last subject.
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
@@ -173,6 +197,15 @@ class ValidationResult:
     relation_errors: list[str] = field(default_factory=list)
 
 
+def _all_findings(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Validated findings plus the prompt-v9 briefing findings. Every check that
+    verifies a time, host, log name, name or rule pairing reads this, so the
+    fuller fact slice is held to the same checks as the validated one."""
+    return list(facts.get("verdict_findings", []) or []) + list(
+        facts.get("briefing_findings", []) or []
+    )
+
+
 def _verdicts(facts: dict[str, Any]) -> list[dict[str, Any]]:
     """`verdict_entities` as dicts. Tolerates the old flat list-of-names shape so
     an older fact slice still validates."""
@@ -190,13 +223,14 @@ def _allowed_rule_ids(facts: dict[str, Any]) -> set[str]:
     allowed = {r for r in facts.get("rule_ids", []) if r}
     for v in _verdicts(facts):
         allowed.update(r for r in v.get("rule_ids", []) or [] if r)
-    allowed.update(f.get("rule") for f in facts.get("verdict_findings", []) or [] if f.get("rule"))
+    allowed.update(f.get("rule") for f in _all_findings(facts) if f.get("rule"))
     return allowed
 
 
 def _allowed_exes(facts: dict[str, Any]) -> set[str]:
     exes = {v.get("entity") for v in _verdicts(facts)}
     exes.update(a.get("entity") for a in _ranking(facts))
+    exes.update(e for f in _all_findings(facts) for e in f.get("entities", []) or [])
     return {e.lower() for e in exes if e}
 
 
@@ -237,6 +271,12 @@ def _required_rules(facts: dict[str, Any]) -> dict[str, str]:
     """
     required = _required_mentions(facts)
     out: dict[str, str] = {}
+    # Every critical finding, validated or not (prompt v9). On collection_srv22
+    # the entity table's top is `admin` (high), so the entity rule alone never
+    # required the guessed password -- R-CORR-0007, the entry, critical.
+    for f in facts.get("briefing_findings", []) or []:
+        if str(f.get("severity", "")).lower() == "critical" and f.get("rule"):
+            out.setdefault(f["rule"], "critical finding")
     for f in facts.get("verdict_findings", []) or []:
         ents = {str(e).lower() for e in f.get("entities", []) or []}
         for e in sorted(required & ents):
@@ -301,6 +341,9 @@ def _known_names(facts: dict[str, Any]) -> list[str]:
     """Every entity name the prose may use as a subject, lowercased, longest
     first so `onedrive.exe` is not found inside `onedrivesetup.exe`."""
     names = {str(v["entity"]).lower() for v in _verdicts(facts) if v.get("entity")}
+    names.update(
+        str(e).lower() for f in _all_findings(facts) for e in f.get("entities", []) or [] if e
+    )
     names.update(str(a["entity"]).lower() for a in _ranking(facts) if a.get("entity"))
     return sorted(names, key=len, reverse=True)
 
@@ -385,7 +428,7 @@ def _rules_for(facts: dict[str, Any], name: str) -> set[str]:
     for v in _verdicts(facts):
         if str(v.get("entity", "")).lower() == name:
             rules.update(r for r in v.get("rule_ids", []) or [] if r)
-    for f in facts.get("verdict_findings", []) or []:
+    for f in _all_findings(facts):
         if name in {str(e).lower() for e in f.get("entities", [])}:
             if f.get("rule"):
                 rules.add(f["rule"])
@@ -395,7 +438,7 @@ def _rules_for(facts: dict[str, Any], name: str) -> set[str]:
 def _allowed_logs(facts: dict[str, Any]) -> set[str]:
     """Event-log names the record holds: the .evtx file names in evidence."""
     logs: set[str] = set()
-    for f in facts.get("verdict_findings", []) or []:
+    for f in _all_findings(facts):
         for ev in f.get("evidence", []) or []:
             path = str(ev).split(" :: ")[0]
             base = path.replace("\\", "/").rsplit("/", 1)[-1]
@@ -406,12 +449,26 @@ def _allowed_logs(facts: dict[str, Any]) -> set[str]:
 
 def _allowed_times(facts: dict[str, Any]) -> tuple[set[str], set[str]]:
     times, dates = set(), set()
-    for f in facts.get("verdict_findings", []) or []:
-        if f.get("time_utc"):
-            times.add(str(f["time_utc"]))
-        if f.get("date"):
-            dates.add(str(f["date"]))
+    for f in _all_findings(facts):
+        for t, d in _finding_times(f):
+            times.add(t)
+            if d:
+                dates.add(d)
     return times, dates
+
+
+def _finding_times(f: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """(HH:MM, date) pairs a finding may be cited with: its `time_utc`, plus the
+    first times of findings merged into it (`also_at_utc`, "HH:MM on DATE")."""
+    out: list[tuple[str, str | None]] = []
+    if f.get("time_utc"):
+        out.append((str(f["time_utc"]), str(f["date"]) if f.get("date") else None))
+    elif f.get("date"):
+        out.append(("", str(f["date"])))
+    for extra in f.get("also_at_utc", []) or []:
+        t, _, d = str(extra).partition(" on ")
+        out.append((t, d or None))
+    return [(t, d) for t, d in out if t or d]
 
 
 def _relation_errors(text: str, facts: dict[str, Any]) -> list[str]:
@@ -499,7 +556,39 @@ def _relation_errors(text: str, facts: dict[str, Any]) -> list[str]:
                         f"record: {got}"
                     )
 
+        # Claim check: each claimed action must be named by the title of a rule
+        # cited in THIS sentence.
+        cited_here = set(_RULE_RE.findall(sent))
+        titles = {
+            str(f.get("title") or "").lower()
+            for f in _all_findings(facts)
+            if f.get("rule") in cited_here
+        }
+        for claim, pattern, needles in _CLAIMS:
+            if not pattern.search(sent):
+                continue
+            if not cited_here:
+                problems.append(f"claim:{claim} -- no rule cited in the sentence that claims it")
+            elif not any(n in t for t in titles for n in needles):
+                problems.append(
+                    f"claim:{claim} -- not in the title of {', '.join(sorted(cited_here))}"
+                )
+
         m = _ORDER_WORD_RE.search(sent)
+        # An order word inside ONE correlation finding is the rule's own
+        # finding ("created and then authenticated", R-CORR-0005), not an
+        # order between findings. Allowed only when the sentence cites exactly
+        # one rule and that rule's title itself states an order -- a paraphrase
+        # ("failed logons followed by a success" for R-CORR-0007's "then") is
+        # the same claim. Simultaneity is never allowed: no title states it,
+        # and live run 1 of v9 bridged 10:55 and 22:55 with "at the same time".
+        if (
+            m
+            and len(cited_here) == 1
+            and m.group(0).lower() not in _SIMULTANEITY
+            and any(re.search(r"\b(?:then|followed by|after|before)\b", t) for t in titles)
+        ):
+            m = None
         if m:
             problems.append(
                 f"order_claim:{m.group(0)!r} -- order between findings is the "
@@ -539,6 +628,16 @@ def validate(text: str, facts: dict[str, Any]) -> ValidationResult:
         if n not in allowed_nums:
             unresolvable.append(f"number:{n}")
 
+    # Bare numbers, tokenised exactly as the viewer's `relation_problems` does.
+    # Measured 2026-09-26 on collection_srv22: the viewer withheld accepted
+    # prose over "36.133.110.87", a SID and "nmap-7.93-setup.exe" -- numbers
+    # inside names, which it cannot tie to a record. Rule ids, clock times and
+    # dates are stripped first; each has its own check above and below.
+    bare = _DATE_RE.sub(" ", _TIME_RE.sub(" ", _RULE_RE.sub(" ", text)))
+    for tok in dict.fromkeys(_VIEWER_NUM_RE.findall(bare)):
+        if _norm(tok) not in allowed_nums:
+            unresolvable.append(f"bare_number:{tok}")
+
     # Times and dates: a stated clock time or date must be one the record holds.
     # The model is shown only observed times; a presence-only time is withheld.
     ok_times, ok_dates = _allowed_times(facts)
@@ -561,7 +660,7 @@ def validate(text: str, facts: dict[str, Any]) -> ValidationResult:
 
     entities_named = {
         str(e).lower()
-        for f in facts.get("verdict_findings", []) or []
+        for f in _all_findings(facts)
         for e in f.get("entities", []) or []
     }
     if entities_named:
@@ -569,7 +668,14 @@ def validate(text: str, facts: dict[str, Any]) -> ValidationResult:
             word = m.group(1).lower()
             if word in _NOT_A_HOST:
                 continue
-            if word not in entities_named:
+            # The FQDN or its first label ("win-ni9fbk23slo" for
+            # "win-ni9fbk23slo.branchoffice.example.com") both name the host.
+            # Before 2026-09-26 the pattern stopped at the first dot, so a
+            # correct FQDN was rejected -- which, by luck, was the only thing
+            # that stopped a briefing with a fabricated log clear. The claim
+            # check above now catches that directly.
+            labels = {n.split(".")[0] for n in entities_named}
+            if word not in entities_named and word.split(".")[0] not in labels:
                 unresolvable.append(f"host:{m.group(1)}")
 
     for m in _BLANK_RE.finditer(text):
@@ -597,9 +703,10 @@ def validate(text: str, facts: dict[str, Any]) -> ValidationResult:
     # the autorun value and carries no time. In the viewer, that citation opens
     # a record with no 11:50 in it.
     times_by_rule: dict[str, set[str]] = {}
-    for f in facts.get("verdict_findings", []) or []:
-        if f.get("rule") and f.get("time_utc"):
-            times_by_rule.setdefault(f["rule"], set()).add(str(f["time_utc"]))
+    for f in _all_findings(facts):
+        for t, _d in _finding_times(f):
+            if f.get("rule") and t:
+                times_by_rule.setdefault(f["rule"], set()).add(t)
     if times_by_rule:
         for sent in _SENTENCE_SPLIT_RE.split(text):
             cited = set(_RULE_RE.findall(sent))

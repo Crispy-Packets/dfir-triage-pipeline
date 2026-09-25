@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import UTC, datetime
@@ -51,7 +52,22 @@ _TIMEOUT_S = 300
 
 #: Bump this when the prompt changes; the value is recorded in run.json so a
 #: narration can be tied to the exact instruction that produced it.
-PROMPT_VERSION = "8"
+PROMPT_VERSION = "10"
+#: v10 (2026-09-26), after live run 1 of v9 on collection_srv22 was rejected:
+#: it omitted both of the top entity's findings and cited R-ATOMIC-0022 (a
+#: failed-logon burst) for a group addition. The facts now open with
+#: `must_cite` -- computed by the validator's own `_required_rules` -- and the
+#: SHAPE ties the rule id to the entry whose title was used. Times are each
+#: finding's FIRST record and names containing numbers are withheld, because
+#: the viewer's re-check verifies nothing else (measured, see
+#: `_briefing_findings`). Dates are written only as the facts write them.
+#: v9 (2026-09-26): a BRIEFING of what happened, for a non-technical reader,
+#: not a verdict. The model now sees `briefing_findings` -- every critical,
+#: high and medium finding, validated or not, labelled -- because on a real
+#: compromise (collection_srv22) the story lived in unvalidated rules and the
+#: model, shown only `admin`, copied action phrases from the template onto
+#: facts they did not fit ("the Security event log ... was cleared"; no log
+#: was cleared). The template now carries no action words at all.
 #: v8: cover every verdict finding on the top entity (v7 omitted the Recycle
 #: Bin deletion, R-CORR-0006), and keep each time in the sentence that cites
 #: its own rule (v7 put R-CORR-0003's 11:50 next to R-ATOMIC-0006).
@@ -77,61 +93,40 @@ PROMPT_VERSION = "8"
 #: Ranking prose is now written by code and forbidden here; the rest is
 #: wording the record can be checked against.
 _PROMPT = (
-    "You are a DFIR triage report assistant. Write a concise, factual summary "
-    "(<= 200 words) of the triage result described by the JSON facts below.\n"
-    "\nWHAT TO WRITE:\n"
-    "- LEAD with `verdict_entities`: the highest-priority entity first. Name it, "
-    "its priority band, its triage score, and the rule ids that fired on it. "
-    "The RULES are what detected it, and that is the point of the summary.\n"
-    "- Then the other verdict entities, briefly, highest priority first.\n"
-    "- For the highest-priority entity, cover EVERY entry in `verdict_findings` "
-    "that names it -- each with its own rule id. Leaving one out is an "
-    "error.\n"
-    "- A time belongs to one finding: put it in the same sentence as THAT "
-    "finding's rule id, and nowhere else.\n"
-    "- Write 3 to 5 sentences. Say WHAT the rules found, using the `title` of "
-    "each entry in `verdict_findings` (rephrase plainly, keep the meaning "
-    "exactly), with its rule id in brackets.\n"
-    "- An entity of kind 'user account' is never executed or run. Say what "
-    "was recorded for that account.\n"
-    "- Name a log, file or registry key only as it appears in `evidence`. "
-    "Which event log was cleared is in the .evtx file name there.\n"
-    "- Give a time only as it appears in `time_utc` (HH:MM UTC). Where "
-    "`time_utc` is null, the time is a registry key's last-write time: say "
-    "the value is 'present', never when it was created or written.\n"
-    "\nWORDING (these are not style preferences):\n"
-    "- The number is the TRIAGE SCORE; the label (critical/high/medium) is the "
-    "PRIORITY BAND. They are two different fields. Never write 'severity score' "
-    "or 'priority score' -- write 'triage score 99 (critical)'.\n"
-    "- A triage score is the summed weight of the rules that matched. It marks "
-    "where to look first. It is NOT a judgement that the entity is malicious.\n"
-    "- Name the entity in every sentence. Never 'this file', 'it' or 'the "
-    "binary' carried across a sentence boundary.\n"
+    "You are writing a short BRIEFING of what happened on a computer, for a "
+    "manager who is not a security specialist. It is NOT a verdict: describe "
+    "what the records show, never judge it.\n"
+    "\nWHAT TO WRITE (3 to 7 sentences, plain words):\n"
+    "- Use `briefing_findings` and `verdict_findings`. Each entry is one thing a "
+    "rule found: its `title` says WHAT was found, `entities` say about what, "
+    "`time_utc` and `date` say when its FIRST record was written "
+    "(`also_at_utc` lists further records of the same kind).\n"
+    "- Describe each thing in the words of its `title` -- rephrase for a "
+    "manager, but never claim an action the title does not name. If a title "
+    "says an account was added to a group, do not say it was created; if a "
+    "title says a program was inventoried, do not say it ran.\n"
+    "- Put the rule id in brackets after each thing, e.g. (R-CORR-0007).\n"
+    "- Every rule id in `must_cite` MUST appear in your briefing, in brackets, "
+    "each in a sentence built from an entry with that `rule`.\n"
+    "- Give times as `HH:MM UTC on YYYY-MM-DD`, copied exactly from `time_utc` "
+    "and `date` (never write a month name). "
+    "Where a finding has no `time_utc`, give no time for it.\n"
+    "- A finding with `class` 'not yet validated' is a real record from a rule "
+    "that has not been measured on clean systems; you may say so.\n"
     "\nDO NOT:\n"
-    "- Do NOT write about the anomaly ranking at all. Ranking sentences are "
-    "already written for you and appear verbatim in the report; restating, "
-    "paraphrasing or summarising them is an error. Never say an entity is "
-    "'first', 'top' or 'ranked' in the anomaly ranking.\n"
-    "- You MAY say which entity has the highest triage score; that claim is "
-    "checked against the scores below.\n"
-    "- Do NOT use order words between findings (then, after, before, later, "
-    "followed by, subsequently). The recorded order is not the obvious one; "
-    "the report's timeline states it.\n"
-    "- Do NOT compare entities by suspicion, risk, safety or unusualness ('less "
-    "suspicious', 'more anomalous', 'safer'). Those are not facts in the "
-    "record.\n"
-    "- Do NOT state intent, motive or attribution ('the attacker wanted', "
-    "'designed to evade'). Report what the rules matched, nothing beyond.\n"
-    "- Do NOT invent a number, a rule id or a name. Cite only what is below.\n"
-    "- Plain prose, no markdown headers.\n"
-    "\nTEMPLATE of the required style. Every <blank> must be filled from "
-    "FACTS below; never leave a <blank> in your summary, and never add a "
-    "detail FACTS does not contain.\n"
-    "<program> has the highest triage score in this run (<score>, <band>), "
-    "from <n> corpus-validated rules. <program> was executed (last run "
-    "<HH:MM> UTC) and is registered to run at logon (<rule id>). For the user "
-    "account <user> (triage score <score>, <band>), the <log name> event log "
-    "on <host> was cleared at <HH:MM> UTC (<rule id>).\n"
+    "- Do NOT use judgement words -- attacker, malicious, malware, hacker, "
+    "compromised, breach, criminal, infected -- unless a finding's `title` uses them.\n"
+    "- Do NOT state counts or numbers other than times, dates and triage scores "
+    "given in the facts.\n"
+    "- Do NOT use order or simultaneity words between findings (then, after, "
+    "before, later, followed by, at the same time, meanwhile). Each sentence "
+    "carries its own time; the reader sees the order.\n"
+    "- Do NOT write network addresses, account SIDs or version numbers.\n"
+    "- Do NOT mention the anomaly ranking.\n"
+    "- Do NOT invent a name, rule id, time, host or event-log name.\n"
+    "- Plain prose, no headings, no lists.\n"
+    "\nSHAPE of each sentence (a pattern, not words to copy):\n"
+    "<when> -- <who or what> -- <what the entry's title says> (<that same entry's rule>).\n"
     "\nFACTS:\n"
 )
 
@@ -335,12 +330,16 @@ def _facts(doc: dict[str, Any]) -> dict[str, Any]:
             )
         ]
 
-    return {
+    verdict_findings = _verdict_findings(findings, verdict_entities)
+    facts = {
         "collection": doc.get("collection", {}).get("name"),
         "scorer": anomalies.get("scorer"),
         "verdict_entities": verdict_entities,
         "rule_ids": sorted({f.get("rule_id") for f in findings if f.get("rule_id")}),
-        "verdict_findings": _verdict_findings(findings, verdict_entities),
+        "verdict_findings": verdict_findings,
+        "briefing_findings": _briefing_findings(
+            findings, exclude={v["id"] for v in verdict_findings}
+        ),
         # The ranking is NOT handed over as a list to paraphrase. Code writes
         # every ranking sentence (see `ranking_sentences`); the model is told
         # the ranking is off-limits. A fixed template cannot misstate a rank.
@@ -349,6 +348,8 @@ def _facts(doc: dict[str, Any]) -> dict[str, Any]:
             verdict_entities, anomalies.get("scorer")
         ),
     }
+    # First key, so a 7B model meets it before the findings.
+    return {"must_cite": _must_cite(facts), **facts}
 
 
 #: Entity key -> the plain word the model should use. A user account is never
@@ -409,6 +410,88 @@ def _verdict_findings(
         )
     out.sort(key=lambda x: (str(x["rule"]), str(x["date"]), str(x["time_utc"])))
     return out
+
+
+_BRIEF_SEVERITIES = ("critical", "high", "medium")
+_BRIEF_CAP = 20
+
+
+def _briefing_findings(
+    findings: list[dict[str, Any]], exclude: set[str]
+) -> list[dict[str, Any]]:
+    """Every critical/high/medium finding, validated or not, for the briefing.
+
+    Added for prompt v9. `verdict_findings` holds only corpus-validated rules, and
+    on a real compromise (collection_srv22) the story -- the guessed password,
+    the Domain Admins addition, the payload -- is in rules that are not yet
+    validated. Each entry carries its `class` so the model can say so, and its
+    `title` so the claim check can hold every sentence to what the rule found.
+
+    Times: `time_utc` is the finding's FIRST observed event -- the one time the
+    viewer can verify, because its re-check reads `first_timestamp_utc` and
+    nothing else. Measured on srv22: every "last" time (a chain's success, the
+    end of a run of logons) was withheld by the viewer. Presence-only events
+    carry no time, for the reason `_verdict_findings` states.
+
+    Deduplicated on (rule, entities): one registry value seen in a hive and its
+    RegBack copy is one thing to tell a reader, not two. Duplicates are MERGED:
+    each merged finding's own first time is kept in `also_at_utc`, so srv22's
+    two group additions (Administrators 23:02, Domain Admins 23:24 -- same
+    entity keys) keep both.
+
+    Names containing a number (IP addresses, SIDs, "nmap-7.93-setup.exe") are
+    left out of `entities`: the viewer cannot tie a number inside a name to a
+    record and withholds the prose (measured). The title still says what the
+    finding is; the reader loses the address, not the fact.
+    """
+    rank = {"critical": 0, "high": 1, "medium": 2}
+    groups: dict[tuple, tuple[dict[str, Any], str, list[str], list[str]]] = {}
+    for f in findings:
+        sev = str(f.get("severity", "")).lower()
+        fid = f"F:{f.get('finding_id')}"
+        if sev not in _BRIEF_SEVERITIES or fid in exclude:
+            continue
+        ents = [k.get("value") for k in f.get("entity_keys", []) if k.get("value")]
+        key = (f.get("rule_id"), tuple(sorted(ents)))
+        group = groups.setdefault(key, (f, sev, ents, []))
+        observed = sorted(
+            str(m.get("timestamp_utc"))
+            for m in f.get("matched", [])
+            if m.get("timestamp_utc") and m.get("timestamp_type") != "presence"
+        )
+        if observed:
+            group[3].append(observed[0][:16])
+    out: list[dict[str, Any]] = []
+    for f, sev, ents, times in groups.values():
+        firsts = sorted(set(times))
+        entry: dict[str, Any] = {
+            "id": f"F:{f.get('finding_id')}",
+            "rule": f.get("rule_id"),
+            "title": f.get("title"),
+            "severity": sev,
+            "class": "validated" if f.get("rule_class") == "corpus-validated"
+            else "not yet validated",
+            "entities": [e for e in ents if not _NUMBER_IN_NAME_RE.search(str(e))],
+            "date": firsts[0][:10] if firsts else None,
+            "time_utc": firsts[0][11:16] if firsts else None,
+        }
+        if len(firsts) > 1:
+            entry["also_at_utc"] = [f"{t[11:16]} on {t[:10]}" for t in firsts[1:]]
+        out.append(entry)
+    out.sort(key=lambda e: (rank.get(e["severity"], 9), str(e["date"]), str(e["time_utc"])))
+    return out[:_BRIEF_CAP]
+
+
+#: A number the viewer would read inside a name -- its `NUM_RE`, verbatim.
+_NUMBER_IN_NAME_RE = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w])")
+
+
+def _must_cite(facts: dict[str, Any]) -> list[str]:
+    """The rule ids the validator will require, computed by the validator's own
+    function, so the prompt and the check cannot drift apart. Live run 1 of v9
+    omitted both of the top entity's findings; a 7B model does not reliably
+    derive "highest-priority entity -> its rules" from the facts alone."""
+    return sorted(citations._required_rules(facts))
 
 
 def _ranking_sentences(verdict_entities: list[dict[str, Any]], scorer: str | None) -> list[str]:

@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1087 passed, 21 skipped
+    python -m pytest -q               ->  1105 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 30  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -282,7 +282,20 @@ sentences. Iterate on prompts with a narration-only call on an
 existing run.json, not the full ~6-minute pipeline. Determinism:
 temperature 0 + fixed seed + recorded model digest reproduce on the same
 host/model (not bit-identical across machines). A backend failure records
-`status: "error"`, never aborts the run. run_json → v1.5.0. **The module IS the
+`status: "error"`, never aborts the run. run_json → v1.5.0.
+**Prompt v9/v10, the briefing (2026-09-26, srv22).** The facts now carry
+`briefing_findings`: every critical, high and medium finding, validated or not,
+with its class, a first-record time, and no names that contain numbers. They
+open with `must_cite` (the validator's own `_required_rules`). New fatal checks:
+- a claimed action must be in the title of a rule cited in the same sentence
+  (`_CLAIMS`);
+- bare numbers are tokenised with the viewer's `NUM_RE`, so the pipeline never
+  accepts what the viewer withholds;
+- simultaneity words are refused.
+
+Both live runs were rejected, correctly: the wrong rule for the group addition,
+and a required finding omitted. Under the agreed two-run budget, narration stays
+off. See `docs/evidence/srv22-narration-attempts.md`. **The module IS the
 model-comparison harness**: run the pipeline with each candidate tag and read
 `narration.validation.unresolvable` from each run.json — zero unresolvable
 wins (it now includes every missing finding, the 3-sentence floor, and a time
