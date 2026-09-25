@@ -79,6 +79,31 @@ with Python 3.11 (~100 MB, needs internet) -- do that on the presenting
 machine, on good Wi-Fi, before the day. Close its console window to stop the
 viewer.
 
+## Narration (optional -- OFF by default, keep it off for the demo)
+
+The AI summary runs on this laptop (Ollama, `qwen2.5:7b`, localhost). It adds
+minutes per run and has not yet produced a summary that passes the validator,
+so the demo runs without it. To switch it on for ONE PowerShell window:
+
+```powershell
+$env:DFIR_NARRATION = "ollama:qwen2.5:7b"
+$env:DFIR_NARRATION_ENDPOINT = "http://localhost:11434"
+# ...then run the pipeline as usual. To switch it off again:
+Remove-Item Env:DFIR_NARRATION, Env:DFIR_NARRATION_ENDPOINT
+```
+
+Or in one step -- sets both, checks the model is up BEFORE the long run, and
+clears them afterwards:
+
+```powershell
+.\tools\run_with_narration.ps1 -Check
+.\tools\run_with_narration.ps1 -Collection %USERPROFILE%\dfir-evidence\collection_srv22 `
+    -Baseline %USERPROFILE%\dfir-evidence\collection_clean_c
+```
+
+**Do not set these as permanent Windows environment variables.** Every pipeline
+run -- and the test suite -- would then call the model.
+
 ## Screens, in order
 
 1. Viewer → sample `srv22` → **Priority** and **This run**: manifest verified.
