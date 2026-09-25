@@ -60,12 +60,25 @@ def build_parser() -> argparse.ArgumentParser:
             "-- the run reports that rather than hiding it."
         ),
     )
+    p.add_argument(
+        "--view",
+        action="store_true",
+        help=(
+            "when the run is written, open it in the viewer (viewer/, its own "
+            "Streamlit venv) in a separate window. Requires --run-json. A missing "
+            "viewer environment is reported, never an error: the run is already "
+            "written and hashed."
+        ),
+    )
     p.add_argument("--log-level", default="WARNING")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.view and not args.run_json:
+        parser.error("--view needs --run-json: the viewer opens the run.json this run writes")
     logging.basicConfig(level=args.log_level.upper(), format="%(levelname)s %(message)s")
 
     if not args.collection.is_dir():
@@ -124,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.run_json:
         _write_run_artifacts(args, ordered, findings, stats, engine_stats)
+        if args.view:
+            from . import viewer_launch
+
+            print()
+            print(f"Viewer     : {viewer_launch.launch(args.run_json)}")
     return 0
 
 

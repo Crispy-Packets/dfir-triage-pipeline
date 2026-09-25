@@ -16,9 +16,15 @@
 groundtruth/*-sha256.csv            -text
 groundtruth/*-sha256-supplement.csv -text
 docs/evidence/**                    -text
+# The viewer's sample runs are sealed by manifest.sha256 (run.json, CSVs,
+# report.html): byte-exact for the same reason. Verified 2026-09-26 that every
+# committed blob still matches its manifest; this keeps it that way.
+viewer/samples/**                   -text
 
 # Binary evidence, should any ever be committed deliberately.
 *.pf    binary
 *.evtx  binary
 *.hve   binary
 *.vhdx  binary
+# Windows batch files must keep CRLF: cmd.exe mis-parses goto labels in LF files.
+*.bat text eol=crlf

@@ -66,14 +66,18 @@ cd %USERPROFILE%\dfir-triage-pipeline
 .\.venv\Scripts\python.exe -m dfir_triage_pipeline %USERPROFILE%\dfir-evidence\collection_srv22 `
     --output outputs\srv22\timeline.csv --run-json outputs\srv22\run.json --report
 
-# the viewer
-cd viewer
-.\.venv\Scripts\python.exe -m streamlit run app.py
+# ...or run AND open it in one step: --view launches the viewer on this run,
+#    in its own window, once the run is written
+.\.venv\Scripts\python.exe -m dfir_triage_pipeline %USERPROFILE%\dfir-evidence\collection_srv22 `
+    --output outputs\srv22\timeline.csv --run-json outputs\srv22\run.json --report --view
 ```
 
-The viewer needs its own venv once (`python -m venv .venv`, then
-`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`, ~80-100 MB).
-Do it on the presenting machine, on good Wi-Fi, before the day.
+**One click:** double-click `viewer\Start-Viewer.bat`. It opens the viewer on
+the runs in `viewer\samples\` (srv22 included). Drag a `run.json` onto it to
+open that run instead. On first use it builds the viewer's own environment
+with Python 3.11 (~100 MB, needs internet) -- do that on the presenting
+machine, on good Wi-Fi, before the day. Close its console window to stop the
+viewer.
 
 ## Screens, in order
 
