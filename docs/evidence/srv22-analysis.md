@@ -70,19 +70,26 @@ All times UTC.
 | Brute-force source | 36.133.110.87 (`kali`) | Security 4625/4624 |
 | Attacker RDP sources | 185.229.66.183 (`kali`), 31.220.85.162 | Security 4624 type 10 |
 | Planted account | `admin`, SID …-2611, member of Administrators and **Domain Admins** | Security 4720/4732/4728 |
-| `rename.exe` | SHA-1 `39b6d40906c7f7f080e6befa93324dddadcbd9fa`, 230,912 bytes, no publisher, `C:\Users\admin\Desktop` | Amcache |
-| `dir.exe` | SHA-1 `d1c62ac62e68875085b62fa651fb17d4d7313887`, 806,912 bytes, no publisher, same folder | Amcache |
+| `rename.exe` | SHA-1 `39b6d40906c7f7f080e6befa93324dddadcbd9fa`, 230,912 bytes, no publisher, `C:\Users\admin\Desktop` — **Petya.A (Red Petya)**, confirmed by public sandbox hash match | Amcache |
+| `dir.exe` | SHA-1 `d1c62ac62e68875085b62fa651fb17d4d7313887`, 806,912 bytes, no publisher, same folder — **Petya 2 / GoldenEye variant**, confirmed by public sandbox hash match; no execution record | Amcache |
 | Staged archive | `C:\Users\admin\Desktop\share.zip`, 694,728,396 bytes, deleted 6 Feb 22:14:44 | Recycle Bin |
 | Tools | PsExec / PsExec64 (Sysinternals), nmap 7.93 + Npcap 1.71 | BAM, Amcache, 7045 |
 
 ## 5. Readings (inference — each needs confirmation)
 
-1. **`rename.exe` is the most likely payload.** It is unsigned, planted on the
-   attacker account's Desktop, and the last program running before the system
-   stops. Its $MFT record carries **24 March 2016** (`dir.exe`: 1 April 2016);
-   extracted files keep their original dates, and Petya was first reported in
-   late March 2016. *Confirm:* the hash against a malware database, or the
-   author's ground truth.
+1. **`rename.exe` IS the payload — confirmed 2026-09-26 by hash, not by the
+   author's ground truth.** Its Amcache SHA-1 `39b6d40906c7f7f080e6befa93324dddadcbd9fa`
+   appears verbatim on tria.ge (https://tria.ge/210227-bsc63lx48j: 225 KB,
+   tagged *bootkit*; ours is 230,912 bytes = 225.5 KiB), whose SHA-256
+   `26b4699a7b9eeb16e76305d843d4ab05e94d43f3201436927e13b3ebafa90739` is the
+   ANY.RUN report for **Petya.A** — the original 2016 "Red Petya" the README
+   names. SRUM shows it running at 22:56, the last minute before the system
+   stops. `dir.exe`'s SHA-1 `d1c62ac62e68875085b62fa651fb17d4d7313887` appears
+   verbatim on ANY.RUN as **"Petya 2.exe"** (a Petya 2 / GoldenEye variant):
+   a second Petya build dropped beside it, with **no execution record** in
+   this image (Amcache and Shimcache attest presence only). The $MFT dates
+   (24 March / 1 April 2016) fit Petya's first appearance. The pipeline
+   surfaced both through R-ATOMIC-0018.
 2. **No file-by-file encryption is expected in these logs.** There is no mass
    rename or creation burst in the USN journal before the end, and the system
    stops at 22:56:32. That fits Petya, which forces a reboot and encrypts the
@@ -136,8 +143,9 @@ matters.
 
 ## 8. Open questions
 
-- The author's ground truth: payload identity, whether `share.zip` was
-  exfiltrated, and which hosts PsExec reached.
+- The author's ground truth: whether `share.zip` was exfiltrated, which
+  hosts PsExec reached, and whether `dir.exe` ever ran. (Payload identity is
+  now settled by hash — section 5.)
 - The failed console logons as `admin` on 9 Feb (21:46, 22:54) from `::1`.
 - Morning `Administrator` network logons from each desktop on 6 Feb
   (09:29–10:00): consistent with legitimate administration; unresolved.
