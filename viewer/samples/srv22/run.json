@@ -11889,6 +11889,197 @@
     "files_seen": 512,
     "files_skipped": 82
   },
+  "narration": {
+    "attempts": 12,
+    "backend": "ollama",
+    "endpoint": "localhost:11434",
+    "facts_sha256": "bbac1308b647c01852d4d2b8e8bb6c38885347ee6ff0e43292555e929529079a",
+    "generated_at": "2026-09-25T23:50:44.188725+00:00",
+    "is_verdict": false,
+    "model": "qwen2.5:7b",
+    "model_digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "prompt_sha256": "33589bede88345230835b085071d42a62b81b288978feadc42f630c3b9aafdf7",
+    "prompt_version": "12",
+    "ranking_sentences": [],
+    "seed": 20260830,
+    "sentences": [
+      {
+        "attempts": [
+          {
+            "text": "At 15:25 UTC on 2023-11-04, sysinternalssuite.zip was downloaded to a user-writable location (R-ATOMIC-0016).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:ff758ae3f8821e28",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0016"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 23:37 UTC on 2024-02-04, there was a burst of failed login attempts against the administrator account (R-ATOMIC-0022).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:d47e9ff5c27cdf43",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0022"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 08:52 UTC on 2024-02-05, a network address logged into the system interactively (R-ATOMIC-0005).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:ec5086ebfedc3dbf",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0005"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 10:45 UTC on 2024-02-05, an attempt to log in as the administrator account failed from one network address, followed by a successful login (R-CORR-0007).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:515c4c97afd2f204",
+        "kept": true,
+        "required": true,
+        "rule": "R-CORR-0007"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 22:47 UTC on 2024-02-05, an attempt to log in as the administrator account failed from one network address, followed by a successful login (R-CORR-0007).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:20045d91d33f103f",
+        "kept": true,
+        "required": true,
+        "rule": "R-CORR-0007"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 23:02 UTC on 2024-02-05, a computer named win-ni9fbk23slo.branchoffice.example.com had an account named admin created locally (R-ATOMIC-0009).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:c9ee50023fc4e9dc",
+        "kept": true,
+        "required": true,
+        "rule": "R-ATOMIC-0009"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 23:02 UTC on 2024-02-05, the admin account was created and then authenticated within the hour (R-CORR-0005).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:89cae65a2943575d",
+        "kept": true,
+        "required": true,
+        "rule": "R-CORR-0005"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 23:02 UTC on 2024-02-05, the account cn=a admin,dc=branchoffice,dc=example,dc=com was added to the privileged group on the computer win-ni9fbk23slo.branchoffice.example.com (R-ATOMIC-0019).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:a5a95374298d511d",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0019"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 23:14 UTC on 2024-02-05, sysinternalssuite.zip was moved to the Recycle Bin from a user-writable location by one account (R-ATOMIC-0015).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:91f6244c7b2f39aa",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0015"
+      },
+      {
+        "attempts": [
+          {
+            "text": "At 11:27 UTC on 2024-02-08, a terminal services session was opened from a remote network address (R-ATOMIC-0008).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:e48ce9db134ebc05",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0008"
+      },
+      {
+        "attempts": [
+          {
+            "text": "The program msmpeng.exe was registered, and its binary file is stored in a location that can be written to by users (R-ATOMIC-0011).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:e063d2fe078f3297",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0011"
+      },
+      {
+        "attempts": [
+          {
+            "text": "The program dir.exe was found in a user-writable directory and has no publisher information (R-ATOMIC-0018).",
+            "unresolvable": []
+          }
+        ],
+        "finding": "F:ea5cd149f2e8d0a0",
+        "kept": true,
+        "required": false,
+        "rule": "R-ATOMIC-0018"
+      }
+    ],
+    "status": "accepted",
+    "style": "briefing",
+    "temperature": 0.0,
+    "text": "At 15:25 UTC on 2023-11-04, sysinternalssuite.zip was downloaded to a user-writable location (R-ATOMIC-0016). At 23:37 UTC on 2024-02-04, there was a burst of failed login attempts against the administrator account (R-ATOMIC-0022). At 08:52 UTC on 2024-02-05, a network address logged into the system interactively (R-ATOMIC-0005). At 10:45 UTC on 2024-02-05, an attempt to log in as the administrator account failed from one network address, followed by a successful login (R-CORR-0007). At 22:47 UTC on 2024-02-05, an attempt to log in as the administrator account failed from one network address, followed by a successful login (R-CORR-0007). At 23:02 UTC on 2024-02-05, a computer named win-ni9fbk23slo.branchoffice.example.com had an account named admin created locally (R-ATOMIC-0009). At 23:02 UTC on 2024-02-05, the admin account was created and then authenticated within the hour (R-CORR-0005). At 23:02 UTC on 2024-02-05, the account cn=a admin,dc=branchoffice,dc=example,dc=com was added to the privileged group on the computer win-ni9fbk23slo.branchoffice.example.com (R-ATOMIC-0019). At 23:14 UTC on 2024-02-05, sysinternalssuite.zip was moved to the Recycle Bin from a user-writable location by one account (R-ATOMIC-0015). At 11:27 UTC on 2024-02-08, a terminal services session was opened from a remote network address (R-ATOMIC-0008). The program msmpeng.exe was registered, and its binary file is stored in a location that can be written to by users (R-ATOMIC-0011). The program dir.exe was found in a user-writable directory and has no publisher information (R-ATOMIC-0018).",
+    "validation": {
+      "citations": {
+        "exes": [
+          "dir.exe",
+          "msmpeng.exe"
+        ],
+        "rule_ids": [
+          "R-ATOMIC-0005",
+          "R-ATOMIC-0008",
+          "R-ATOMIC-0009",
+          "R-ATOMIC-0011",
+          "R-ATOMIC-0015",
+          "R-ATOMIC-0016",
+          "R-ATOMIC-0018",
+          "R-ATOMIC-0019",
+          "R-ATOMIC-0022",
+          "R-CORR-0005",
+          "R-CORR-0007"
+        ]
+      },
+      "describes_ranking_as_detection": false,
+      "mentions_scorer": false,
+      "missing_mentions": [],
+      "relation_errors": [],
+      "unresolvable": [],
+      "validated": true
+    }
+  },
   "rules": {
     "evaluated": 30,
     "findings_by_rule": {
