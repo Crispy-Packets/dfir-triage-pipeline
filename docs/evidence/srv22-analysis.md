@@ -146,6 +146,31 @@ failures — and `[administrator, 185.229.66.183]`. Search not truncated.
   positive of that known-behavior rule.
 - 1,142 firewall events are Windows' own font-driver rule churn.
 
+**Detection accuracy of the rules on srv22 (counted 2026-09-26).** Ground truth
+is the section 3 timeline, which was reconstructed from this image. It is not
+the image author's answer key.
+
+*Precision* (are the findings real?): **16 of 22 findings are the incident
+(73 %).** The 6 that are not:
+- the legitimate administrator's RDP address, 195.21.1.97 (R-ATOMIC-0005,
+  R-ATOMIC-0008);
+- Windows Defender's `MsMpEng.exe`, counted twice as hive and RegBack
+  (R-ATOMIC-0011);
+- two SysinternalsSuite downloads dated 2023-11-04, before the incident
+  (R-ATOMIC-0016).
+
+*Recall* (is the incident found?): **13 of 19 attacker steps in section 3
+produce a finding (68 %).** Brute force, both guessed-password entries, both
+attacker RDP addresses, `admin` created, Administrators, Domain Admins, both
+tool downloads, `share.zip` to the Recycle Bin, and `rename.exe`/`dir.exe`
+planted are found. **Missed (6):** the share folders browsed, Npcap
+installed, nmap's three-day run, PsExec on 6 Feb and again on 9 Feb, and
+`rename.exe` running. The misses are the rule gaps listed above; PsExec is the
+first to write.
+
+F1 = 0.70. This is one case with one reconstructed ground truth: a measured
+result for this image, not a general accuracy of the pipeline.
+
 ## 7. A correction made during this analysis
 
 A first reading, from rule hits alone, placed the attacker's entry at
