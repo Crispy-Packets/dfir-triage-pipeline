@@ -224,3 +224,27 @@ setting; the exact rate was not recorded). So the ranking is not
 rejected, but it rests on one family and a cross-host comparison. The honest
 claim: the anomaly layer, pointed even at the wrong baseline, placed the
 payload in the top 6 % — and the rules had already put it on screen.
+
+**MODA\*-G vs Isolation Forest on the same run (measured 2026-09-26).** Same
+collection, same baseline (clean_c), same code; only `DFIR_ANOMALY_SCORER`
+differs. Both ranked 106 entities from `amcache`, and neither raised
+`baseline_warning`.
+
+| Entity | MODA\*-G | Isolation Forest |
+|---|---|---|
+| rename.exe (Petya.A) | **6** (5.7 %) | 14 (13.2 %) |
+| dir.exe (Petya 2) | **5** (4.7 %) | 13 (12.3 %) |
+| psexec64.exe | **4** (3.8 %) | 6 (5.7 %) |
+| psexec.exe | **16** | 23 |
+| ncat.exe | **8** | 9 |
+| zenmap.exe | **11** | 12 |
+| nmap-7.93-setup.exe | **12** | 16 |
+| nmap.exe | **23** | 78 |
+
+MODA\*-G ranks every attack tool higher, and ranks both Petya samples more
+than twice as high. That matches s1_v3 (same-host baseline): 14/443 vs 40/443.
+Same caveats as above: one family, cross-host, and eight known entities are
+not a labelled test set. **This is a rank comparison, not an accuracy figure;
+none can be computed.** IF's top 5 is all benign (svchost, msmpeng, vboxtray,
+Edge Update, msedge). MODA's is Edge Update, vboxtray, msmpeng, then
+psexec64 and dir.exe.
