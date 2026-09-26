@@ -248,3 +248,25 @@ not a labelled test set. **This is a rank comparison, not an accuracy figure;
 none can be computed.** IF's top 5 is all benign (svchost, msmpeng, vboxtray,
 Edge Update, msedge). MODA's is Edge Update, vboxtray, msmpeng, then
 psexec64 and dir.exe.
+
+**Ranking accuracy, the same two runs.** Labels were fixed from this document
+before any score was read. Broad set: the Petya pair, PsExec/PsExec64, and the
+nmap installer and suite; 9 of the 10 were ranked (Npcap was not). Strict set:
+the Petya pair and PsExec only. Everything else counts as not-attack, which
+means unlabelled, not proven benign.
+
+| Labels | Scorer | ROC AUC | Avg precision (chance) | Attack in top 10 |
+|---|---|---|---|---|
+| broad (9) | MODA\*-G | **0.943** | **0.463** (0.085) | **5 of 9** |
+| broad (9) | IF | 0.843 | 0.301 (0.085) | 2 of 9 |
+| strict (4) | MODA\*-G | **0.949** | **0.350** (0.038) | **3 of 4** |
+| strict (4) | IF | 0.887 | 0.177 (0.038) | 1 of 4 |
+
+s1_v3 has one labelled entity, so its AUC is only a restatement of its rank:
+MODA\*-G 0.971 (14/443), IF 0.912 (40/443).
+
+With 4 to 9 positives, one host pair and one family, these figures are
+**indicative and not significance-tested**. They are ranking accuracy (how
+high the attack sits), not detection accuracy: no threshold, no confusion
+matrix. The anomaly layer ranks; the rules detect. Script:
+`rank_accuracy.py`, computed from the rank order in the two run.json files.
