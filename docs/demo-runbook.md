@@ -79,15 +79,23 @@ with Python 3.11 (~100 MB, needs internet) -- do that on the presenting
 machine, on good Wi-Fi, before the day. Close its console window to stop the
 viewer.
 
-## Narration (optional -- OFF by default, keep it off for the demo)
+## Narration (the AI briefing -- OFF by default, ON in the srv22 sample)
 
-The AI summary runs on this laptop (Ollama, `qwen2.5:7b`, localhost). It adds
-minutes per run and has not yet produced a summary that passes the validator,
-so the demo runs without it. Both briefing drafts on srv22 (prompts v9, v10)
-were rejected, with the reasons named. They, and the analyst-written brief
-for the slide, are in `docs/evidence/srv22-narration-attempts.md`. That page IS
-the "AI drafts, code checks" demonstration. To switch it on for ONE PowerShell
-window:
+The AI briefing runs on this laptop (Ollama, `qwen2.5:7b`, localhost, CPU
+only). **The srv22 viewer sample carries an accepted briefing** (prompt v12,
+per finding): open the sample and it shows under the AI-summary label, with
+the code-written ranking lines beside it. The page to have ready for
+questions is `docs/evidence/srv22-narration-attempts.md`. It holds four
+drafts, the errors each check caught, and what to say aloud about what the
+briefing leaves out.
+
+What to say: **"The AI drafts one sentence per finding. It never sees a rule
+id; code attaches it. Deterministic code checks every time, name, number, role
+and action against the record, and the viewer checks again. If any check
+fails, nothing is shown."**
+
+A live run adds about 3.5 minutes (12 model calls). To switch it on for ONE
+PowerShell window:
 
 ```powershell
 $env:DFIR_NARRATION = "ollama:qwen2.5:7b"
@@ -117,3 +125,6 @@ run -- and the test suite -- would then call the model.
 4. R-ATOMIC-0018 → `rename.exe` → then the hash on screen (`srv22-analysis.md`).
 5. Terminal: the before/after counts above.
 6. s1_v3 sample → the 99 vs 14-of-443 slide: rules detect, ML ranks.
+7. srv22 sample → the AI briefing: drafted by the model, every clause checked
+   by code, labelled not-a-verdict. Then the attempts page: what the checks
+   caught in the drafts that were NOT shown.

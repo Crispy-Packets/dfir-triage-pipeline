@@ -165,6 +165,12 @@ _CLAIMS: tuple[tuple[str, re.Pattern[str], tuple[str, ...]], ...] = (
     ("registered", re.compile(r"\b(?:registered|autorun|run at logon|startup)\b", re.I),
      ("registered", "autorun", "run at logon")),
     ("installed", re.compile(r"\binstall(?:ed|s|ing|ation)?\b", re.I), ("install",)),
+    # v11 on srv22: "a program attempted to log into an account" for successful
+    # remote logons -- no program, no attempt, in the title or the record.
+    ("program", re.compile(r"\b(?:program|application|software)s?\b", re.I),
+     # not "service": "Terminal Services" let "a program connected" through
+     ("program", "executable", "binary", "installer", "script")),
+    ("attempted", re.compile(r"\battempt(?:ed|s|ing)?\b", re.I), ("attempt", "failed", "guess")),
 )
 #: A template blank left unfilled, e.g. `<host>`. The prompt's example is a
 #: template; a blank surviving into the prose means a fact was not supplied.
@@ -447,6 +453,37 @@ def _allowed_logs(facts: dict[str, Any]) -> set[str]:
     return logs
 
 
+#: Words that, just before a name, cast it in a role.
+#: Only "<role> [named|called|with the name] <name>" -- a wider window flagged
+#: correct prose ("added to a privileged group on the computer <host>").
+_NAMING = r"(?:\s+(?:named|called|with\s+the\s+name|name))?\s*[:'\"]?\s*$"
+_AS_ACCOUNT_RE = re.compile(r"\b(?:account|user|group)" + _NAMING, re.I)
+_AS_COMPUTER_RE = re.compile(r"\b(?:computer|host|server|machine|group)" + _NAMING, re.I)
+
+
+def _role_errors(sent: str, facts: dict[str, Any]) -> list[str]:
+    """A name used as something it is not. v11 on srv22 wrote "an account named
+    win-ni9fbk23slo..." (a computer) "added to a privileged group with the name
+    cn=a admin,..." (an account). Kinds come from the entity keys (`subjects`);
+    the check reads the words just before each named subject."""
+    kinds: dict[str, str] = {}
+    for f in _all_findings(facts):
+        for sj in f.get("subjects", []) or []:
+            if sj.get("name"):
+                kinds.setdefault(str(sj["name"]).lower(), str(sj.get("kind")))
+    out: list[str] = []
+    low = sent.lower()
+    for name, kind in sorted(kinds.items(), key=lambda kv: -len(kv[0])):
+        for m in re.finditer(rf"(?<![\w.=-]){re.escape(name)}(?![\w-])", low):
+            before = sent[: m.start()]
+            if kind == "computer" and _AS_ACCOUNT_RE.search(before):
+                out.append(f"role:{name} is a computer, written as an account or group")
+            elif kind == "account" and _AS_COMPUTER_RE.search(before):
+                out.append(f"role:{name} is an account, written as a computer or group")
+            break
+    return out
+
+
 def _allowed_times(facts: dict[str, Any]) -> tuple[set[str], set[str]]:
     times, dates = set(), set()
     for f in _all_findings(facts):
@@ -573,6 +610,8 @@ def _relation_errors(text: str, facts: dict[str, Any]) -> list[str]:
                 problems.append(
                     f"claim:{claim} -- not in the title of {', '.join(sorted(cited_here))}"
                 )
+
+        problems.extend(_role_errors(sent, facts))
 
         m = _ORDER_WORD_RE.search(sent)
         # An order word inside ONE correlation finding is the rule's own

@@ -557,6 +557,13 @@ class TestCompleteness:
 
 
 class TestNarrateWithMockedClient:
+    """The v10 one-shot style. Prompt v11 made per-finding the default; these
+    pin the single-shot repair and bounding behaviour, still selectable."""
+
+    @pytest.fixture(autouse=True)
+    def _single_style(self, monkeypatch):
+        monkeypatch.setenv(narration.STYLE_FLAG, "single")
+
     def _doc(self):
         return {
             "collection": {"name": "collection_s1_v3"},
@@ -989,3 +996,221 @@ class TestBriefingFindings:
         out = narration._briefing_findings(self._doc()["findings"], exclude=set())
         assert all(e["rule"] != "R-ATOMIC-0014" for e in out)
         assert out[0]["severity"] == "critical"
+
+
+# --------------------------------------------------------------------------- #
+# Prompt v11 -- one model call per finding, rule id attached by code
+# --------------------------------------------------------------------------- #
+
+
+class _ByTitle:
+    """A fake model: answers each per-finding prompt by its TITLE line, and
+    records every prompt it was shown."""
+
+    def __init__(self, answers):
+        self.answers, self.prompts = answers, []
+
+    def generate(self, prompt):
+        self.prompts.append(prompt)
+        title = prompt.split("TITLE: ", 1)[1].split("\n", 1)[0]
+        a = self.answers[title]
+        return a.pop(0) if isinstance(a, list) else a
+
+
+def _v11_facts():
+    facts = _srv22_facts()
+    return {"must_cite": narration._must_cite(facts), **facts}
+
+
+_GOOD_ANSWERS = {
+    "Local user account created":
+        "At 23:02 UTC on 2024-02-05, a local user account named admin was created.",
+    "An account was created and then authenticated within the hour":
+        "At 23:02 UTC on 2024-02-05, the account admin was created and then signed in "
+        "within the hour.",
+    "A password was guessed -- failed logons, then a success, from one address":
+        "At 10:55 UTC on 2024-02-05, a password was guessed for administrator: failed "
+        "logons, then a success, from one network address.",
+    "An account was added to a privileged group":
+        "At 23:24 UTC on 2024-02-05, the account cn=a admin,dc=branchoffice,dc=example,"
+        "dc=com was added to a privileged group.",
+}
+
+
+class TestBriefingStyle:
+    def test_default_style_is_briefing(self, monkeypatch):
+        monkeypatch.delenv(narration.STYLE_FLAG, raising=False)
+        assert narration.narration_style() == "briefing"
+        monkeypatch.setenv(narration.STYLE_FLAG, "poetry")
+        with pytest.raises(ValueError):
+            narration.narration_style()
+
+    def test_the_model_never_sees_a_rule_id(self):
+        fake = _ByTitle(dict(_GOOD_ANSWERS))
+        narration._narrate_briefing(fake, _v11_facts())
+        assert fake.prompts
+        for prompt in fake.prompts:
+            assert "R-ATOMIC" not in prompt and "R-CORR" not in prompt
+
+    def test_a_wrong_rule_cannot_be_written(self):
+        """Both v9 and v10 cited R-ATOMIC-0022 for the group addition. Code now
+        strips any id the model writes and appends the finding's own."""
+        answers = dict(_GOOD_ANSWERS)
+        answers["An account was added to a privileged group"] = (
+            "At 23:24 UTC on 2024-02-05, an account was added to a privileged group "
+            "(R-ATOMIC-0022)."
+        )
+        text, _ = narration._narrate_briefing(_ByTitle(answers), _v11_facts())
+        assert "R-ATOMIC-0022" not in text
+        assert "added to a privileged group (R-ATOMIC-0019)." in text
+
+    def test_good_sentences_make_an_accepted_briefing(self):
+        facts = _v11_facts()
+        text, audit = narration._narrate_briefing(_ByTitle(dict(_GOOD_ANSWERS)), facts)
+        r = citations.validate(text, facts)
+        assert r.unresolvable == [], (text, r.unresolvable)
+        assert all(a["kept"] for a in audit)
+        # printed in time order: the guessed password (10:45) comes first
+        assert text.index("R-CORR-0007") < text.index("R-ATOMIC-0009")
+
+    def test_a_bad_sentence_gets_one_repair_with_its_own_reasons(self):
+        answers = dict(_GOOD_ANSWERS)
+        answers["Local user account created"] = [
+            "At 23:02 UTC on 2024-02-05, the Security event log was cleared.",
+            _GOOD_ANSWERS["Local user account created"],
+        ]
+        fake = _ByTitle(answers)
+        text, audit = narration._narrate_briefing(fake, _v11_facts())
+        entry = next(a for a in audit if a["rule"] == "R-ATOMIC-0009")
+        assert len(entry["attempts"]) == 2 and entry["kept"]
+        assert any("claim:cleared" in u for u in entry["attempts"][0]["unresolvable"])
+        assert "REJECTED by the fact checker" in fake.prompts[-1] or any(
+            "claim:cleared" in pr for pr in fake.prompts
+        )
+
+    def test_a_required_sentence_failing_twice_rejects_the_whole(self):
+        answers = dict(_GOOD_ANSWERS)
+        answers["Local user account created"] = [
+            "At 23:02 UTC on 2024-02-05, the Security event log was cleared.",
+            "At 23:02 UTC on 2024-02-05, the Security event log was cleared again.",
+        ]
+        facts = _v11_facts()
+        text, audit = narration._narrate_briefing(_ByTitle(answers), facts)
+        entry = next(a for a in audit if a["rule"] == "R-ATOMIC-0009")
+        assert entry["required"] and not entry["kept"]
+        assert "cleared" not in text                      # dropped, never shown
+        r = citations.validate(text, facts)
+        assert "missing_finding:R-ATOMIC-0009 (admin)" in r.unresolvable
+
+    def test_selection_is_must_cite_first_then_capped(self, monkeypatch):
+        monkeypatch.setattr(narration, "_SENTENCE_CAP", 3)
+        facts = _v11_facts()
+        chosen = {e["rule"] for e in narration._sentence_entries(facts)}
+        assert set(facts["must_cite"]) <= chosen
+
+    def test_attach_rule_keeps_one_line_and_strips_quotes(self):
+        out = narration._attach_rule(
+            '"At 10:45 UTC on 2024-02-05, x happened."\nNote: y', "R-CORR-0007"
+        )
+        assert out == "At 10:45 UTC on 2024-02-05, x happened (R-CORR-0007)."
+
+    def test_unreachable_model_is_an_error_in_briefing_style_too(self, monkeypatch):
+        monkeypatch.setenv(narration.NARRATION_FLAG, "ollama:qwen2.5:7b")
+        monkeypatch.delenv(narration.STYLE_FLAG, raising=False)
+
+        def boom(self, prompt):
+            raise OSError("connection refused")
+
+        monkeypatch.setattr(narration._OllamaNarrator, "generate", boom)
+        doc = {"collection": {"name": "c"}, "entities": [], "anomalies": {},
+               "findings": [{"finding_id": "1", "rule_id": "R-CORR-0007",
+                             "severity": "critical", "title": "A password was guessed",
+                             "entity_keys": [], "matched": []}]}
+        block = narration.narrate(doc)
+        assert block["status"] == "error" and block["style"] == "briefing"
+
+
+class TestSubjectKinds:
+    """Prompt v12. v11's first live run on srv22 passed every check and was
+    wrong twice: roles swapped on the group addition, and "a program" for
+    remote logons whose only name (an IP) had been withheld."""
+
+    HOST = "win-ni9fbk23slo.branchoffice.example.com"
+    DN = "cn=a admin,dc=branchoffice,dc=example,dc=com"
+
+    def _facts(self):
+        facts = _srv22_facts()
+        g = facts["briefing_findings"][1]
+        g["subjects"] = [{"name": self.HOST, "kind": "computer"},
+                         {"name": self.DN, "kind": "account"}]
+        facts["briefing_findings"].append(
+            {"id": "F:e", "rule": "R-ATOMIC-0005",
+             "title": "Remote interactive logons from a network address",
+             "severity": "high", "class": "not yet validated", "entities": [],
+             "subjects": [{"name": None, "kind": "network address"}],
+             "date": "2024-02-05", "time_utc": "08:52"})
+        facts["briefing_findings"].append(
+            {"id": "F:f", "rule": "R-ATOMIC-0008",
+             "title": "Terminal Services sessions opened from a remote address",
+             "severity": "medium", "class": "not yet validated", "entities": [],
+             "subjects": [], "date": "2024-02-08", "time_utc": "11:27"})
+        return facts
+
+    def _problems(self, sentence):
+        return [u for u in citations.validate(sentence, self._facts()).unresolvable
+                if not u.startswith(("missing_finding:", "missing:", "too_short:"))]
+
+    def test_v11_swapped_roles_are_rejected(self):
+        p = self._problems(
+            f"At 23:02 UTC on 2024-02-05, an account named {self.HOST} was added to a "
+            f"privileged group with the name {self.DN} (R-ATOMIC-0019).")
+        assert any(u.startswith(f"role:{self.HOST}") for u in p)
+        assert any(u.startswith(f"role:{self.DN}") for u in p)
+
+    def test_correct_roles_pass(self):
+        assert self._problems(
+            f"At 23:24 UTC on 2024-02-05, the account {self.DN} was added to a privileged "
+            f"group on the computer {self.HOST} (R-ATOMIC-0019).") == []
+
+    def test_v11_program_for_logons_is_rejected(self):
+        p = self._problems(
+            "At 08:52 UTC on 2024-02-05, a program attempted to log into an account from "
+            "an external network address (R-ATOMIC-0005).")
+        assert "claim:program -- not in the title of R-ATOMIC-0005" in p
+        assert "claim:attempted -- not in the title of R-ATOMIC-0005" in p
+
+    def test_terminal_services_is_not_a_program(self):
+        p = self._problems(
+            "At 11:27 UTC on 2024-02-08, a program connected to the terminal services from "
+            "a remote location (R-ATOMIC-0008).")
+        assert "claim:program -- not in the title of R-ATOMIC-0008" in p
+
+    def test_subjects_carry_kinds_and_withhold_numbered_names(self):
+        f = {"entity_keys": [
+            {"key": "entity.user", "value": "admin"},
+            {"key": "entity.host", "value": self.HOST},
+            {"key": "entity.src_ip", "value": "36.133.110.87"},
+            {"key": "entity.exe_name", "value": "share.zip"},
+            {"key": "entity.exe_name", "value": "rename.exe"},
+            {"key": "entity.user", "value": "s-1-5-21-1-2-3-2611"}]}
+        assert narration._subjects(f) == [
+            {"name": "admin", "kind": "account"},
+            {"name": self.HOST, "kind": "computer"},
+            {"name": None, "kind": "network address"},
+            {"name": "share.zip", "kind": "file"},
+            {"name": "rename.exe", "kind": "program"},
+            {"name": None, "kind": "account"},
+        ]
+
+    def test_kind_labels_copied_by_the_model_are_stripped(self):
+        """v12 wrote "sysinternalssuite.zip (a file)" and "by one account (not
+        named)": labels meant for the model, not the reader."""
+        out = narration._attach_rule(
+            "At 23:14 UTC on 2024-02-05, sysinternalssuite.zip (a file) was moved to the "
+            "Recycle Bin by one account (not named).", "R-ATOMIC-0015")
+        assert out == ("At 23:14 UTC on 2024-02-05, sysinternalssuite.zip was moved to the "
+                       "Recycle Bin by one account (R-ATOMIC-0015).")
+
+    def test_sentence_prompt_lists_kinds(self):
+        prompt = narration._sentence_prompt(self._facts()["briefing_findings"][2])
+        assert "SUBJECTS: one network address (not named)" in prompt

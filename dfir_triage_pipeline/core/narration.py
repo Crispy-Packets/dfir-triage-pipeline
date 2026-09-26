@@ -52,7 +52,25 @@ _TIMEOUT_S = 300
 
 #: Bump this when the prompt changes; the value is recorded in run.json so a
 #: narration can be tied to the exact instruction that produced it.
-PROMPT_VERSION = "10"
+PROMPT_VERSION = "12"
+#: v12 (2026-09-26): every name carries its KIND. v11's first live run on srv22
+#: passed every check and was still wrong twice: it called the server
+#: "an account named win-ni9fbk23slo..." added to "a group with the name cn=a
+#: admin,..." (roles swapped), and wrote "a program attempted to log in" for
+#: remote logons whose only name, an IP address, had been withheld. The model
+#: had bare names and guessed what each was. Now each sentence prompt lists
+#: SUBJECTS as "name (kind)", a withheld name as its kind alone, and the
+#: validator rejects a name used in the wrong role (`role:`) and a "program"
+#: or "attempted" the cited title does not support.
+#: v11 (2026-09-26): the BRIEFING style -- one model call per finding. Both
+#: v9 and v10 live runs on collection_srv22 made the same error in one long
+#: answer: the Domain Admins addition cited to R-ATOMIC-0022 (a failed-logon
+#: burst) instead of R-ATOMIC-0019, even with `must_cite` and a tightened
+#: shape. Deterministic model, same class of error twice: more prompt wording
+#: would not remove it. Now the model sees ONE finding at a time and never sees
+#: a rule id; code appends the finding's own id, so a wrong pairing cannot be
+#: written. The same checks then run per sentence and on the whole text. The
+#: precedent is `_ranking_sentences`: code writes what the model gets wrong.
 #: v10 (2026-09-26), after live run 1 of v9 on collection_srv22 was rejected:
 #: it omitted both of the top entity's findings and cited R-ATOMIC-0022 (a
 #: failed-logon burst) for a group addition. The facts now open with
@@ -144,6 +162,167 @@ _REPAIR_PROMPT = (
     "Rewrite the summary so that every reason is fixed, following every rule "
     "above. Output only the new summary.\n"
 )
+
+
+#: Which way the prose is produced. "briefing" (v11, default): one call per
+#: finding, rule id attached by code. "single": the v10 one-shot prompt over
+#: the whole fact slice -- kept because its tests pin the repair and bounding
+#: behaviour, and so the two can be compared on one run.
+STYLE_FLAG = "DFIR_NARRATION_STYLE"
+_STYLES = ("briefing", "single")
+
+#: Cap on sentences: 12 covers every distinct critical/high/medium rule on
+#: collection_srv22 (11 rules, R-CORR-0007 twice) -- the whole story, entry to
+#: payload -- and at CPU speed keeps the narration to a few minutes.
+_SENTENCE_CAP = 12
+
+_SENTENCE_PROMPT = (
+    "Rewrite ONE record from a computer's history as ONE plain English sentence "
+    "for a manager who is not a security specialist. Describe it; do not judge it.\n"
+    "\nRULES:\n"
+    "- {start}\n"
+    "- Say what the TITLE says, in plain words. Never claim an action the TITLE "
+    "does not name.\n"
+    "- SUBJECTS lists each name with what it IS. Copy names exactly, and use "
+    "each only as what it is: a computer is never an account, an account is "
+    "never a group, a network address is never a program. A subject shown "
+    "without a name is described only by its kind (e.g. 'one network address'). "
+    "If there are no SUBJECTS, do not invent one. Never write 'unknown'.\n"
+    "- No judgement words: attacker, malicious, malware, hacker, compromised, "
+    "breach, criminal, infected.\n"
+    "- No numbers except the time and date given above. No network addresses.\n"
+    "- Do not mention any other event, and no order words (then, after, before, "
+    "later, meanwhile, at the same time) unless the TITLE itself uses them.\n"
+    "- Exactly one sentence. No codes, no brackets, no quotation marks. Do not "
+    "start with 'It', 'This' or 'That'.\n"
+    "\nTITLE: {title}\n"
+    "SUBJECTS: {names}\n"
+    "{also}"
+    "\nSentence:"
+)
+_SENTENCE_REPAIR = (
+    "\n\nYOUR SENTENCE:\n{text}\n\nIt was REJECTED by the fact checker for:\n"
+    "{reasons}\n\nWrite the sentence again with every reason fixed, following "
+    "every rule above. Output only the sentence.\n"
+)
+#: Results that judge the WHOLE text, not one sentence; ignored when a single
+#: sentence is checked, and applied in full when the sentences are joined.
+_WHOLE_TEXT_ONLY = ("missing_finding:", "missing:", "too_short:")
+
+
+def narration_style() -> str:
+    style = os.environ.get(STYLE_FLAG, "").strip().lower() or "briefing"
+    if style not in _STYLES:
+        raise ValueError(f"{STYLE_FLAG}={style!r}: expected one of {', '.join(_STYLES)}")
+    return style
+
+
+def _sentence_entries(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Which findings get a sentence -- chosen by CODE, deterministically.
+
+    Every entry whose rule is in `must_cite` (the validator will require it),
+    then one entry for each remaining rule in severity order, up to
+    `_SENTENCE_CAP` in total. Printed in time order, untimed entries last; each
+    sentence carries its own time, so the order is the record's, not a claim.
+    """
+    must = set(facts.get("must_cite", []))
+    pool = list(facts.get("verdict_findings", [])) + list(facts.get("briefing_findings", []))
+    seen: set[tuple] = set()
+    chosen: list[dict[str, Any]] = []
+
+    def take(e: dict[str, Any]) -> None:
+        key = (e.get("rule"), tuple(e.get("entities", []) or []), e.get("date"), e.get("time_utc"))
+        if key not in seen and e.get("rule") and e.get("title"):
+            seen.add(key)
+            chosen.append(e)
+
+    for e in pool:
+        if e.get("rule") in must:
+            take(e)
+    # Then ONE entry per remaining rule -- its first in severity-then-time
+    # order. Measured on srv22: capping entries instead let three RDP-logon
+    # entries crowd out the Domain Admins addition and the payload.
+    ruled = {e.get("rule") for e in chosen}
+    for e in facts.get("briefing_findings", []):
+        if len(chosen) >= max(_SENTENCE_CAP, len(must)):
+            break
+        if e.get("rule") not in ruled:
+            take(e)
+            ruled.add(e.get("rule"))
+    chosen.sort(key=lambda e: (e.get("date") is None, str(e.get("date")), str(e.get("time_utc"))))
+    return chosen
+
+
+def _sentence_prompt(e: dict[str, Any]) -> str:
+    if e.get("time_utc") and e.get("date"):
+        start = f"Start with exactly: At {e['time_utc']} UTC on {e['date']},"
+    else:
+        start = "Give no time or date: the record carries none."
+    names = [
+        f"{sj['name']} (a {sj['kind']})" if sj.get("name") else f"one {sj['kind']} (not named)"
+        for sj in e.get("subjects", []) or []
+    ]
+    also = ""
+    if e.get("also_at_utc"):
+        also = "ALSO RECORDED AT (you may mention): " + "; ".join(
+            f"{t.replace(' on ', ' UTC on ')}" for t in e["also_at_utc"]
+        ) + "\n"
+    return _SENTENCE_PROMPT.format(
+        start=start, title=e.get("title"), names="; ".join(names) or "(none)", also=also
+    )
+
+
+def _attach_rule(text: str, rule: str) -> str:
+    """First line only, quotes and any rule-like code the model added removed,
+    then the finding's OWN rule id appended by code."""
+    line = next((ln.strip() for ln in str(text).splitlines() if ln.strip()), "")
+    line = line.strip().strip('"').strip("'").strip()
+    line = re.sub(r"\s*\(?\bR-(?:ATOMIC|CORR)-\d{4}\b\)?", "", line).strip()
+    # The SUBJECTS labels are for the model, not the reader; v12 copied them
+    # ("sysinternalssuite.zip (a file)", "one account (not named)").
+    line = re.sub(
+        r"\s*\((?:an?\s+(?:account|computer|program|file|network address|item)|not named)\)",
+        "", line,
+    )
+    line = line.rstrip(" .")
+    return f"{line} ({rule})."
+
+
+def _sentence_problems(sentence: str, facts: dict[str, Any]) -> list[str]:
+    r = citations.validate(sentence, facts)
+    return [u for u in r.unresolvable if not u.startswith(_WHOLE_TEXT_ONLY)]
+
+
+def _narrate_briefing(narrator: Any, facts: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    """One call per finding, one repair per sentence. Returns the joined text
+    and a per-sentence audit. A sentence still failing after its repair is
+    dropped and recorded; if its rule was required, the whole-text check then
+    rejects the narration -- honest, never patched over."""
+    must = set(facts.get("must_cite", []))
+    sentences: list[str] = []
+    audit: list[dict[str, Any]] = []
+    for e in _sentence_entries(facts):
+        prompt = _sentence_prompt(e)
+        text = _attach_rule(narrator.generate(prompt), e["rule"])
+        problems = _sentence_problems(text, facts)
+        tries = [{"text": text, "unresolvable": problems}]
+        if problems:
+            repair = _SENTENCE_REPAIR.format(
+                text=text, reasons="\n".join(f"- {u}" for u in problems)
+            )
+            text = _attach_rule(narrator.generate(prompt + repair), e["rule"])
+            problems = _sentence_problems(text, facts)
+            tries.append({"text": text, "unresolvable": problems})
+        audit.append({
+            "finding": e.get("id"),
+            "rule": e["rule"],
+            "required": e["rule"] in must,
+            "kept": not problems,
+            "attempts": tries,  # audit only, never render a rejected attempt
+        })
+        if not problems:
+            sentences.append(text)
+    return " ".join(sentences), audit
 
 
 class Narrator(Protocol):
@@ -361,6 +540,37 @@ _KIND = {
 }
 
 
+#: What each entity key IS, in the words a sentence may use for it.
+_SUBJECT_KIND = {
+    "entity.user": "account",
+    "entity.host": "computer",
+    "entity.src_ip": "network address",
+}
+_PROGRAM_EXT = (".exe", ".dll", ".sys", ".ps1", ".bat", ".cmd", ".msi", ".scr", ".com")
+
+
+def _subjects(f: dict[str, Any]) -> list[dict[str, Any]]:
+    """Each entity of a finding as {"name", "kind"}. A name containing a number
+    (IP address, SID, versioned file) is withheld -- `name` None -- because the
+    viewer cannot verify it; its kind is kept, so the sentence can still say
+    "from one network address" instead of guessing "a program"."""
+    out: list[dict[str, Any]] = []
+    for k in f.get("entity_keys", []) or []:
+        value = str(k.get("value") or "")
+        if not value:
+            continue
+        key = str(k.get("key") or "")
+        if key == "entity.exe_name":
+            kind = "program" if value.lower().endswith(_PROGRAM_EXT) else "file"
+        else:
+            kind = _SUBJECT_KIND.get(key, "item")
+        name = None if _NUMBER_IN_NAME_RE.search(value) else value
+        if name is None and key == "entity.user":
+            kind = "account"
+        out.append({"name": name, "kind": kind})
+    return out
+
+
 def _verdict_findings(
     findings: list[dict[str, Any]], verdict_entities: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -395,6 +605,7 @@ def _verdict_findings(
                 "rule": f.get("rule_id"),
                 "title": f.get("title"),
                 "entities": ents,
+                "subjects": _subjects(f),
                 "date": ts[:10] or None,
                 "time_utc": ts[11:16] if observed else None,
                 "time_claim": f.get("time_claim"),
@@ -472,6 +683,7 @@ def _briefing_findings(
             "class": "validated" if f.get("rule_class") == "corpus-validated"
             else "not yet validated",
             "entities": [e for e in ents if not _NUMBER_IN_NAME_RE.search(str(e))],
+            "subjects": _subjects(f),
             "date": firsts[0][:10] if firsts else None,
             "time_utc": firsts[0][11:16] if firsts else None,
         }
@@ -526,6 +738,7 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
     narrator = make_narrator(spec, endpoint)
     backend, model = _parse_spec(spec)
 
+    style = narration_style()
     facts = _facts(doc)
     # NOT sort_keys: the fact slice is ordered verdict-first ON PURPOSE, and
     # alphabetising would put the ranking sentences ahead of
@@ -540,7 +753,10 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         "temperature": _TEMPERATURE,
         "seed": _SEED,
         "prompt_version": PROMPT_VERSION,
-        "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        "style": style,
+        "prompt_sha256": hashlib.sha256(
+            (prompt if style == "single" else _SENTENCE_PROMPT + _SENTENCE_REPAIR).encode("utf-8")
+        ).hexdigest(),
         # The exact facts the model saw, so a narration can be tied to its input
         # without re-deriving the slice.
         "facts_sha256": hashlib.sha256(
@@ -554,9 +770,15 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         "generated_at": datetime.now(UTC).isoformat(),
     }
     try:
+        attempts: list[dict[str, Any]] = []
+        if style == "briefing":
+            text, block["sentences"] = _narrate_briefing(narrator, facts)
+            result = citations.validate(text, facts)
+            block["attempts"] = sum(len(a["attempts"]) for a in block["sentences"])
+            _finish(block, narrator, result, text)
+            return block
         text = narrator.generate(prompt)
         result = citations.validate(text, facts)
-        attempts: list[dict[str, Any]] = []
         for _ in range(MAX_REPAIRS):
             if result.validated:
                 break
@@ -580,6 +802,12 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
             "reason": "first narration rejected; one repair with the checker's reasons",
             "rejected_attempts": attempts,  # audit only, never render
         }
+    _finish(block, narrator, result, text)
+    return block
+
+
+def _finish(block: dict[str, Any], narrator: Any, result: Any, text: str) -> None:
+    """Record the validation and the outcome -- shared by both styles."""
     if hasattr(narrator, "digest"):
         block["model_digest"] = narrator.digest()
     block["validation"] = {
@@ -599,4 +827,3 @@ def narrate(doc: dict[str, Any]) -> dict[str, Any]:
         # read as a finding, and never rendered as an authoritative narration.
         block["status"] = "rejected"
         block["rejected"] = {"text": text}
-    return block

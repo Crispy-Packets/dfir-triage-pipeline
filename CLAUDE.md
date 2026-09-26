@@ -3,7 +3,7 @@
 ## Gate
 
     python -m ruff check .            ->  All checks passed!
-    python -m pytest -q               ->  1105 passed, 21 skipped
+    python -m pytest -q               ->  1121 passed, 21 skipped
     python rules\validate_rules.py    ->  schema 2.1.0  rules 30  errors 0  warnings 0
 
 The 16 skips are collection-backed integration tests, active only when
@@ -294,8 +294,27 @@ open with `must_cite` (the validator's own `_required_rules`). New fatal checks:
 - simultaneity words are refused.
 
 Both live runs were rejected, correctly: the wrong rule for the group addition,
-and a required finding omitted. Under the agreed two-run budget, narration stays
-off. See `docs/evidence/srv22-narration-attempts.md`. **The module IS the
+and a required finding omitted.
+
+**Prompt v11/v12, per finding (default style, `DFIR_NARRATION_STYLE=briefing`).**
+One model call per finding. The model sees only that finding's title,
+subjects (each "name (kind)"; a withheld name appears as its kind alone) and
+first-record time. It never sees a rule id: `_attach_rule` appends the
+finding's own id, so a wrong pairing cannot be written.
+
+Selection is code (`_sentence_entries`): every `must_cite` finding, then one
+per remaining rule in severity order, cap 12, printed in time order.
+
+Checks run per sentence (one repair each) and then on the whole text. v11 was
+accepted but wrong in a human read (host and account roles swapped; "a
+program" for remote logons), which added `role:` and `claim:program` /
+`claim:attempted`.
+
+v12 passes the pipeline, the viewer's `contract.narration_gate` and a
+clause-by-clause read, and ships in `viewer/samples/srv22`.
+
+`DFIR_NARRATION_STYLE=single` keeps the one-shot v10 prompt; its tests pin the
+repair and bounding behaviour. Record: `docs/evidence/srv22-narration-attempts.md`. **The module IS the
 model-comparison harness**: run the pipeline with each candidate tag and read
 `narration.validation.unresolvable` from each run.json — zero unresolvable
 wins (it now includes every missing finding, the 3-sentence floor, and a time
