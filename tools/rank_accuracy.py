@@ -21,7 +21,8 @@ STRICT = {"rename.exe", "dir.exe", "psexec.exe", "psexec64.exe"}
 
 
 def order(run):
-    ents = json.load(open(f"{ROOT}\\{run}\\run.json", encoding="utf-8"))["anomalies"]["scored_entities"]
+    doc = json.load(open(f"{ROOT}\\{run}\\run.json", encoding="utf-8"))
+    ents = doc["anomalies"]["scored_entities"]
     seen, out = set(), []
     for e in ents:  # an entity may appear once per family; keep its best rank
         n = e["entity"].lower()
