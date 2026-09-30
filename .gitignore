@@ -42,3 +42,6 @@ repomix.config.json
 /report.html
 /manifest.sha256
 /narration_*.json
+
+# Editor/assistant-specific rule files (kept locally, not part of the project)
+.cursorrules

@@ -6,6 +6,12 @@ The four principles this work settled are stated in full in
 `docs/principles.md` and summarised here in the position where they did their
 work.
 
+> **Scope of this chapter:** it describes the 24-rule build evaluated on the
+> lab collections, the same build as the final report. Six server rules
+> (R-ATOMIC-0019 to 0023, R-CORR-0007) and the evaluation on a real Windows
+> Server 2022 break-in were added afterwards; see
+> `docs/evidence/srv22-analysis.md`.
+
 ---
 
 ## 1. Problem
@@ -317,10 +323,7 @@ re-testing the same hypothesis against the same shape cannot. The 99-vs-86
 separation is a real result *about that chain*. Whether it is a result about
 intrusions is unestablished, and unfalsifiable from inside this corpus. The
 corpus is final at five collections (`clean_a`, `clean_b`, `clean_c`, `s1_v2`,
-`s1_v3`); no second scenario was collected, and none is planned. A design
-sketch of what a second scenario would have required survives in
-`docs/scenario-2-design.md`, labelled as design only, but it is the record of
-an unrun experiment, not a pending one.
+`s1_v3`); no second scenario was collected, and none is planned.
 
 **No accuracy, no lift, no ROC.** One ground-truth entity (§5.4).
 
@@ -350,8 +353,6 @@ recorded rather than the work hidden.
    the single-scenario ceiling and validate the Class 2 rules against a corpus.
    It was not collected for this project and is not planned; the corpus is
    final. This is named as the largest open question, not as scheduled work.
-   `docs/scenario-2-design.md` records what such a collection would have
-   required, as design only.
 2. **`evtx.firewall` rules** — the family became readable only at the end of
    this work; base rates must be measured before any rule is written, in that
    order.
