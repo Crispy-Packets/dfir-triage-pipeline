@@ -56,6 +56,50 @@ Streamlit viewer in `viewer/`, with `report.html` as a static reference report.*
 | Explain | Optional checked LLM briefing, written before the manifest is hashed | `core/narration.py`, `core/citations.py` |
 | View | Read-only analyst viewer | `viewer/` |
 
+## Laboratory and evidence
+
+Two isolated VirtualBox hosts produced five KAPE collections: three clean
+baselines and two runs of the same attack chain (HTTP delivery, execution,
+Run-key persistence, Security-log clearing). The payload was a benign 4,608-byte
+stand-in; no real malware was run. Evidence stays outside the repository and every
+collection is verified against SHA-256 manifests ([`groundtruth/`](groundtruth/)).
+
+![Laboratory and evidence-flow topology](docs/images/lab-topology.png)
+
+*Laboratory and evidence-flow topology (final report, Figure 6). Details:
+[`docs/lab-setup.md`](docs/lab-setup.md).*
+
+## The viewer
+
+The viewer opens one sealed run, checks its SHA-256 manifest before showing
+anything, and keeps confirmed detections, background context, the anomaly ranking
+and the AI briefing in separate panels. It has no write path.
+
+![Viewer overview: manifest check and priority queue](docs/images/viewer-overview.png)
+
+*Overview of the lab scenario: the manifest check, the priority queue by triage
+score, and the run's facts (final report, Figure 66).*
+
+![Case file: why a program is in the queue](docs/images/viewer-case-file.png)
+
+*A case file: the validated rules behind a score, their weights, and the anomaly
+layer's separate, non-verdict position (final report, Figure 69).*
+
+<details>
+<summary>More screens: attack phases, ATT&CK techniques, and the anomaly ranking</summary>
+
+![Phases and ATT&CK techniques](docs/images/viewer-phases-attack.png)
+
+*Attack phases and ATT&CK techniques: only validated (Class 1) findings fill a
+phase; context findings show as "+N context" (final report, Figure 67).*
+
+![Prioritisation panel](docs/images/viewer-prioritisation.png)
+
+*The anomaly ranking, labelled "not a verdict": ordinary Windows programs lead
+it, which is why detection stays with the rules (final report, Figure 63).*
+
+</details>
+
 ## Results
 
 **Lab scenario (`s1_v3`: download → execution → Run-key persistence → log clearing).**
@@ -63,6 +107,14 @@ Streamlit viewer in `viewer/`, with `report.html` as a static reference report.*
   collection produces a critical program; clean hosts top out at 86.
 - The anomaly layer ranks it **14th of 443** with MODA\*-G, against 40th with
   Isolation Forest, with a false-alarm rate of 4.8% on a clean host.
+- On the first lab host, clearing the Security log destroyed at least 50 findings
+  that the clean baselines show the evidence would otherwise have supported, yet
+  50 of the 53 scenario findings survived on other artifacts (final report, §5.4).
+
+![Rank of the attack binary at each stage of the anomaly layer](docs/images/ml-rank-progression.png)
+
+*How the attack binary's rank improved through the ML stage, ending at 14th of
+443 with MODA\*-G (final report, Figure 94).*
 
 **A real Windows Server 2022 break-in** (a public research image ending in Petya
 ransomware, never seen during development; about 2.07 million events):

@@ -11,10 +11,8 @@ from pathlib import Path
 
 from evtx import PyEvtxParser
 
-EVTX = Path(
-    r"%USERPROFILE%\dfir-evidence\collection_s1_v2"
-    r"\C\Windows\System32\winevt\logs\Security.evtx"
-)
+EVTX = (Path.home() / "dfir-evidence" / "collection_s1_v2"
+        / "C" / "Windows" / "System32" / "winevt" / "logs" / "Security.evtx")
 
 EXPECT = {
     28674: {

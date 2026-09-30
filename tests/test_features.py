@@ -193,7 +193,7 @@ class TestOverlap:
 
 
 COLLECTION = os.environ.get("DFIR_TEST_COLLECTION")
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 
 @pytest.mark.skipif(

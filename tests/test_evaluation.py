@@ -168,7 +168,7 @@ class TestEvaluateRanking:
         assert recalls == sorted(recalls)
 
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 needs_collections = pytest.mark.skipif(
     not (EVIDENCE / "collection_clean_b").is_dir()

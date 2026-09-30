@@ -20,7 +20,7 @@ from dfir_triage_pipeline.parsers.jumplist import (
     app_id_of,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 RECENT = "C/Users/vboxuser/AppData/Roaming/Microsoft/Windows/Recent"
 
 needs_collection = pytest.mark.skipif(

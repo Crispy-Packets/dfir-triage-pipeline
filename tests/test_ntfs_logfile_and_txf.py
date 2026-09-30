@@ -30,7 +30,7 @@ from dfir_triage_pipeline.parsers.txf_pending import (
     recoverable_text,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 LOGFILE_REL = "C/$LogFile"
 TXF_REL = "C/$Extend/$RmMetadata/$TxfLog/$T"
 

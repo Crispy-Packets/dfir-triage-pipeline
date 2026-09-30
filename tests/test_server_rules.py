@@ -72,7 +72,7 @@ class TestPrivilegedGroupMemberAdded:
 
     def test_real_public_sample_fires(self, tmp_path):
         """Parsed by the real parser from a real EVTX, then evaluated."""
-        src = (Path(r"%USERPROFILE%\evtx-attack-samples") / "Persistence"
+        src = ((Path.home() / "evtx-attack-samples") / "Persistence"
                / "Network_Service_Guest_added_to_admins_4732.evtx")
         if not src.exists():
             pytest.skip("evtx-attack-samples not present")

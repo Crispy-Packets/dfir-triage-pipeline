@@ -29,7 +29,7 @@ from dfir_triage_pipeline.core import engine  # noqa: E402
 from dfir_triage_pipeline.core.ruleset import load_rules  # noqa: E402
 from dfir_triage_pipeline.ingest import collect_events  # noqa: E402
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 COLLECTIONS = ["clean_a", "clean_b", "s1_v2", "clean_c", "s1_v3"]
 
 

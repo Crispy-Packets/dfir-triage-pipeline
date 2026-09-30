@@ -29,7 +29,7 @@ from dfir_triage_pipeline.parsers.registry_txlog import (
 )
 from dfir_triage_pipeline.parsers.security_hive import SecurityHiveParser, hive_kind
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 needs_s1v3 = pytest.mark.skipif(
     not (EVIDENCE / "collection_s1_v3").is_dir(), reason="s1_v3 required"

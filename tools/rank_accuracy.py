@@ -13,8 +13,9 @@ Metrics, all computed from the rank order only:
 """
 
 import json
+from pathlib import Path
 
-ROOT = r"%USERPROFILE%\dfir-triage-pipeline\outputs"
+ROOT = str(Path(__file__).resolve().parent.parent / "outputs")
 BROAD = {"rename.exe", "dir.exe", "psexec.exe", "psexec64.exe", "nmap-7.93-setup.exe",
          "nmap.exe", "ncat.exe", "zenmap.exe", "nping.exe", "npcap-1.71.exe"}
 STRICT = {"rename.exe", "dir.exe", "psexec.exe", "psexec64.exe"}

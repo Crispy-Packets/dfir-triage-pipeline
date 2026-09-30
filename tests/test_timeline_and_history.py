@@ -27,7 +27,7 @@ from dfir_triage_pipeline.parsers.timeline import (
     unix_to_utc,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 TIMELINE_REL = (
     "C/Users/vboxuser/AppData/Local/ConnectedDevicesPlatform/"
     "L.vboxuser/ActivitiesCache.db"

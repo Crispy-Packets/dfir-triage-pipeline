@@ -27,7 +27,7 @@ from dfir_triage_pipeline.parsers.ntuser_explorer import (
     rot13,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 needs_host1 = pytest.mark.skipif(
     not (EVIDENCE / "collection_clean_b" / "C/Users/Youssef/NTUSER.DAT").is_file(),

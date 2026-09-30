@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-BASE = Path(r"%USERPROFILE%\dfir-evidence")
+BASE = Path.home() / "dfir-evidence"
 SERIAL = "E0D55E6CBD23E6A1F83A003B"
 COLLECTIONS = ("collection_clean_a", "collection_clean_b", "collection_s1_v2")
 

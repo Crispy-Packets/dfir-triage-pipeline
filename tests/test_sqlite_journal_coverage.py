@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 COLLECTIONS = (
     "collection_clean_a",

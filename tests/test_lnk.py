@@ -24,7 +24,7 @@ from dfir_triage_pipeline.parsers.lnk import (
     parse_lnk,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 LINK_CLSID = bytes(
     (
         0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,

@@ -25,7 +25,7 @@ from dfir_triage_pipeline.parsers.scheduled_tasks import (
     parse_registration_date,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 TASKS_REL = "C/Windows/System32/Tasks"
 
 needs_collection = pytest.mark.skipif(

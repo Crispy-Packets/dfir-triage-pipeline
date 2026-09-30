@@ -18,8 +18,8 @@
 .EXAMPLE
   # full run, Ollama on this machine
   .\tools\run_with_narration.ps1 `
-      -Collection %USERPROFILE%\dfir-evidence\collection_s1_v3 `
-      -Baseline   %USERPROFILE%\dfir-evidence\collection_clean_c
+      -Collection $HOME\dfir-evidence\collection_s1_v3 `
+      -Baseline   $HOME\dfir-evidence\collection_clean_c
 
 .EXAMPLE
   # full run, Ollama on the Mint laptop

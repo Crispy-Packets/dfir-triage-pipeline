@@ -9,7 +9,7 @@
 The 16 skips are collection-backed integration tests, active only when
 `DFIR_TEST_COLLECTION` points at a collection:
 
-    $env:DFIR_TEST_COLLECTION = "%USERPROFILE%\dfir-evidence\collection_clean_b"
+    $env:DFIR_TEST_COLLECTION = "$HOME\dfir-evidence\collection_clean_b"
     python -m pytest -q
 
 Counts differ per collection, because some assertions are about one collection

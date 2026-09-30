@@ -20,7 +20,7 @@ from dfir_triage_pipeline.parsers.evtx_windows import (
     generic_artifact,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 LOGS = "C/Windows/System32/winevt/logs"
 
 needs_s1v3 = pytest.mark.skipif(

@@ -21,7 +21,7 @@ from dfir_triage_pipeline.parsers.shellbags import (
     parse_shell_item,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 USRCLASS = "C/Users/vboxuser/AppData/Local/Microsoft/Windows/UsrClass.dat"
 
 needs_host2 = pytest.mark.skipif(

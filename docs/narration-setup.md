@@ -37,8 +37,8 @@ Check, then run:
 
     .\tools\run_with_narration.ps1 -Check
     .\tools\run_with_narration.ps1 `
-        -Collection %USERPROFILE%\dfir-evidence\collection_s1_v3 `
-        -Baseline   %USERPROFILE%\dfir-evidence\collection_clean_c
+        -Collection $HOME\dfir-evidence\collection_s1_v3 `
+        -Baseline   $HOME\dfir-evidence\collection_clean_c
 
 Output lands in `outputs\narrated\` (git-ignored): `run.json` with the
 `narration` block, `report.html`, `manifest.sha256`.

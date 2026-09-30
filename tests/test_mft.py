@@ -27,7 +27,7 @@ from dfir_triage_pipeline.parsers.mft import (
     parse_record,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 MFT_REL = "C/$MFT"
 
 needs_s1v3 = pytest.mark.skipif(

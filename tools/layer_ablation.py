@@ -27,7 +27,7 @@ from dfir_triage_pipeline.core.ruleset import load_rules  # noqa: E402
 from dfir_triage_pipeline.ingest import collect_events  # noqa: E402
 from dfir_triage_pipeline.timeline import sort_events  # noqa: E402
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 #: The entity Scenario 1 is about. Both layers are asked the same question:
 #: does this surface, and how much else surfaces alongside it?

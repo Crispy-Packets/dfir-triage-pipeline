@@ -26,7 +26,7 @@ from dfir_triage_pipeline.parsers.srum import (
     ole_timestamp,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 SRUM_REL = "C/Windows/System32/sru/SRUDB.dat"
 
 needs_collection = pytest.mark.skipif(

@@ -8,10 +8,8 @@ imply different transfer routes off the guest.
 import re
 from pathlib import Path
 
-HIVE = Path(
-    r"%USERPROFILE%\dfir-evidence\collection_s1_v2"
-    r"\C\Windows\System32\config\SYSTEM"
-)
+HIVE = (Path.home() / "dfir-evidence" / "collection_s1_v2"
+        / "C" / "Windows" / "System32" / "config" / "SYSTEM")
 
 raw = HIVE.read_bytes()
 # hive strings are UTF-16LE

@@ -55,7 +55,7 @@ MODA*-G. **The anomaly layer ranks; it does not detect.**
 ## Commands (run the day before)
 
 ```powershell
-cd %USERPROFILE%\dfir-triage-pipeline
+cd $HOME\dfir-triage-pipeline
 
 # gate
 .\.venv\Scripts\python.exe -m ruff check .
@@ -63,12 +63,12 @@ cd %USERPROFILE%\dfir-triage-pipeline
 .\.venv\Scripts\python.exe rules\validate_rules.py
 
 # the server case (rules only: no same-host baseline exists)
-.\.venv\Scripts\python.exe -m dfir_triage_pipeline %USERPROFILE%\dfir-evidence\collection_srv22 `
+.\.venv\Scripts\python.exe -m dfir_triage_pipeline $HOME\dfir-evidence\collection_srv22 `
     --output outputs\srv22\timeline.csv --run-json outputs\srv22\run.json --report
 
 # ...or run AND open it in one step: --view launches the viewer on this run,
 #    in its own window, once the run is written
-.\.venv\Scripts\python.exe -m dfir_triage_pipeline %USERPROFILE%\dfir-evidence\collection_srv22 `
+.\.venv\Scripts\python.exe -m dfir_triage_pipeline $HOME\dfir-evidence\collection_srv22 `
     --output outputs\srv22\timeline.csv --run-json outputs\srv22\run.json --report --view
 ```
 
@@ -109,8 +109,8 @@ clears them afterwards:
 
 ```powershell
 .\tools\run_with_narration.ps1 -Check
-.\tools\run_with_narration.ps1 -Collection %USERPROFILE%\dfir-evidence\collection_srv22 `
-    -Baseline %USERPROFILE%\dfir-evidence\collection_clean_c
+.\tools\run_with_narration.ps1 -Collection $HOME\dfir-evidence\collection_srv22 `
+    -Baseline $HOME\dfir-evidence\collection_clean_c
 ```
 
 **Do not set these as permanent Windows environment variables.** Every pipeline

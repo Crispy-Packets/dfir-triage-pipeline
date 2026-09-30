@@ -113,8 +113,8 @@ Needs Ollama reachable (locally or on the Mint laptop) — see
 ```powershell
 .\tools\run_with_narration.ps1 -Check        # is Ollama up, is the model pulled?
 .\tools\run_with_narration.ps1 `
-    -Collection %USERPROFILE%\dfir-evidence\collection_s1_v3 `
-    -Baseline   %USERPROFILE%\dfir-evidence\collection_clean_c
+    -Collection $HOME\dfir-evidence\collection_s1_v3 `
+    -Baseline   $HOME\dfir-evidence\collection_clean_c
 ```
 
 Add `-Endpoint http://<mint-ip>:11434` to use the Mint laptop. Output is in

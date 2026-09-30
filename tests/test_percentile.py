@@ -70,7 +70,7 @@ class TestAssignPercentiles:
         assert [s.event for s in out] == ["e0", "e1", "e2"]
 
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 needs_collection = pytest.mark.skipif(
     not (EVIDENCE / "collection_clean_b").is_dir(),

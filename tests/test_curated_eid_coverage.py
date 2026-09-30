@@ -41,7 +41,7 @@ import pytest
 
 from dfir_triage_pipeline.parsers import evtx_windows
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 
 #: Curated channels drop 34,556 of 70,873 records across the five collections
 #: (D-059). Selectivity is correct -- CD-007 declines to invent semantics for

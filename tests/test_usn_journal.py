@@ -23,7 +23,7 @@ from dfir_triage_pipeline.parsers.usn_journal import (
     iter_records,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 USN_REL = "C/$Extend/$J"
 
 needs_s1v3 = pytest.mark.skipif(

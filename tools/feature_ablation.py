@@ -13,7 +13,7 @@ from pathlib import Path
 from dfir_triage_pipeline import anomaly, evaluation, features
 from dfir_triage_pipeline.ingest import collect_events
 
-E = Path(r"%USERPROFILE%\dfir-evidence")
+E = Path.home() / "dfir-evidence"
 GROUND_TRUTH = "invoice_scan.exe"
 
 train = collect_events(E / "collection_clean_c")[0]

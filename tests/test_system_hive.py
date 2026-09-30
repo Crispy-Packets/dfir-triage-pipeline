@@ -20,7 +20,7 @@ from dfir_triage_pipeline.parsers.system_hive import (
     parse_shimcache,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 SYSTEM_REL = "C/Windows/System32/config/SYSTEM"
 
 needs_collection = pytest.mark.skipif(

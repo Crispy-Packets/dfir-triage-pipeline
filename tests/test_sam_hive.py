@@ -28,7 +28,7 @@ from dfir_triage_pipeline.parsers.sam_hive import (
     parse_f_value,
 )
 
-EVIDENCE = Path(r"%USERPROFILE%\dfir-evidence")
+EVIDENCE = Path.home() / "dfir-evidence"
 SAM_REL = "C/Windows/System32/config/SAM"
 
 needs_collection = pytest.mark.skipif(
