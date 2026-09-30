@@ -454,7 +454,7 @@ def test_filters_actually_filter_unit():
 def test_filters_narrow_verdict_table_live(monkeypatch):
     at = _app(monkeypatch, "s1_v3", qp={"view": "Verdict"})
     before = len(_rows(at.dataframe[0].value))
-    [m for m in at.sidebar.multiselect if m.label == "Severity"][0] \
+    [m for m in at.sidebar.multiselect if m.label == "Priority"][0] \
         .set_value(["critical"]).run()
     after = _rows(at.dataframe[0].value)
     assert 0 < len(after) < before
@@ -464,7 +464,7 @@ def test_filters_narrow_verdict_table_live(monkeypatch):
 def test_active_filter_collapses_overview(monkeypatch):
     at = _app(monkeypatch)
     assert "Priority" in _md(at)
-    [m for m in at.sidebar.multiselect if m.label == "Severity"][0] \
+    [m for m in at.sidebar.multiselect if m.label == "Priority"][0] \
         .set_value(["critical"]).run()
     md = _md(at)
     assert "Priority <span" not in md and "Filtered results" in md
@@ -564,7 +564,7 @@ def test_url_entity_opens_its_case_file(monkeypatch):
 def test_share_link_reflects_state(monkeypatch):
     at = _app(monkeypatch)
     _panel(at, "Context")
-    [m for m in at.sidebar.multiselect if m.label == "Severity"][0] \
+    [m for m in at.sidebar.multiselect if m.label == "Priority"][0] \
         .set_value(["high"]).run()
     link = at.sidebar.code[0].value
     assert "view=Context" in link and "sev=high" in link
@@ -576,10 +576,10 @@ def test_keyboard_shortcuts_drive_nav_theme_and_clear(monkeypatch):
     assert _nav(at).value == "Guide"
     [b for b in at.button if b.key == "k_theme"][0].click().run()
     assert [t for t in at.toggle if t.label == "Light"][0].value is True
-    [m for m in at.sidebar.multiselect if m.label == "Severity"][0] \
+    [m for m in at.sidebar.multiselect if m.label == "Priority"][0] \
         .set_value(["critical"]).run()
     [b for b in at.button if b.key == "k_clear"][0].click().run()
-    assert [m for m in at.sidebar.multiselect if m.label == "Severity"][0].value == []
+    assert [m for m in at.sidebar.multiselect if m.label == "Priority"][0].value == []
 
 
 def test_stylesheet_uses_no_generated_class_names():

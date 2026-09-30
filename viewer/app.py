@@ -342,7 +342,7 @@ def main() -> None:
                                  if f.get("attack_technique")}),
             "kinds": sorted({str(e.get("kind")) for e in entities if e.get("kind")}),
         }
-        labels = {"severity": "Severity", "phase": "Phase",
+        labels = {"severity": "Priority", "phase": "Phase",
                   "family": "Technique family", "technique": "Technique ID",
                   "kinds": "Entity kind"}
         flt = empty_filter()

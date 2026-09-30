@@ -15,6 +15,10 @@ font = "sans serif"
 headless = false
 showEmailPrompt = false
 fileWatcherType = "none"
+# Upload limit per file, in MB (Streamlit's default is 200). A real case's
+# run.json can pass 200 MB; 1 GB covers it. The upload is read into memory
+# (app.py: u.getvalue()), so a 1 GB file needs roughly that much free RAM.
+maxUploadSize = 1024
 
 [global]
 # Clearing filters (X) resets widgets through session state on purpose.
