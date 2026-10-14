@@ -5,9 +5,7 @@ a provenance-preserving UTC timeline, detects attacker behaviour with declarativ
 correlation rules, ranks what to look at first, and seals every result so it can be
 checked. A read-only viewer presents the result to the analyst.
 
-*Final Year Project — Computer Science (Cybersecurity), University of Sciences and
-Arts in Lebanon, September 2026.*
-*Youssef Najjar · Karim Fadlallah — supervised by Marwa Deeb.*
+*Final Year Project.*
 
 ---
 
