@@ -28,3 +28,11 @@ viewer/samples/**                   -text
 *.vhdx  binary
 # Windows batch files must keep CRLF: cmd.exe mis-parses goto labels in LF files.
 *.bat text eol=crlf
+
+# GitHub language statistics (Linguist). The sample runs and test fixtures are
+# pipeline OUTPUT (report.html alone is ~1 MB) and the MODA*-G core is
+# third-party code; counting them made the repo read as 45% HTML. Marking them
+# changes only the language bar, never the files.
+viewer/samples/**          linguist-generated
+viewer/tests/fixtures/**   linguist-generated
+dfir_triage_pipeline/_vendor/** linguist-vendored
